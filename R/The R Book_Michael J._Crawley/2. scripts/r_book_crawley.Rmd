@@ -1,0 +1,477 @@
+---
+title: "R_Crawley_1"
+output:
+  html_document: default
+  'tml_document:': default
+author: "Basil Okola"
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r setup,include=F}
+knitr::opts_chunk$set(echo = T)
+knitr::opts_knit$set(root.dir=normalizePath("C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley"))
+```
+
+####**Downloading packages**
+##### check and download missing packages
+```{r, include=F}
+
+
+#list.of.packages<-c("tidyr","tidyr", "knitr", "printr")
+#new.packages<-list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+#if(length(new.packages)) install.packages(new.packages, dependencies = T) 
+#function installing and loading new packages
+ipk<-function(pkg) {
+new.pkg<-list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+if (length(new.pkg)) install.packages(new.pkg, repos='http://cran.us.r-project.org',dependencies = T)
+sapply(pkg, require, character.only=T)
+}
+list.of.pkg<-c("akima", "chron","lme4","mcmc","odesolve","spdep","spatstat","tree", "reshape2","MASS")
+ipk(list.of.pkg)
+
+```
+
+
+```{r, house_keeping, warning=FALSE, include =F, echo=F}
+#  use find() or apropos() to search for commands
+find("lm") # tells of specific package
+apropos("lm")
+#fix(data.frame) - edit dataframe
+#options(show.signif.stars=FALSE) - disable significant stars
+#attach() - attach an object to memory
+#par(ask=T) - stop multiple graphs from whizzing by
+#objects() -  objects in a session
+# demo
+demo(graphics)
+example(lm)
+library(help="spatial")
+#search() - see attached objects/libraries
+#rm(list=ls())
+```
+```{r}
+### NAs
+vmc=c(1:10, NA,NA, 11:13)
+vmc
+seq(along=vmc)[is.na(vmc)] # an index of missing values
+  #OR
+which(is.na(vmc))
+vmc[is.na(vmc)]<-0 # assigning missing to zero
+vmc
+  #OR
+vmc=c(1:10, NA,NA, 11:13)
+ifelse(is.na(vmc),0, vmc)
+#supply names
+x=c(1:10)
+names(x)<--9:0
+x
+getwd()
+objects() #lists created vars
+search() # list of attached objects & libraries
+rm(list=ls()) #tydying up
+``` 
+####***Summary Information from Vectors by Groups***
+```{r, Summary Information from Vectors by Groups, echo=F}
+
+data<-"C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley\\1. data\\daphnia.txt"
+daphnia<-read.table(data, header=T)
+attach(daphnia)
+names(daphnia)
+daphnia
+tapply(Growth.rate, Detergent, mean) #mean growth rate for each level of detergent
+# for more than one grouping var, put them in a list
+tapply(Growth.rate, list(Water, Daphnia), median)
+#use with(data, function(   )) in place of attach()
+data(package=.packages(all.available=T))
+x=0:10
+sum(x<5) # counts elements < 5
+sum(x[x<5]) # sum of all elements < 5
+rev(sort(x)) # reverse sorting
+sum(rev(sort(x))[1:3]) # sums largest three numbers
+which(x<5) # index of vals less than 5
+length(x) #length of vector x
+rnorm(1000,100,2.5)->xv
+xv[xv<100]
+sum(xv<100)
+xv[seq(25,length(xv),25)] # every 25th element of xv
+which(abs(xv-108)==min(abs(xv-108))) # using which() to find a value closest to a specified value
+closest<-function (xv, sv){
+  xv[which(abs(xv-sv)==min(abs(xv-sv)))]}
+closest(xv,108)
+#using with() instead of atttach()
+library(MASS)
+with(bacteria,tapply((y=="n"),trt,sum))
+with(mammals,plot(body,brain,log="xy"))
+#finding closest value
+xv=rnorm(1000,100,2.5)
+which(abs(xv-108)==min(abs(xv-108)))
+xv[330]
+
+#or
+closest<-function(xv,sv){
+  xv[which(abs(xv-sv)==min(abs(xv-sv)))]
+}
+closest(xv,100)
+sequence(c(5,2,4))
+```
+####**sorting and ranking data**
+```{r, echo=F}
+
+houses<-read.table("C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley\\1. data\\houses.txt", header = T)
+str(houses)
+head(houses)
+names(houses)
+with (houses, {
+  ranked<-rank(Price)
+  ordered<-order(Price)
+  sorted<-sort(Price)
+  view<- data.frame(Location,Price,ranked,sorted,ordered)
+  view
+  Location[order(Price)] #ranking location with regard to order of price
+  })
+
+```
+#### Matrices
+```{r matrices, echo=FALSE,include=F}
+x<-matrix(1:10,nrow=2, byrow=T)
+x
+#sampling
+p<-c(1,2,3,4,5,5,4,3,2,1)
+sapply(1:5,function(i) sample(x,4,prob=p))
+class(x);attributes(x)
+#convert vector to matrix
+y<-rnorm(10,10,1); y
+dim(y)<-c(2,5); class(y) #setting dimensions -- converts y to a matrix
+yy<-t(y) ; yy # transpose
+#supply names to matrix rows & cols
+z<-matrix(rpois(20,2.5),nrow=4)
+rownames(z)<-rownames(z,do.NULL=F,prefix="Trial.");z
+
+drug.names<-c("aspirin", "paracetamol", "nurofen", "hedex", "placebo")
+colnames(z)<-drug.names;z
+z<-data.frame(z);class(z);dim(z)
+# alternative  naming : dimnames(X)<-list(NULL,paste("drug.",1:5,sep="")) -- supplies to cols, sets rownames to NULL
+
+#summaries on matrices
+rowMeans(z)
+colMeans(z)
+apply(z,1,var)
+#z[,2]<-NA
+apply(z,1,mean,na.rm=T)
+#ifelse(z<NA,z,1)
+
+#grouping rows/cols
+group<-c("A","B","B","A")
+rowsum(z,group) 
+# or
+#tapply(z,list(group[row(z)],col(z)),sum)
+# or
+aggregate(z,list(group),sum)
+
+
+#shuffle elements of a col independently
+apply(z,2,sample)
+
+#adding rows and cols to a matrix
+z<-matrix(rpois(20,2.5),nrow=4)
+z
+z<-rbind(z,apply(z,1,mean))
+z<-cbind(z,apply(z,2,var))
+rownames(z)<-c(1:4,"means")
+colnames(z)<-c(1:5,"variance")
+```
+### String manipulation
+```{r strings, echo=F}
+a=c(1,2,3);a
+b<-as.character(a);b
+typeof(b)
+c<-"abc"
+paste(c,a,sep="_")
+pets<-c("cat","dog","gerbi","terrapin")
+length(pets)
+nchar(pets)
+class(pets)
+typeof(pets)
+q<-character(20)
+for (i in 1:20) q[i]<-substr('i am not dumb',1,i) #substring of text
+phrase<-"the quick brown fox jumps over the lazy dog"
+strsplit(phrase," ") #uses space 
+strsplit(phrase,"the")[[1]] [2] #at 1st & 2nd the
+
+#cases
+toupper(phrase)
+tolower(phrase)
+
+```
+### Descriptives
+```{r Descriptives, echo=F}
+# median
+y=floor(abs(rnorm(100,2.5))*10)
+median(y)
+med<-function(x) {
+  odd.even<-length(x)%%2
+  if (odd.even==0)(sort(y)[length(y)/2]+sort(y)[1+length(y)/2])/2
+  else sort(y)[ceiling(length(y)/2)]
+}
+med(y)
+
+# variance ratio test -- F - test
+v.ratio<-function(x,y) {
+  v1<-var(x)
+  v2<-var(y)
+  if (var(x) > var(y)) {
+    df1<-length(x)-1
+    df2<-length(y)-1
+    vr<-var(x)/var(y)}
+else{
+  vr<-var(y)/var(x)
+  df1<-length(y)-1
+  df2<-length(x)-1}
+  2*(1-pf(vr,df1,df2))}
+a<-rnorm(10,15,2)
+b<-rnorm(10,15,4)
+v.ratio(a,b)
+
+# standard error
+se<- function(x) sqrt(var(x)/length(x))
+
+#  t-test
+ci95<-function (x) {
+  t.value<-qt(.975,length(x)-1)
+  standard.error<-se(x)
+  ci<-t.value*standard.error
+  cat('95% CI = ',mean(x)-ci, 'to', mean(x)+ci, '\n')
+}
+
+x<-rnorm(150,25,3)
+ci95(x)
+
+
+xv<-rnorm(30)
+sem<-numeric(30)
+sem[1]<-NA
+for (i in 2:30) sem[i]<-se(xv[1:i])
+plot(1:30,sem,ylim=c(0,0.8), ylab='standard error of mean',xlab='sample size n',pch=16)
+lines(2:30,1/sqrt(2:30))
+
+# error bars
+# yv=height of bars, z=length of error bars,nn=labels of the bars on the x axis
+error.bars<-function(yv,z,nn) {
+  xv<-barplot(yv,ylim=c(0,(max(yv)+max(z))),names=nn,ylab=deparse(substitute(yv)))
+  g=(max(xv)-min(xv))/50
+  for (i in 1:length(xv)) {
+    lines(c(xv[i],xv[i]),c(yv[i]+z[i],yv[i]-z[i]))
+    line(c(xv[i]-g,xv[i]+g),c(yv[i]+z[i],yv[i]+z[i]))
+    lines(c(xv[i]-g,xv[i]+g),c(yv[i]-z[i],yv[i]-z[i]))
+  }
+}
+comp<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\competition.txt",header=T)
+attach(comp)
+names(comp)
+se<-rep(28,75,5)
+labels<-as.character(levels(clipping))
+ybar<-as.vector(tapply(biomass,clipping,mean))
+error.bars(ybar,se,labels)
+  
+```
+####**Functions**
+```{r loops, echo = F}
+
+fac2<-function(x) {
+  f<-1
+  t<-x
+  while(t>1) {
+    f<-f*t
+    t<-t-1}
+    return(f)
+  }
+
+sapply(0:5,fac2)
+
+fac3<-function(x) {
+  f<-1
+  t<-x
+  repeat {
+    if (t<2) break
+    f<-f*t
+    t<-t-1
+    
+  }
+  return(f)
+}
+sapply(0:5,fac3) 
+
+fac4<-function(x) max(cumprod(1:x))
+sapply(0:5,fac4)
+fac5<-function(x) gamma(1+x) #x!=gamma(1+x)
+sapply(0:5,fac5)
+fib<-function(n) {
+  a<-1
+  b<-0
+  while(n>0)
+  {swap<-a
+  a<-a+b
+  b<-swap
+  n<-n-1
+  
+    
+  }
+  b
+}
+sapply(0:5,fib)
+# variable numbers of arguments
+#tripple dot (...)
+many.means<-function(...) {
+  data<-list(...)
+  n<-length(data)
+  means<-numeric(n)
+  vars<-numeric(n)
+  for(i in 1:n) {
+    means[i]<-mean(data[[i]])
+    vars[i]<-var(data[[i]])
+  }
+  print(means)
+  print(vars)
+  invisible(NULL)
+}
+x<-rnorm(100); y<-rnorm(200); z<-rnorm(300)
+many.means(x,y,z)
+#apply-- applies function to rows/cols of mats of dfs
+
+#sapply -- function to vector - useful with complex iterative calcs
+#lapply -- function to each element of a list
+
+#function to calculate sum of squares
+sapdecay<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\sapdecay.txt", header=T)
+
+sumsq<-function(a,xv=x,yv=y) {
+  yf<-exp(-a*xv)
+  sum((yv-yf)^2)
+}
+with(sapdecay,lm(log(y)~x))
+# our parameter a is somewhere close to 0.058, we generate a range of vals for a spanning an interval on either side of 0.058:
+
+a<-seq(.01,.2,.005)
+sapply(a,sumsq)
+plot(a,sapply(a,sumsq),type="l")
+#least square estimate of a is a value associated with minimum deviance
+a[min(sapply(a,sumsq))==sapply(a,sumsq)]
+#a=0.015
+
+# we could use the value a to generate a smooth exponential function to fit through our scatter data of points
+with(sapdecay,plot(x,y))
+xv<-seq(0,50,0.1)
+lines(xv,exp(-.015*xv))
+ # alternatively:
+attach(sapdecay)
+#we use optimize() function to minimize sum of sqr
+fa<-function(a) sum((y-exp(-a*x))^2)
+optimize(fa,c(.01,.1))
+ #running length of characters
+yy<-rpois(150,.7)
+rle(yy)
+max(rle(yy)[[1]]) #longest run
+which(rle(yy)[[1]]==6)
+rle(yy)[[2]][21] # mode
+#####end of functions#####
+
+```
+### string manipulation
+```{r, echo=F}
+
+wf<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\worldfloras.txt", header=T)
+attach(wf); names(wf)
+#  pattern matching
+l.wf<-tolower(names(wf)); names(wf)<-l.wf
+with(wf,as.vector(country[grep("R",as.character(country))])) # returns all cntaining character R
+
+#countries whose first name begin with R
+with(wf,as.vector(country[grep("^R",as.character(country))]))
+# searching those with multiple names in which one begin with R
+with(wf,as.vector(country[grep(" R",as.character(country))]))
+# two or more names--search for a blank
+with(wf,as.vector(country[grep(" ",as.character(country))]))
+#patter ending with, us $ sign
+with(wf,as.vector(country[grep("y$",as.character(country))]))
+
+with(wf,as.vector(country[grep("[C-K]",as.character(country))])) # begin with letters C-K
+# not ending with a certain pattern-- use [-grep]
+with(wf,as.vector(country[-grep("[A-T a-t]$",as.character(country))]))
+# with y as 6th char
+with(wf,as.vector(country[grep("^.{5}y",as.character(country))]))
+# less a certain length
+with(wf,as.vector(country[grep("^.{,3}$",as.character(country))])) # up to 4 chars
+with(wf,as.vector(country[grep("^.{15,}$",as.character(country))])) #min of 15 chars
+
+##substituting text with character
+with(wf,gsub("i","I",country)) #sub all i with I in country
+with(wf,sub("i","I",country)) #sub first occurrence of i with I
+with(wf,gsub(".$","",country)) #delete last char
+
+# manipulating case of strings
+with(wf,gsub("(\\w)(\\w*)","\\U\\1\\L\\2",country,perl=T)) # first char to upper case
+with(wf,gsub("(\\w*)", "\\U\\1", country,perl=T)) #all charrs to upper 
+
+# location of a pattern
+with(wf,regexpr("o",country))
+#using %in% and which -- to match two vectors
+stock<-c('car','van'); requests<-c('truck','Suv','van','sports','car','wagogon','car')
+which(requests %in% stock)
+
+text<-c("arm","leg","head","foot","hand","hindleg","elbow")
+as.vector(grep("o{1}",text,value=T))
+# use of {n,} 'n or more' char counting
+grep("[[:alnum:]]{4,}", text,value=T) #>=4 chars
+gsub("(\\w)(\\w*)","\\U\\1\\L\\2",text, perl=T) # converting 1st char to upper case
+gsub("(\\w*)","\\U\\1", text, perl=T) # all chars to upper
+
+#stripping pattarned text from complex strings
+
+(entries <-c ("Trial 1 58 cervicornis (52 match)", "Trial 2 60 terrestris (51 matched)",
+"Trial 8 109 flavicollis (101 matches)"))
+
+gsub(" *$","",gsub("\\(.*\\)$","",entries))
+#regexpr returns a vector giving starting position of first match
+
+# we strip everything within braces:
+pos<-regexpr("\\(.*\\)$", entries)
+substring(entries,first=pos+1,last=pos+attr(pos,"match.length")-2)
+### end of string manipulatiON
+
+```
+### Dates and Times in R 
+```{r, echo=F}
+
+Sys.Date #date OR
+substr(as.character(Sys.time()),1,10)
+date()
+#difftime ()
+difftime("1993-08-10","2018-08-2018")
+
+# calculations in date possible only after conversion to POSIXlt ogjects: use $ to extract elements
+date<-as.POSIXlt(Sys.time()); date$wday
+
+round(as.numeric(ISOdate(2018,08,10)-ISOdate(1993,08,10))/365,1)
+#strptime()
+#dtime <- strptime(str1, "%Y-%m-%dT%H:%M:%SZ")
+#format(dtime, "%H:%M:%S")
+
+excel.dates<-c("27/02/2004", "27/02/2005", "14/01/2003","28/06/2005", "01/01/1999")
+strptime(excel.dates,format="%d/%m/%Y") -> excel.dates1#dec month, centuary year
+other.dates<- c("1jan99", "2jan05", "31mar04", "30jul05")
+strptime(other.dates, "%d%b%y") #abbrev month, two-digit year
+typeof(excel.dates)
+
+# creating POSIXlt objects
+times<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\times.txt", header=T)
+as.difftime(with(times, paste(hrs,min,sec,sep=":")))->duration
+with(times,tapply(duration, experiment,mean))
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
