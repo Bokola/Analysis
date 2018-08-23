@@ -1,0 +1,77 @@
+---
+title: "Prac"
+author: "Basil"
+date: "August 16, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+###Package
+```{r}
+ipk<-function(pkg) {
+  new.pkg<-list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg,repos='http://cran.us.r-project.org',dependencies =T)
+  sapply(pkg,require,character.only=T)
+}
+list.of.pkgs<-c("ggplot2","dplyr")
+ipk(list.of.pkgs)
+```
+
+```{r cars}
+glimpse(mpg)
+summary(mpg)
+by_cyl<-mpg %>% group_by(cyl)
+tbl_df(by_cyl)
+by_cyl %>% summarise(.,displ=mean(displ))
+tab_cyl<-mpg %>% table(cyl)
+names(mpg)
+mpg %>% mutate(cyl1=cyl^2) %>% summarise(.,cyl1=mean(cyl1))
+glimpse(mpg)
+```
+### ggplot2
+```{r}
+#base
+plot(displ,hwy)
+#gglot2
+qplot(displ,hwy, data = mpg, col=drv) #scatter
+qplot(displ,hwy,data=mpg,geom = c("point","smooth") ) 
+qplot(displ, hwy,data=mpg,facets=.~drv)
+# facets subsets data & includes two vars separated by ~, left is the rows, right is the cols
+qplot(hwy,data=mpg,facets = drv~.,binwidth=2) 
+```
+```{r}
+dat2<-read.csv(file.choose(),header = T)
+head(dat2)
+qplot(program_code,data=dat2,fill=program_code) #hist
+qplot(program_code,data=dat2,geom="density")
+qplot(program_code,data=dat2,geom="density",color=program_code) #density plot
+```
+###ggplot
+```{r}
+dat2 %>% mutate(created_at=as.Date(created_at,"%m/%d/%Y"))
+dat2 %>% group_by(created_at) %>% summarise(n=n())
+
+g<-ggplot(dat2,aes(created_at,n))
+summary(g) #a list of plot and dataS
+p<-g+geom_point()
+print(p)
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

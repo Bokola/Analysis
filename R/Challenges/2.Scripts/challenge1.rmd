@@ -1,0 +1,78 @@
+---
+title: "Challenge 1"
+author: "Basil Owiti"
+output:
+  html_document:
+    df_print: paged
+Date: "Aug 14,2018"
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+  
+Installing Packages
+```{r, echo=F, include=F}
+ipk<-function(pkg) {
+new.pkg<-list.of.pkg[!(list.of.pkg %in% installed.packages()[,"Package"])]
+if(length(new.pkg)) install.packages(new.pkg,repos = 'http://cran.us.r-project.org',dependencies = T)
+sapply(pkg,require,character.only=T)
+
+}
+list.of.pkg<-c("ggplot2","dplyr")
+ipk(list.of.pkg)
+```
+###Getting Data and manipulating using dplyr
+```{r, include = T, echo=T}
+dat<-read.csv("C:\\Users\\admin\\Google Drive\\Analysis\\R\\Challenges\\1.Data\\challenge 1 dataset (housing).csv", header = T)
+head(dat)
+dat
+str(dat)
+attach(dat)
+names(dat)<-tolower(names(dat))
+names(dat)
+```
+####1) Number of learners
+```{r,include = T, echo=T}
+length(unique(learner_id))
+#or
+n_distinct(learner_id)
+```
+###2) Three most popular trainings
+```{r}
+#base
+rev(sort(table(program_code)))[1:3]
+#dplyr
+dat %>% group_by(program_code) %>% summarise(n=n()) %>% arrange(.,desc(n)) %>% slice(1:3,)
+```
+###4) Learners with > 100 interactions
+```{r}
+dat %>% group_by(learner_id) %>% summarise(n=n()) %>% filter(.,n>100) %>% nrow() 
+```
+###5) Learners with <=100 interactions
+```{r}
+dat1<-dat %>% group_by(learner_id) %>% tally() %>% filter(.,n<=100)
+nrow(dat1)
+```
+###6) Plotting counts of < 100 interactions
+```{r}
+qplot(n,data=dat1)
+```
+
+### Max and Min interaction days
+```{r}
+glimpse(dat)
+dat$created_at1<-as.Date(created_at,"%m/%d/%Y")
+glimpse(dat)
+dat %>% group_by(created_at1) %>% summarise(n=n()) %>% arrange(.,desc(n)) %>% filter(n==max(n) | n==min(n))
+
+```
+# End
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

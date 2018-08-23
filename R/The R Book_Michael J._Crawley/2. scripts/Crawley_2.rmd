@@ -1,0 +1,68 @@
+---
+title: "Crawley_2"
+author: "Basil"
+date: "August 9, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+###Reading files
+```{r Reading files, include=T, echo=F}
+#dat<-read.csv(file.choose(),header=T)
+murders<-scan(file="C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\murders.txt",skip=1,what=list("","","",""))
+View(murders)
+murders.frame<-as.data.frame(murders)
+murder.names<-scan(file="C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\murders.txt",nlines=1,what="character",quiet=T)
+names(murders.frame)<-murder.names
+attach(murders.frame)
+summary(murders.frame)
+murders.frame[,2]<-as.numeric(murders.frame[,2]) #to numeric
+murders.frame[,3]<-as.numeric(murders.frame[,3])
+summary(murders.frame)
+murders.frame
+by(state,murder, mean)
+typeof(state)
+```
+### Data Frames
+```{r,echo=F, include=T}
+worms<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\worms.txt",header=T)
+str(worms)
+attach(worms)
+names(worms)<-tolower(names(worms))
+names(worms)
+worms[,sapply(worms,is.numeric)] #numeric columns
+attach(worms)
+worms[,sapply(worms,is.factor)]
+worms[!(vegetation=="Grassland"),] #or
+worms[-which(damp==F),]
+na.omit(worms)
+worms[complete.cases(worms),]
+apply(apply(worms,2,is.na),2,sum)# count missing by vars
+worms[rev(order(worm.density)),][unique(vegetation),] #most frequent
+worms[order(vegetation,-worm.density),] # - is rev order,works for numeric only
+```
+##***Data Wrangling Challenge***
+```{r,include=T, echo=t}
+dat<-read.csc
+```
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
