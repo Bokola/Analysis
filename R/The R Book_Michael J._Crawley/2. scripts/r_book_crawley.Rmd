@@ -12,7 +12,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r setup,include=F}
 knitr::opts_chunk$set(echo = T)
-#knitr::opts_knit$set(root.dir=normalizePath("C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley"))
+knitr::opts_knit$set(root.dir=normalizePath("C:\\Users\\admin\\Analysis\\R"))
 ```
 
 ####**Downloading packages**

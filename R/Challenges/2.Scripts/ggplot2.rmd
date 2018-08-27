@@ -64,6 +64,28 @@ summary(g) #a list of plot and dataS
 p<-g+geom_point()
 print(p)
 ```
+### Sub-groups of aes(): colour, fill, alpha
+```{r}
+# Bar chart example
+c<-ggplot(mtcars,aes(factor(cyl)))
+# default plotting
+c+geom_bar()
+# To change the interior colouring use fill aesthetic
+c+geom_bar(fill="grey")
+#comparing to the colour aesthetic which changes just the bar outline
+c+geom_bar(colour="grey")
+#combining both colour and fill
+c+geom_bar(colour="red",fill="grey")
+#The aesthetic fill also takes different colouring scales
+#Setting fill equal to a factor variable uses discrete colouring scale
+k<-ggplot(mtcars,aes(factor(cyl),fill=factor(vs)))
+k+geom_bar()
+m<-ggplot(dat,aes(factor(sensitize_method),fill=factor(sensitize_method)))
+m+geom_bar()
+
+
+
+```
 
 
 ## Including Plots

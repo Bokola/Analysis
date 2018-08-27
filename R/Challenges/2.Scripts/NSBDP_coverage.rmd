@@ -1,0 +1,79 @@
+---
+title: "Project-Coverage of NSBDP"
+author: "Basil"
+date: "August 24, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Notes
+This is a project to explore factors at play that impact the coverage of National School-Based Deworming Programme as implemented by the DTWI team in Kenya. The analysis is at school-level data collected durin monitoring surveys by MLIS and during treatment days by respective treatment teams.
+
+## Libraries
+
+```{r}
+ipk<-function(pkg) {
+new.pkg<-list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
+if(length(new.pkg)) install.packages(new.pkg,dependencies = T, repos = 'http://cran.us.r-project.org')
+sapply(pkg,require,character.only=T)
+}
+list.of.pkgs<-c("foreign","dplyr","corrr","ggplot2","plotly", "tidyr","readstata13","magrittr")
+ipk(list.of.pkgs)
+(.packages()) #list of loaded packages
+```
+
+## Loading Data
+```{r}
+dat<-read.dta13("C:\\Users\\admin\\Analysis\\R\\Data\\y3_y6_vars.dta",convert.factors = F)
+labs<-get.label.tables(dat)
+View(labs)
+glimpse(dat)
+dat<- dat %>% select(school_id:school_name,a_trt_total, a_reg_total,year,st_aware,st_info,sensitize_method,ct_knowledge_score,ht_knowledge_score, ct_trained,ht_trained, drugs_enough,ddm105_events_at_schl_ondd,ddm106_dd_atschl_today, worms) 
+glimpse(dat) %>% attach() 
+#dat %<>% mutate(coverage=a_trt_total/a_reg_total)
+dat$coverage<-a_trt_total/a_reg_total
+cols<-c("coverage","st_info","st_aware","ct_knowledge_score","ht_knowledge_score","sensitize_method","drugs_enough","ct_trained","ht_trained")
+dat<-dat[complete.cases(dat[,cols]),]
+glimpse(dat)
+attach(dat)
+#get.origin.codes(st_info,label.table) #recreate code numbers of a factor as stored in stata data set --x must be a factor
+# converting to factors
+get.label(dat,"st_info")
+dat$st_info<-factor(dat$st_info,levels=c('1','2','3'),labels = c('Deworming info 1: Assembly Announcement/teachers','Deworming info 2: Other students/friends','Deworming info 3: Parents'))
+get.label(dat,"worms")
+dat$worms<-factor(dat$worms,levels = c('0','1'),labels = c('Worms: STH/Soil Transmitted',' SCHISTO/Bilharzia'))
+get.label(dat,'sensitize_method')
+dat$sensitize_method<-factor(dat$sensitize_method,levels = c('1','2','3','4','5','6'),labels = c('Conduct Health Education in Class','Display Posters in the School','Discuss Deworming Day at School Management Meetings','Conduct ECD Outreach','Encourage Children to share Deworming Day Information with Parents','None'))
+dat$drugs_enough<-factor(dat$drugs_enough,levels = c('0','1'),labels = c('Drugs enough: No','Drugs enough: Yes'))
+
+```
+
+## Exploration
+```{r}
+qplot(coverage) #hist
+#or
+ggplot(dat)+geom_histogram(aes(coverage))
+#Scatter
+scatter_by<- function(data,...) {
+  ggplot(data)+geom_point(aes(...))
+}
+scatter_by(dat,factor(sensitize_method),coverage,color=sensitize_method)
+
+boxplot_by<-function(data,...) {
+ggplot(data)+geom_boxplot(aes(...))
+}
+boxplot_by(dat,sensitize_method,coverage)
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
