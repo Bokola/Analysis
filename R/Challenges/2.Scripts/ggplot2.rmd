@@ -21,24 +21,18 @@ ipk<-function(pkg) {
   if(length(new.pkg)) install.packages(new.pkg,repos='http://cran.us.r-project.org',dependencies =T)
   sapply(pkg,require,character.only=T)
 }
-list.of.pkgs<-c("ggplot2","dplyr")
+list.of.pkgs<-c("ggplot2","dplyr","corrr","magrittr","plotly","shiny")
 ipk(list.of.pkgs)
 ```
 
 ```{r cars}
-glimpse(mpg)
-summary(mpg)
-by_cyl<-mpg %>% group_by(cyl)
-tbl_df(by_cyl)
-by_cyl %>% summarise(.,displ=mean(displ))
-tab_cyl<-mpg %>% table(cyl)
-names(mpg)
-mpg %>% mutate(cyl1=cyl^2) %>% summarise(.,cyl1=mean(cyl1))
-glimpse(mpg)
+
 ```
-### ggplot2
+### qplot 
 ```{r}
 #base
+attach(mpg)
+glimpse(mpg) %>% summary()
 plot(displ,hwy)
 #gglot2
 qplot(displ,hwy, data = mpg, col=drv) #scatter
@@ -54,19 +48,36 @@ qplot(program_code,data=dat2,fill=program_code) #hist
 qplot(program_code,data=dat2,geom="density")
 qplot(program_code,data=dat2,geom="density",color=program_code) #density plot
 ```
-###ggplot
+###ggplot - aes()
 ```{r}
-dat2 %>% mutate(created_at=as.Date(created_at,"%m/%d/%Y"))
-dat2 %>% group_by(created_at) %>% summarise(n=n())
+# aes() is passed either at ggplot(defaults) or specific layer
+ggplot(mpg,aes(cyl,hwy)) + geom_point() #1
+ggplot(mpg)+geom_point(aes(cyl,displ)) #2
+# 3 ways of passing aes()
+aes(mpg, cyl, disp) #a
+aes_(~mpg,~cyl,~hwy) #b
+aes_string("mpg","wt",col="cyl")
+#example
+ggplot(mtcars)+geom_point(aes_(~mpg,~wt,col=~cyl))
+# Tidy plots
+scatter_by<-function(data,...) {
+  ggplot(data)+geom_point(aes(...))
+}
+scatter_by(mtcars, disp,drat)
 
-g<-ggplot(dat2,aes(created_at,n))
-summary(g) #a list of plot and dataS
-p<-g+geom_point()
-print(p)
 ```
+## Sub-groups of aes(col,fil,alpha)
+```{r}
+#deafault 
+bar_by<- function(data,...) {
+  ggplot(data) + geom_bar(aes(...))
+}
+bar_by(mtcars,factor(cyl)) # default
+bar_by(mtcars,factor(cyl),fill="black",colour="grey")
 
 
-## Including Plots
+```
+}
 
 You can also embed plots, for example:
 
