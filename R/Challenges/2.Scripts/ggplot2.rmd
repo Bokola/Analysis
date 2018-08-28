@@ -21,7 +21,7 @@ ipk<-function(pkg) {
   if(length(new.pkg)) install.packages(new.pkg,repos='http://cran.us.r-project.org',dependencies =T)
   sapply(pkg,require,character.only=T)
 }
-list.of.pkgs<-c("ggplot2","dplyr","corrr","magrittr","plotly","shiny")
+list.of.pkgs<-c("ggplot2","dplyr","corrr","magrittr","plotly","shiny","gtable","grid","gridExtra")
 ipk(list.of.pkgs)
 ```
 
@@ -41,14 +41,14 @@ qplot(displ, hwy,data=mpg,facets=.~drv)
 # facets subsets data & includes two vars separated by ~, left is the rows, right is the cols
 qplot(hwy,data=mpg,facets = drv~.,binwidth=2) 
 ```
-```{r}
-dat2<-read.csv(file.choose(),header = T)
-head(dat2)
-qplot(program_code,data=dat2,fill=program_code) #hist
-qplot(program_code,data=dat2,geom="density")
-qplot(program_code,data=dat2,geom="density",color=program_code) #density plot
+```{r,include=F}
+#dat2<-read.csv(file.choose(),header = T)
+#head(dat2)
+#qplot(program_code,data=dat2,fill=program_code) #hist
+#qplot(program_code,data=dat2,geom="density")
+#qplot(program_code,data=dat2,geom="density",color=program_code) #density plot
 ```
-###ggplot - aes()
+### ggplot - aes()
 ```{r}
 # aes() is passed either at ggplot(defaults) or specific layer
 ggplot(mpg,aes(cyl,hwy)) + geom_point() #1
@@ -83,11 +83,6 @@ c+geom_bar(colour="red",fill="grey")
 #Setting fill equal to a factor variable uses discrete colouring scale
 k<-ggplot(mtcars,aes(factor(cyl),fill=factor(vs)))
 k+geom_bar()
-m<-ggplot(dat,aes(factor(sensitize_method),fill=factor(sensitize_method)))
-m+geom_bar()
-
-
-
 ```
 ## Sub-groups of aes(col,fil,alpha)
 ```{r}
@@ -163,11 +158,122 @@ h+geom_smooth(aes(group=1),size=2,method="lm",se=F)
 # overriding the default grouping-- e.g boxplot of height at each measurement occassion
 boysbox<-ggplot(nlme::Oxboys,aes(Occasion,height))
 boysbox+geom_boxplot()
+# to override the default grouping 
+boysbox<-boysbox+geom_boxplot()
+boysbox+geom_line(aes(group=Subject),colour = "blue") #add a line to boxplot layers
+```
+## aes_linetype_size_shape
+0=blank, 1= solid, 2=dashed,3=dotted,4=dotdash, 5=longdash,6=twodash
+```{r}
+df<-data.frame(x=1:10,y=1:10)
+f<-ggplot(df,aes(x,y)) 
+f+geom_line(linetype=2)
+f+geom_line(linetype="dotdash")
+f+geom_line(linetype="3313") # 3 units on, 3 off, 1 on, 3 off
+# mapping linetype from a variable
+ggplot(economics_long,aes(date,value01))+geom_line(aes(linetype=variable))
+#size specified in numerical value in millimetres
+p<-ggplot(mtcars,aes(wt,mpg))
+p+geom_point(size=4)
+p+geom_point(aes(size=qsec))
+p+geom_point(size=2.5) + geom_hline(yintercept = 25,size=3.5)
+#shape
+p+geom_point()
+p+geom_point(shape=5) # ints ranging from [0,25]
+p+geom_point(shape="k",size=3) # shapes to k, or character specified
+p+geom_point(shape=".") # smallest visible rect
+p+geom_point(shape=NA) # plots nothing
+p+geom_point(aes(shape=factor(cyl))) # mapped from a variable
+#all the 25 symbols
+df2<-data.frame(x=1:5,y=1:25,z=1:25)
+df2 %>% ggplot(.,aes(x,y)) +geom_point(aes(shape=z),size=4) + scale_shape_identity()
+df2 %>% ggplot(.,aes(x,y)) +geom_point(aes(shape=z), size= 4, colour = "Red") + scale_shape_identity() #colour specified
+df2 %>% ggplot(.,aes(x,y)) %>% +geom_point(aes(shape=z),size=4, colour = "Red", fill = "Black") +
+ scale_shape_identity()
+```
+## Sub-groups of aes(x,y,xmin,xmax,ymin,ymax,xend, yend)
+First we generate data
+```{r}
+glimpse(diamonds)
+dmod <-lm(price~cut,data=diamonds)
+cuts<-data.frame(cut=unique(diamonds$cut),predict(dmod,data.frame(cut=unique(diamonds$cut)),se=T)[c("fit","se.fit")])
+se<-ggplot(cuts,aes(x=cut,y=fit,ymin=fit-se.fit,ymax=fit+se.fit,colour=cut))
+se+geom_pointrange()
+# using annotate
+p<-ggplot(mtcars,aes(wt,mpg)) + geom_point()  
+p %>% +annotate("rect",xmin=2,xmax=3.5,ymin=2,ymax=25,fill="dark grey",alpha=.5)
+#geom_segment()
+p+geom_segment(aes(x=2,y=15,xend=2,yend=25),arrow=arrow(length=unit(0.5,"cm")))
+p + annotate("segment", x = 2.5, xend = 4, y = 15, yend = 25,
+colour = "blue")
+p + annotate("pointrange", x = 3.5, y = 20, ymin = 12, ymax = 28,
+colour = "red", size = 1.5)  # annotation aids in highlighting useful trends
+# annotation_custom --- adding tables, inset plots, and other grids
+base<-ggplot(df,aes(x,y))+geom_blank() + theme_bw()
+base+annotation_custom(grob=grid::roundrectGrob(),xmin=-Inf,xmax=Inf,ymin=-Inf,ymax=Inf)
+```
+## coordinates -- coord_cartesian
+```{r}
+# zooming plots possible through scales and coordinate systems
+p<-ggplot(mtcars,aes(disp,wt)) + geom_point() + geom_smooth() 
+p
+# setting limits on a scale converts all vals out of range to NA
+p+scale_x_continuous(limits=c(325,500)) # or
+p1<-p+coord_cartesian(xlim=c(325,500),expand=F)+ ggtitle("title")
+p2<-p+coord_cartesian(xlim = c(325,500),expand = T)
+grid.arrange(p1,p2,nrow=1) # laying out multiple plots in one page
+d<-ggplot(diamonds,aes(carat,price))+stat_bin2d(bins=25,colour="white")
+d
+#coord_polar -- in pie charts
+# pie chart = stacked bar chart + polar coordinates
+pie<- ggplot(mtcars,aes(x=factor(1),fill=factor(cyl))) + geom_bar(width = 1)
+pie+coord_polar(theta="y")
+```
+## facet_grid -- a matrix of panels
+```{r}
+p<- ggplot(mpg,aes(displ,cty)) + geom_point()
+p+facet_grid(drv~.) #or
+p+facet_grid(cols=vars(cyl)) # use vars() to supply variables from dataset
+```
+## geom_boxplot(), geom_quantile(), geom_violin()
+```{r}
+p<-ggplot(mpg,aes(class,hwy))
+p+geom_boxplot()
+p+geom_boxplot()+geom_jitter(width=.2) # jitter useful for small data
+p+geom_boxplot()+coord_flip() # flip coordinates
+p+geom_boxplot(outlier.color = "red",outlier.shape = 1) # formatting outliers
+# geom_count
+ggplot(mpg,aes(cty,hwy)) + geom_count() # counts number of observations at each location
+# geom_crossbar
+#' # Create a simple example dataset
+df <- data.frame(
+trt = factor(c(1, 1, 2, 2)),
+resp = c(1, 5, 3, 4),
+group = factor(c(1, 2, 1, 2)),
+upper = c(1.1, 5.3, 3.3, 4.2),
+lower = c(0.8, 4.6, 2.4, 3.6)
+)
+p <- ggplot(df, aes(trt, resp, colour = group))
+p + geom_linerange(aes(ymin = lower, ymax = upper))
+p + geom_pointrange(aes(ymin = lower, ymax = upper))
+p + geom_crossbar(aes(ymin = lower, ymax = upper), width = 0.2)
+p + geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)
+# draw lines connecting group means
+p+geom_line(aes(group=group)) + geom_errorbar(aes(ymin=lower,ymax=upper),width=.2)
+#geom_density()
+ggplot(diamonds,aes(carat)) + geom_histogram(aes(y=..density..))+geom_density() #density plot overlaid on hist
+#dotplots
+ggplot(mtcars, aes(x = mpg)) + geom_dotplot(binwidth = 1.5, dotsize = 1.25)
+#geom_freqpoly() -- uses similar aesthetics to geom_line()
+ggplot(diamonds, aes(price, colour = cut)) +
+geom_freqpoly(binwidth = 500)
+#geom_hex()
+d <- ggplot(diamonds, aes(carat, price))
+d + geom_hex()
+```
+## labels
+```{r}
+p<- ggplot(mtcars,aes(wt,mpg,label=rownames(mtcars)))
+p+geom_text()
 
 ```
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
