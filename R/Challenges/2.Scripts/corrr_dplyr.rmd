@@ -1,0 +1,70 @@
+---
+title: "corrr_dplyr"
+author: "Basil"
+date: "August 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r packages}
+ipkg<-function(pkg){
+new.pkg<-list.of.pkgs[!(installed.packages()[,"Package"])]
+if(length(new.pkg)) install.packages(new.pkg,repos = "https://cran.us.r-project.org",dependencies = TRUE)
+sapply(pkg,require,character.only=T)
+}
+list.of.pkgs<-c("corrr","dplyr")
+ipk(list.of.pkgs)
+```
+
+## Inside corrr package
+```{r corrr}
+# as_cordf(x,digonal=NA) --- coerce df to cordf
+x<-cor(mtcars) # cor returns a matrix
+as_cordf(x) # df of cor coefs
+as.matrix(x) #cor df as matrix
+correlate(mtcars,use = "pairwise.complete.obs") #correlate returns a df
+#fashion cor df for printing
+mtcars %>% correlate() %>% fashion() #defaults at 2dcp,leading_zeros=F
+# first_col -- add a first col to a df -- used to add rownames
+first_col(mtcars,1:nrow(mtcars))
+#focus-- focus cor of select vars
+x<- correlate(mtcars) 
+focus(x,mpg,cyl)
+focus(x,-disp,-mpg,mirror = T) # remove disp andmpg from cols and rows
+x<-correlate(iris[-5])
+x
+focus(x,-matches("Sepal")) 
+greater_than<-function(x,val) {
+mean(abs(x),na.rm=T) > val
+}
+x<-correlate(mtcars)
+x %>% focus_if(greater_than,.6)
+x %>% focus_if(greater_than,.6,mirror = T) %>% network_plot(curved = F,colors = c("red","green"),min_cor=.6) #plots of cor df
+# complete cases
+pair_n(mtcars)
+# rearrange(x,method = "PC",absolute=T) -- group highly correlated variables close together
+x<-correlate(mtcars) 
+x %>% rearrange()
+x%>% rearrange(method = "HC")
+x%>% rearrange(absolute = F)
+# rplot() -- a plot of cor df
+correlate(mtcars)%>% rplot(colors=c("red","green"))
+# shave()-- convert upper or lowwer triangle of a cor df to missing vals
+x<-correlate(mtcars) 
+x %>% shave(upper=T)
+# stretch() -- like tidyr's gather
+x<-correlate(mtcars)
+x%>%stretch()
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

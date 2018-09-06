@@ -74,7 +74,7 @@ c<-ggplot(mtcars,aes(factor(cyl)))
 # default plotting
 c+geom_bar()
 # To change the interior colouring use fill aesthetic
-c+geom_bar(fill="grey")
+c+geom_bar(fill="darkgrey")
 #comparing to the colour aesthetic which changes just the bar outline
 c+geom_bar(colour="grey")
 #combining both colour and fill
