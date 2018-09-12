@@ -1,5 +1,5 @@
 ---
-title: "Project-Coverage of NSBDP"
+title: "Project"
 author: "Basil"
 date: "August 24, 2018"
 output: html_document
@@ -21,16 +21,20 @@ new.pkg<-list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
 if(length(new.pkg)) install.packages(new.pkg,dependencies = T, repos = 'http://cran.us.r-project.org')
 sapply(pkg,require,character.only=T)
 }
-list.of.pkgs<-c("foreign","dplyr","corrr","ggplot2","plotly", "tidyr","readstata13","magrittr","RCurl","haven")
+list.of.pkgs<-c("foreign","dplyr","corrr","ggplot2","plotly", "tidyr","readstata13","magrittr","RCurl","haven","stringr")
 ipk(list.of.pkgs)
 (.packages()) #list of loaded packages
 ```
 
 ## Loading Data
 ```{r}
-#dat<-read.dta13("C:\\Users\\admin\\Analysis\\R\\Data\\y3_y6_vars.dta",convert.factors = F)
-dat<-read_dta(file = "https://github.com/Bokola/Analysis/raw/master/R/Data/y3_y6_vars.dta")
+dat<-read.dta13("C:\\Users\\admin\\Analysis\\R\\Data\\Small_holders_farmers_survey_Clean Data_ 6 Aug 2018.dta",convert.factors = F)
+#dat<-read_dta(file = "https://github.com/Bokola/Analysis/raw/master/R/Data/y3_y6_vars.dta")
 glimpse(dat)
+names(dat)
+dat<-dat[,order(names(dat))] # oerering variable names
+glimpse(dat)
+View(dat)
 dat<- dat %>% select(school_id:school_name,a_trt_total, a_reg_total,year,st_aware,st_info,sensitize_method,ct_knowledge_score,ht_knowledge_score, ct_trained,ht_trained, drugs_enough,ddm105_events_at_schl_ondd,ddm106_dd_atschl_today, worms) 
 glimpse(dat) %>% attach() 
 #dat %<>% mutate(coverage=a_trt_total/a_reg_total)
