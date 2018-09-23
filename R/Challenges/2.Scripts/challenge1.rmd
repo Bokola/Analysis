@@ -45,7 +45,7 @@ n_distinct(learner_id)
 #base
 rev(sort(table(program_code)))[1:3]
 #dplyr
-dat %>% group_by(program_code) %>% summarise(n=n()) %>% arrange(.,desc(n)) %>% slice(1:3,)
+dat %>% group_by(program_code) %>% summarise(n=n()) %>% arrange(.,desc(n)) %>% slice(1:3)
 ```
 ###4) Learners with > 100 interactions
 ```{r}
