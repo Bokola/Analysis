@@ -1,0 +1,188 @@
+---
+title: "r4ds"
+author: "Basil"
+date: "September 23, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(max.print = 100000)
+```
+
+## Packages
+```{r}
+ipk <- function(pkg) {
+  new.pkgs <- list.of.pkgs [!(list.of.pkgs %in% installed.packages()[, "Package"])]
+  if(length(new.pkgs)) install.packages(new.pkgs, repos = 'https://cran.us.r-project.org', dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs <- c("tidyverse", "Lahman", "modelr", "corrr","readr", "hms", "readxl")
+ipk(list.of.pkgs)
+
+```
+
+```{r}
+ggplot(diamonds,aes(carat, price)) + geom_hex()
+ggsave("diamonds.pdf")
+write_csv(diamonds,"diamonds.csv")
+```
+## Tibbles with tibble
+```{r}
+# creating tibbles by coercion
+as_tibble(iris)
+# creating a new tible from individual vectors with tibble()
+tibble(x = 1:5, y = 1, z = x^2+y)
+# it's possible for a tibble to have nonsyntactic col names
+tb <- tibble(`:)` = "smile", ` ` = "space", `2000` = "number"); tb
+# width = Inf prints all cols
+nycflights13::flights %>% print(n = 10, width = Inf)
+# control default print behaviour by setting options 
+# 1) options(tibble.print_max = n, tibble.print_min = m) : if more than m rows, print only n rows. Use options(dplyr.print_min = Inf) to always print all columns, regardless of the width of the screen
+# 2) Use options(tibble.width = Inf) to always print all columns regardless of the width of the screen
+# Use Rstudio's View() for a scrollable view of the complete dataset
+
+nycflights13::flights %>% View()
+# Subsetting ----
+# use $ and [[. [[ can extract by both name and position, $ extracts by name only
+df <- tibble(x = runif(5), y = runif(5))
+# extract by name 
+df$x
+df[["x"]]
+# extract by position
+df[[2]] # extracts y
+# to use these in a pipe, you'll nedd to use the special placeholder .:
+df %>% .$x
+df %>% .[["x"]]
+
+```
+## Data Import with readr
+```{r}
+# read_csv() and read_csv2() - for comma and semicolon sep
+# read_delim() for files with any delimiter
+# read_fwf() - fixed widths -- specify fields with fwf_widths() or their position with fwf_positions()
+# read_log() reads Apache style log files. 
+
+# Parsing() ----
+# the parse_*() functions are uniform; the first argument is a character vector to parse, and the na argument specifies strins to be specified as missing
+parse_integer(c("123", "1","567","."), na = ".")
+# if parsing fails you'll get a warning
+x <- parse_integer(c("123", "345","abc", "123.56"))
+# if there are many parsing failures, use problems() to get complete set
+problems(x)
+# dealing with , in place of . for dec
+parse_double("1,23", locale = locale(decimal_mark = ","))
+# parse_number() ignores non-numeric characters
+parse_number(" i am %10 years to postdoc")
+parse_number("123'456'789", locale = locale(grouping_mark = "'"))
+
+# Strings ----
+# we need to first understand how comps represent strings using charToRaw()
+charToRaw("basil")
+x1 <- "El Ni\xf1o was particularly bad this year"
+x2 <- "\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd"
+# we fix this by specifying encoding
+parse_character(x1, locale = locale(encoding = "Latin1"))
+parse_character(x2, locale = locale(encoding = "Shift-JIS"))
+# how do you find the right encoding? - use gues_encoding() to try different encodings till you find the right one
+guess_encoding(charToRaw(x1))
+guess_encoding(charToRaw(x2))
+
+# Factors ----
+fruit <- c("apple", "banana")
+parse_factor(c("apple", "banana", "apple"), levels = fruit)
+# Dates, Date-Time, and Times ----
+# parse_datetime() expects an ISO8601 date-time  - an international standard where components of a date are arranged from lagest to smallest: year to second
+parse_datetime("2018-09-24T2018")
+#parse_date() expects a four-digit year, a - or /, the month, a - or /, then the day
+parse_date("2018/09/24")
+# parse_time() expects the hour, :, minutes, optionally : and seconds, and an optional a.m/p.m. specifier
+parse_time("01:10 am")
+d1 <- "January 1, 2010"
+d2 <- "2015-Mar-07"
+d3 <- "06-Jun-2017"
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+d5 <- "12/30/14" 
+t1 <- "1705"
+t2 <- "11:15:10.12 PM"
+parse_date(d1,"%B %d, %Y")
+parse_date(d2, "%Y-%b-%d")
+parse_date(d3, "%d-%b-%Y")
+parse_date(d4,"%B %d (%Y)")
+parse_date(d5, "%m/%d/%y")
+parse_time(t1,"%H%M")
+parse_time(t2, "%H:%M:%OS %p")
+
+# Reading and writing files with `readr` ----
+challenge <- read_csv(readr_example("challenge.csv"))
+problems(challenge) # it is a good idea to explicitly pull out the problems
+# a good strategy is to work col by col until there are no problems remaining
+# start by copying and pasting the col specification into your original call
+challenge <- read_csv(readr_example("challenge.csv"), col_types = cols(x = col_integer(),y = col_character()))
+challenge <- read_csv(readr_example("challenge.csv"),col_types =  cols(x = col_double(), y = col_character())) # fixes the first problem
+tail(challenge) # we see col y which should be date stored as character
+challenge <- read_csv(readr_example("challenge.csv"), col_types = cols(x = col_double(), y = col_date()))
+# sometimes it's easier to diagnose prolems by reading in all cols as char vectors
+challenge2 <- read_csv(readr_example("challenge.csv"), col_types = cols(.default = col_character())) # which is useful in conjuction with `type_convert()`
+df <- tribble(~x,~y,"1","1.21","2","2.32","3","4.56")
+df
+type_convert(df)
+```
+## Tidy Data with tidyr
+```{r}
+# Gathering ----
+# to gather, we need 
+#1) the set of columns that represent values, not variables
+#2) the name of the variable whose values form the column names, the key
+#3) the name of the variable whose values are spread over the cells, the value
+table4a # has cols 1999 and 2000 that need gathering
+table4a %>% gather(`1999`, `2000`, key = "year", value = "cases")
+table4b # needs gathering as well
+table4b %>% gather(`1999`, `2000`, key = "year", value = "population")
+# you may combine two tidied versions using `dplyr::left_join()
+tidy4a <- table4a %>% gather(`1999`, `2000`, key = "year", value = "cases")
+tidy4b <- table4b %>% gather(`1999`, `2000`, key = "year", value = "population")
+left_join(tidy4a, tidy4b) #or
+right_join(tidy4a, tidy4b)
+
+# Spreading ----
+#used when an obs is scattered accross multiple rows
+table2 # each obs is spread across multiple rows
+# we spread when we have 
+#1) the column that contains variable names, the key column, here it's type
+#2) the column that contains values from multiple variables, the value column, here it's count
+spread(table2, key = "type", value = "count")
+
+# Separating and Pulling ----
+# `separate()` ----
+
+# `separate()` pulls apart  one column into multiple columns, by splitting wherever a separator character appears.
+table3
+table3 %>% separate(rate, into = c("cases", "population"), sep = "/")
+# `separate()` leaves the type of column as is. We can use `convert = TRUE` to ask separator to convert the cols to better types
+table3 %>% separate(rate, into = c("cases", "population"), sep = "/", convert = T)
+# separating last 2 digits of each year
+table3 %>% separate(year, into = c("centuary", "year"), sep = 2)
+
+# Unite ----
+# `unite()` is the inverse of `separate()`
+table5
+table5 %>% unite(new, century, year, sep = "") %>% separate(rate, into = c("cases","pop"), sep = "/", convert = T) #default sep is "_"
+# Missing values ----
+#1) missing explicitly - flagged with NA
+#2) Missing implicitly - simply not present in the data
+stocks <- tibble(year = c(rep(2015, times = 4),rep(2016, times = 3)), qtr = c(1:4, 2:4), return = c(1.88, .59, .35, NA, .92, .17, 2.66))
+stocks
+stocks %>% spread(year, return) %>% gather(year, return, `2015`:`2016`, na.rm = T) # removing missing values
+stocks %>% complete(year, qtr) # fills in explicit NAs
+treatment <- tribble(~person, ~treatment, ~response,
+                     "Derrick Dee", 1, 7, NA, 2, 10, NA, 3, 9, "Katherine Burke", 1, 4)
+treatment %>% fill(person) 
+# case study -- TB data ----
+dat <- read_csv("C:\\Users\\admin\\Analysis\\WHOtb_data_analysis\\data\\TB_burden_countries_2018-07-04.csv", col_names = T, trim_ws = T, guess_max = 1001)
+dat<-as.tibble(dat) %>% glimpse()
+View(dat)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
