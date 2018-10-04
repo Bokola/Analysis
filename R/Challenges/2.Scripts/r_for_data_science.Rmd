@@ -1,0 +1,229 @@
+---
+title: "R for data science"
+author: "Basil"
+date: "September 17, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(max.print = 1000000)
+```
+
+## R for data science
+
+This script is used as a complementary when studying R for data science. Idea is to practice and be able to implement these skills in a real-life project.
+
+## Topic 1 - Visualization
+
+```{r, packages}
+ipk <- function(pkg) {
+  new.pkgs <- list.of.pkgs [!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkgs)) install.packages(new.pkgs, repos = 'http://cran.us.r-project.org',dependencies = T)
+  sapply(pkg,require,character.only=T)
+}
+list.of.pkgs <- c("tidyverse","nycflights13","gapminder","Lahman","lubridate","magrittr","hexbin","modelr","corrr")
+ipk(list.of.pkgs)
+```
+
+```{r}
+mpg
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy))
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, colour = class)) #colour
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, size = class)) #size
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, alpha = class)) # alpha - controls transparency
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy),colour = "darkgrey") # manually selecting aesthetics
+# facets --- useful for categorical variables to subset data for each level of given category
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_wrap(~class,nrow = 2) #facet_wrap() with a single variable, otherwise use facet_grid()
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(drv~cyl)
+ggplot(data = mpg) + geom_smooth(mapping = aes(x = displ, y = hwy))
+ggplot(data = mpg) + geom_smooth(mapping = aes(x = displ, y = hwy, linetype = drv)) # 3 lines based on drives
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + geom_smooth(mapping = aes(x = displ, y = hwy)) # redundant
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + geom_point() + geom_smooth() # better, less wordy
+
+# Statistical transformations ----
+# bars
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut), fill = "black")
+# you can use geoms and stat interchangeably
+ggplot(data = diamonds) + stat_count(mapping = aes(x = cut))
+# overriding default stat
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, y = carat),stat="identity") # maps raw values of y as is in data
+# proportions
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, ..prop..,group = 1))
+ggplot(data = diamonds) + stat_summary(mapping = aes(x = cut, y = depth), fun.ymin = min, fun.ymax = max, fun.y = median)
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, fill = clarity))
+# position = fill works like stacking, but makes each set of stacked bars the same height which makes it easier to compare proportions accross groups
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, fill = clarity),position = "fill")
+# position = dodge palaces overllaping objects directly beside one another, making it easier to compare individual values
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, fill=clarity), position = "dodge")
+# for a scatter, position = jitter adds random noise
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy),position = "jitter")
+```
+## Coordinate systems
+
+```{r}
+ggplot(data = mpg,mapping = aes(x = class, y = hwy)) + geom_boxplot() + coord_flip()
+# coord_quickmap() sets the the aspect ratio correctly for maps
+nz<-map_data("nz")
+ggplot(nz, aes(long, lat, group = group)) + geom_polygon(fill = "white", colour = "black")
+ggplot(nz, aes(long, lat,group = group)) + geom_polygon(fill = "white", colour = "black") + coord_quickmap()
+# coor_polar uses polar coordinates
+bar <- ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, fill = cut), show.legend = F, width = 1) + theme(aspect.ratio = 1) + labs(x = NULL, y = NULL)
+bar + coord_flip()
+bar + coord_polar()
+```
+## Data transformation with dplyr
+
+```{r}
+glimpse(flights)
+View(flights)
+# filter rows with filter() ----
+jan1 <- as_tibble(filter(flights, month == 1, day == 1)) %>% glimpse()
+nov_dec <- filter(flights, month %in% c(11,12)) %>% glimpse() # which is easier to write than month== 11 | month == 12
+# !(x & y) == !x | !y : !(x|y) == !x & !y
+# flights that weren't delayed by 2 or more hours on either arrival or depature, use either
+delay_under_2hrs <- filter(flights,!(arr_delay > 120 | dep_delay > 120)) %>% glimpse()
+# or
+delay_under_2hrs.1 <- filter(flights, arr_delay <= 120, dep_delay <= 120) %>% glimpse()
+arrive_delay_over_2hrs <- filter(flights,arr_delay >= 120) %>% glimpse()
+dest <- filter(flights, dest %in% c("IAH","HOU")) %>% summarise(n=n()) %>% glimpse()
+# Arrange rows with arrange() ----
+flights %>% arrange(year, month, day) # took forever to terminate
+flights %>% select(carrier, dep_delay) %>% arrange(desc(dep_delay)) %>% slice(1:15)
+# select columns with select() ----
+# Add new variables with mutate()
+flights_sml <- select(flights, year:day, ends_with("delay"), distance, air_time)
+View(flights_sml)
+flights_sml %<>% mutate(gain = arr_delay - dep_delay, speed = distance/air_time * 60)
+# you can refer to the mutated cols:
+flights_sml %<>% mutate(gain = arr_delay - dep_delay,hours = air_time/60, gain_per_hour = gain/hours)
+View(flights_sml)
+# use transmute() if you only want keep the new vars
+transmute(flights, gain = arr_delay - dep_delay, hours = air_time/60, gain_per_hour = gain/hours)
+```
+### Useful creation functions
+
+```{r}
+# offsets ----
+# lead() and lag() allow you to refer to leading and lagging values
+
+(x <- seq(1,10))
+lag(x)
+lead(x)
+
+# cumulative and rolling aggregates ----
+cumsum(x)
+cummax(x)
+cummin(x)
+cummean(x)
+
+# Grouped summaries with summarize()
+# summarize() collapses data to a single row
+summarize(flights,delay = mean(dep_delay, na.rm = T))
+# pairing summarize with group_by()
+flights %>% group_by(year, month, day) %>% summarize(delay = mean(dep_delay, na.rm = T))
+# combining multiple operations with Pipe ----
+# Exploring relationship btwn distance and average delay for each location
+by_dest <- group_by(flights, dest)
+delays <- summarise(by_dest, count = n(), dist = mean(distance, na.rm = T), delay = mean(arr_delay, na.rm = T))
+delays <- filter(delay, count > 20, dest != "HNL")
+# plotting
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) + geom_point(aes(size = count), alpha = 1/3) + geom_smooth(se = F)
+# piping
+delays <- flights %>% group_by(dest) %>% summarise(count = n(), dist = mean(distance, na.rm = T), delay = mean(arr_delay, na.rm = T)) %>% filter(count > 20, dest != "HNL")
+delays
+# Missing values ----
+not_cancelled <- flights %>% filter(!is.na(dep_delay), !is.na(arr_delay))
+not_cancelled %>% group_by(year, month, day) %>% summarise(mean = mean(dep_delay)) %>% slice(1:10)
+
+# counts ----
+# whenever you do any aggregation, it's advisable to include eithe a count (n()), or a count of nonmissing values (sum(!is.na(x))). Helps check that you are not drawing conclusions on very small amounts of data
+# planes with highest average delays
+delays<- not_cancelled %>% group_by(tailnum) %>% summarise(delay = mean(arr_delay), n= n())
+ggplot(data = delays, mapping = aes(x = delay)) + geom_freqpoly(binwidth = 10)
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + geom_point(alpha = 1/10)
+# when you plot a mean or any summary versus group size, variation decreases as the sample size increases
+
+# to see much of the pattern, filter out groups with smallest numbers of observations
+ delays %>% filter(n > 25) %>% ggplot(mapping = aes(x = n, y = delay)) + geom_point(alpha = 1/10)
+## Grouped mutate and filters ----
+# find the worst of each group
+ flights_sml %>% group_by(year, month, day) %>% filter(rank(desc(arr_delay)) < 10)
+# find all groups greater than a threshold
+ popular_dest <- flights %>% group_by(dest) %>% filter(n() > 365)
+ popular_dest
+```
+## Exploratory Data analysis
+```{r}
+# > 1. Visualize the distribution
+ggplot(data = diamonds,mapping = aes(x = cut)) + geom_bar()
+# computing the values on the bars 
+diamonds %>% count(cut)
+ggplot(data = diamonds) + geom_histogram(mapping = aes(x = carat), binwidth = .5)
+# computing the values
+diamonds %>% count(cut_width(carat, 0.5))
+# use geom_freqpoly()vto overlay multiple histograms on the same plot
+smaller <- diamonds %>% filter(carat < 3)
+ggplot(data = smaller, mapping = aes(x = carat, colour = cut)) + geom_freqpoly(binwidth = 0.1)
+ggplot(data = smaller, mapping = aes(x = carat)) + geom_histogram(binwidth = 0.01) # depicts existence of subgroups
+# Unusual values 
+# 1> outliers
+# to see them , we zoom into y axis using coord_cartesian()
+ggplot(data = diamonds) + geom_histogram(mapping = aes(x = y), binwidth = 0.5) + coord_cartesian(ylim = c(0, 50))
+# filtering the unusual obs
+unusual <- diamonds %>% filter(y < 3 | y > 20) %>% arrange(y)
+unusual
+# 2> missing values
+# two opts with missing values : 
+# a) drop
+diamonds2 <- diamonds %>% filter(between(y,3,20))
+# b) replacing unusual values with missing
+diamonds2 <- diamonds %>% mutate(y = ifelse(y < 3 | y > 20, NA, y))
+ggplot(data = diamonds2, mapping = aes(x = x, y = y)) + geom_point() # warning that missing values removed
+# setting na.rm = T surpresses the warning
+ggplot(data = diamonds2, mapping = aes(x = y, y = y)) +geom_point(na.rm = T)
+# covariation ----
+# a categorical and continuous variable-- 1).freqpoly()
+ggplot(data = diamonds, mapping = aes(x = price)) + geom_freqpoly(mapping = aes(colour = cut), binwidth = 50)
+# difficult to note the difference coz overal count differ greatly
+# we use `density` which is a standardization to count making area under each frequency polygon to be 1
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + geom_freqpoly(aes(colour = cut), binwidth = 500)
+# 2) boxplot
+ggplot(data = diamonds,mapping = aes(x = cut, y = price)) + geom_boxplot()
+# ordering the x variable
+ggplot(data = mpg) + geom_boxplot(mapping = aes(x = reorder(class, hwy,FUN = median), y = hwy)) + coord_flip()
+## Two cateorical variables ----
+# to visualize covariation btwn 2 categorical variables, you  need to count number of observations for each combination
+# 1) geom_count
+ggplot(data = diamonds) + geom_count(mapping = aes(x = cut, y = color))
+diamonds %>% group_by(cut, color) %>% count()
+# or 
+diamonds %>% count(color, cut)
+# then visualize with geom_tile()
+diamonds %>% group_by(color, cut) %>% count() %>% 
+  ggplot(mapping = aes(x = color, y = cut)) + geom_tile(mapping = aes(fill = n))
+ # Two continuous variables ----
+# 1) scatter
+ggplot(data = diamonds) + geom_point(mapping = aes(x = carat, y = price))
+# scatterplots become less useful as the size of your data grows, since points begin to overplot
+ggplot(data = diamonds) + geom_point(mapping = aes(x = carat, y = price), alpha = 1/100) # alpha improves transparency
+# 2) Bins
+ggplot(data = smaller) + geom_bin2d(mapping = aes(x = carat, y = price)) # divides coordinate plane into 2D bins
+ggplot(data = smaller) + geom_hex(mapping = aes(x = carat, y = price))
+# 3) bin one continuous variable to a categorical variable
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+```
+## Patterns and Models
+Models are tools for extracting patterns out of data
+
+```{r}
+mod <- lm(log(price) ~ log(carat), data = diamonds) 
+diamonds2 <- diamonds %>% add_residuals(mod) %>% mutate(resid = exp(resid))
+ggplot(data = diamonds2) + geom_point(mapping = aes(x = carat, y = resid))
+# The residuals give us a view of the price of the diamond, once the effect of the carat has been removed
+ggplot(data = diamonds) + geom_point(mapping = aes(x = carat, y = price)) # concave shape, reason we use log transformation
+# once you've removed the strong relationship btwn carat and price, you can see what you expect in the relationship btwn cut and price - relative to the size, better quality diamonds are more expensive
+ggplot(data = diamonds2) + geom_boxplot(mapping = aes(x = cut, y = resid))
+
+```

@@ -28,7 +28,7 @@ ipk(list.of.pkgs)
 ## Inside corrr package
 ```{r corrr}
 # as_cordf(x,digonal=NA) --- coerce df to cordf
-x<-cor(mtcars) # cor returns a matrix
+x<-cor(mtcars); x # cor returns a matrix
 as_cordf(x) # df of cor coefs
 as.matrix(x) #cor df as matrix
 correlate(mtcars,use = "pairwise.complete.obs") #correlate returns a df

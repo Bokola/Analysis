@@ -7,11 +7,11 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(max.print = 100000)
 
 ```
 
-## Notes
-This is a project to explore factors at play that impact the coverage of National School-Based Deworming Programme as implemented by the DTWI team in Kenya. The analysis is at school-level data collected durin monitoring surveys by MLIS and during treatment days by respective treatment teams.
+This is a project to explore factors at play that impact the coverage of National School-Based Deworming Programme as implemented by the DTWI team in Kenya. The analysis is at school-level data collected during monitoring surveys by MLIS and during treatment days by respective treatment teams.
 
 ## Libraries
 
@@ -21,39 +21,84 @@ new.pkg<-list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
 if(length(new.pkg)) install.packages(new.pkg,dependencies = T, repos = 'http://cran.us.r-project.org')
 sapply(pkg,require,character.only=T)
 }
-list.of.pkgs<-c("foreign","dplyr","corrr","ggplot2","plotly", "tidyr","readstata13","magrittr","RCurl","haven")
+list.of.pkgs<-c("foreign","dplyr","corrr","ggplot2","plotly", "tidyr","tidyverse","readstata13","magrittr","RCurl","haven","stringr","installr","shinydashboard")
 ipk(list.of.pkgs)
 (.packages()) #list of loaded packages
 ```
 
 ## Loading Data
 ```{r}
-#dat<-read.dta13("C:\\Users\\admin\\Analysis\\R\\Data\\y3_y6_vars.dta",convert.factors = F)
-dat<-read_dta(file = "https://github.com/Bokola/Analysis/raw/master/R/Data/y3_y6_vars.dta")
+dat<-read.dta13("C:\\Users\\admin\\Analysis\\R\\Data\\y3_y6_vars.dta",convert.factors = F)
+#dat<-read_dta(file = "https://github.com/Bokola/Analysis/raw/master/R/Data/y3_y6_vars.dta")
 glimpse(dat)
-dat<- dat %>% select(school_id:school_name,a_trt_total, a_reg_total,year,st_aware,st_info,sensitize_method,ct_knowledge_score,ht_knowledge_score, ct_trained,ht_trained, drugs_enough,ddm105_events_at_schl_ondd,ddm106_dd_atschl_today, worms) 
-glimpse(dat) %>% attach() 
-#dat %<>% mutate(coverage=a_trt_total/a_reg_total)
-dat$coverage<-a_trt_total/a_reg_total
+dat<- dat %>% select(school_id:school_name,a_trt_total, a_reg_total,year,st_aware,st_info,sensitize_method,ct_knowledge_score,ht_knowledge_score, ct_trained,ht_trained, drugs_enough,ddm105_events_at_schl_ondd,ddm106_dd_atschl_today, worms)  %>% glimpse()
+#dat %<>% select(everything()) %>% mutate(coverage=a_trt_total/a_reg_total)
+dat$coverage<-dat$a_trt_total/dat$a_reg_total
 cols<-c("coverage","st_info","st_aware","ct_knowledge_score","ht_knowledge_score","sensitize_method","drugs_enough","ct_trained","ht_trained","worms")
 dat<-dat[complete.cases(dat[,cols]),]
-glimpse(dat)
-attach(dat)
-#get.origin.codes(st_info,label.table) #recreate code numbers of a factor as stored in stata data set --x must be a factor
-# converting to factors
-get.label(dat,"st_info")
-dat$st_info<-factor(dat$st_info,levels=c('1','2','3'),labels = c('Deworming info 1: Assembly Announcement/teachers','Deworming info 2: Other students/friends','Deworming info 3: Parents'))
-get.label(dat,"worms")
-dat$worms<-factor(dat$worms,levels = c('0','1'),labels = c('STH/Soil Transmitted',' SCHISTO/Bilharzia'))
-get.label(dat,'sensitize_method')
-dat$sensitize_method<-factor(dat$sensitize_method,levels = c('1','2','3','4','5','6'),labels = c('Conduct Health Education in Class','Display Posters in the School','Discuss Deworming Day at School Management Meetings','Conduct ECD Outreach','Encourage Children to share Deworming Day Information with Parents','None'))
-dat$drugs_enough<-factor(dat$drugs_enough,levels = c('0','1'),labels = c('Drugs enough: No','Drugs enough: Yes'))
+cols.1<-c("coverage","st_info","st_aware","ct_knowledge_score","ht_knowledge_score","sensitize_method","drugs_enough","ct_trained","ht_trained","worms","year","county_name")
+dat %<>% mutate_all(tolower)
+dat%>% select(one_of(cols.1))
+dat1<- dat %>% select(coverage,county_name,year,everything()) %>% rename(county=county_name) %>% glimpse() # ordering coverage first
+attach(dat1) # data with vars selected for anal
+dat1 %>% mutate_all(tolower)
+trim <- function (x) gsub("^\\s+|\\s+$", "", x) #trimming white space
+dat1$county<-trim(dat1$county)
+# or
+str_trim(county) # from stringr
+county[grep("^.hom",as.character(county),ignore.case = T)]<-"homabay"
+county[grep("^.nar",as.character(county),ignore.case = T)]<-"narok"
+county[grep("^trans",as.character(county),ignore.case = T)]<-"trans nzoia" #replacing misspelled counties
+a<-sort(unique(county));a
+western<-county[grep("^bu|^ka|^vi",as.character(county),ignore.case = T)]
+eastern<-county[grep("^ma",as.character(county),ignore.case = T)];table(eastern)
+nyanza<-county[grep("^mig|^kis|^sia|^nya|^hom",as.character(county),ignore.case = T)];table(nyanza)
+central<-county[grep("^kir",as.character(county),ignore.case = T)];table(central)
+rift<-county[grepl("^bom|^ke|^na|^tra",as.character(county),ignore.case = T)];table(rift)
+coast<-county[grep("^kil|^kwa|^lam|^momb|^tai|^tana",as.character(county),ignore.case = T)];table(coast)
+dat1 %<>% mutate(region=case_when(grepl("^bu|^ka|^vi",as.character(county),ignore.case = T)~"western",grepl("^ma",as.character(county),ignore.case = T)~"eastern",grepl("^mig|^kis|^sia|^nya|^hom",as.character(county),ignore.case = T)~"nyanza",grepl("^kir",as.character(county),ignore.case = T)~"central",grepl("^bom|^ke|^na|^tra",as.character(county),ignore.case = T)~"rift",grepl("^kil|^kwa|^lam|^momb|^tai|^tana",as.character(county),ignore.case = T)~"coast"))
+table(dat1$region)
+rm(dat)
+```
+```{r cleaning strings}
+# pattern matching----
+a<-as.vector(county[grep("^y",as.character(county),ignore.case = T)]); unique(a) # returning 1st char in county
+# to find counties with 2 or more names, search for a blank----
+b<-as.vector(county[grep(" ",as.character(county), ignore.case = T)]) ; unique(b)
+# counties ending with a particular char say y, use "y$"----
+c<-as.vector(county[grep("y$",as.character(county), ignore.case = T)]); unique(c)
+# counties whose names start by a particular letter, include the leters inside a ranged square bracket e.g "[a-k]"----
+d <- as.vector(county[grep("^[a-k]",as.character(county),ignore.case = T)]); unique(d)
+# use negative subscripts if not interested in a particular pattern----
+e <- as.vector(county[-grep("[a-d]$",as.character(county), ignore.case = T)]); unique(e)
+# looking for the ith char, use {} ----
+f <- as.vector(county[grep("^.{2}[a-k]",as.character(county),ignore.case = T)]); unique(f) # 3rd char within a-k
+g <- as.vector(county[grep("^.[a-k]",as.character(county),ignore.case = T)]); unique(g) # 2nd char within a-k
+# returning lengths ----
+h <- as.vector(county[grep("^.{,5}$",as.character(county),ignore.case = T)]); unique(h) # up to 5 chars
+i <- as.vector(county[grep("^.{5,}$",as.character(county),ignore.case = T)]); unique(i) # at least 5 chars
+k <- as.vector(county[grep("^trans",as.character(county),ignore.case = T)]); unique(k)
+l <- as.vector(county[grep("k$",as.character(county),ignore.case = T)]); unique(l)
+```
+```{r strings-to-factors}
+get.label(dat1,"st_info")
+dat1$st_info<-factor(dat1$st_info,levels=c('1','2','3'),labels = c('Deworming info 1: Assembly Announcement/teachers','Deworming info 2: Other students/friends','Deworming info 3: Parents'))
+get.label(dat1,"worms")
+dat1$worms<-factor(dat1$worms,levels = c('0','1'),labels = c('STH/Soil Transmitted',' SCHISTO/Bilharzia'))
+get.label(dat1,'sensitize_method')
+dat1$sensitize_method<-factor(dat1$sensitize_method,levels = c('1','2','3','4','5','6'),labels = c('Conduct Health Education in Class','Display Posters in the School','Discuss Deworming Day at School Management Meetings','Conduct ECD Outreach','Encourage Children to share Deworming Day Information with Parents','None'))
+dat1$drugs_enough<-factor(dat1$drugs_enough,levels = c('0','1'),labels = c('Drugs enough: No','Drugs enough: Yes'))
+dat1$year<-factor(year,levels=c("3","4","5","6"),labels = c("year 3","year 4","year 5","year 6"))
+num<-c("st_aware","ct_knowledge_score","ht_knowledge_score","coverage")
+dat1[,num]<-lapply(dat1[,num], as.numeric)
 
+glimpse(dat1)
 ```
 
 ## Exploration
 ```{r}
-p1<-ggplot(dat,aes(coverage))+geom_histogram(aes(y=..density..))+geom_density()+ggtitle("Distribution of NSBDP reported coverages")
+p1<-ggplot(dat1,aes(coverage))+geom_histogram(aes(y=..density..),binwidth = 0.01)+geom_density()+ggtitle("Distribution of NSBDP reported coverages")
+p1
 #Scatter
 scatter_by<- function(data,...) {
   ggplot(data)+geom_point(aes(...))
