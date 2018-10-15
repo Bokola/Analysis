@@ -1,0 +1,33 @@
+---
+title: "shiny"
+author: "Owiti Okola"
+date: "4 September 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R shiny
+Goal is to learn shiny and build apps, incorporating ggplot2 and dplyr. Shiny objects are contained in single scripts called app.r which can be run by runApp("newdir")
+app.r has three components; a user interface object, a server function and a call to the shinyApp function
+The user interface(ui) object controls layout and appearance of the app, server function the instructions to build the app and shinyApp function creates shiny app objects from explicit UI UI/serv
+UI/server pair.
+
+```{r packages}
+ipk<-function(pkg) {
+new.pkg<-list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.pkg)) install.packages(new.pkg,repos = "https://cran.us.r-project.org",dependencies = T)
+sapply(pkg,require,character.only = T)
+}
+list.of.packages<-c("dplyr","ggplot2","shiny")
+ipk(list.of.packages)
+```
+## Inside shiny
+```{r}
+runExample("01_hello")
+# ui
+ui<-fl
+
+```

@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+author: "Owiti Okola"
+date: "6 September 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+ipk<-function(pkg){
+  new.pkg<-list.of.pkg[!(list.of.pkg %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg,repos = "https://cran.us.r-project.org", dependencies =  T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkg<-c("shiny", "ggplot2", "dplyr")
+ipk(list.of.pkg)
+```
+<br>
+Trying to develop a simple shiny ui
+```{r ui}
+ui<-fluidPage(
+  # Title panel ----
+  titlePanel("simple shiny app"),
+  # sidebar layout with input and output definitions ----
+  sidebarLayout(
+    # input: Slider for the number of bins
+    sliderInput(inputId = "bins",label = "Number of bins:", min=1, max=50,value = 30)
+  )
+  
+)
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
