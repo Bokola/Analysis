@@ -22,7 +22,8 @@ ipk <- function (pkg) {
   if(length(new.pkg)) install.packages(new.pkg,repos = 'https://cran.us.r-project.org',dependencies = T)
   sapply(pkg, require, character.only = T)
 }
-list.of.pkgs <- c("tidyverse")
+list.of.pkgs <- c("tidyverse","magrittr")
+
 ipk(list.of.pkgs)
 ```
 
@@ -262,7 +263,95 @@ The `case_when()` function does not only work inside a column, but can be used f
 ```{r}
 msleep %>% mutate(silly_groups = case_when(brainwt < 0.001 ~ "light headed", sleep_total > 10 ~ "lazy_sleeper", is.na(sleep_rem) ~ "absent_rem", TRUE ~ "other")) %>% count(silly_groups)
 ```
+## **Splitting and merging columns**
+We use [this](C:\\Users\\Basil MLIS\\Analysis\\R\\Data\\conservation_explanation.csv) dataset for illustrations
+```{r}
+(conservation_expl <- read.csv("C:\\Users\\Basil MLIS\\Analysis\\R\\Data\\conservation_explanation.csv")) 
+(conservation_expl %<>% rename_all(
+  funs(
+    stringr::str_replace_all(., "\\.","_") %>% 
+      stringr::str_to_lower(.)
+    )
+  )
+)
+```
+You can unmerge any columns by using tidyr's `separate()` function. You have to specify the column to be splitted followed by the new column names, and the separator to be looked for.
+```{r}
+(conservation_tab <- conservation_expl %>% separate(conservation_abbreviation, into = c("abbreviation", "description"), sep = "="))
+```
+The opposite is tidyr's `unite()` function. You specify the new column name, and then  the columns to be united, and the separator you intend to use.
+```{r}
+conservation_tab %>% unite(united_col, abbreviation, description, sep = ":")
+```
+## **Bringing in columns from other data tables **
+You can use joining functions from `dplyr` to bring in data from other tables. `left_join()` implies that you keeping your main table to the left and adding additional columns to the right. In the `by = ` statement you specify which columns are the same so that the join knows what to add where. In the sample code below, we add the description of the different conservation states into our main `msleep` table. The main data contained an extra `domesticated` label which I wanted to keep (done in last line of table with an `ifelse()`)
+```{r}
+msleep %>% select(name, conservation) %>% 
+  mutate(conservation = toupper(conservation)) %>% 
+  left_join(conservation_tab, by = c("conservation"="abbreviation")) %>%
+  mutate(description = ifelse(is.na(description), conservation, description))
+```
+## **Spreading and gathering data**
+The `gather()` function will gather up many columns into one.In this case we have 3 columns that describe a time measure. For some analysis and graphs, it might be necessary to get them all into one.
+The gather function needs you to give a name ("key") for the new descriptive column and another name ("value") for the value column. The columns that you don't want ti gather need to be deselected at the end. In the sample code I'm deselecting the column `name`.
+```{r}
+msleep %>%
+  select(name, contains("sleep")) %>% 
+  gather(key = "sleep_measure", value = "time", -name)
+```
+A useful argument in gathering is the `factor_key` which is `FALSE` by default, but which if set to `TRUE` creates an ordered factor.
+```{r}
+(msleep_g <- msleep %>%
+   select(name, contains("sleep")) %>% 
+   gather(key = "sleep_measure", value = "time", -name, factor_key = T)) 
+```
+The opposite of gathering is spreading. Spread takes one column and makes multiple columns out of it.
+```{r}
+msleep_g %>%
+  spread(key = "sleep_measure", value = "time")
+```
+## **Turning data into NA **
+The function `na_if()` turns particular values into NA. In most cases the command would probably be `na_if("")` (i.e turn an empty string into NA), but it can principally do anything. Here we turn any value that reads "omni" to NA.
+```{r}
+msleep %>% 
+  select(name:order) %>%
+  na_if("omni")
+```
+# **Data Wrangling Part 3: Basic and more advanced ways to filter rows **
+## **Basic row filters**
+
+In many cases you don't want to include all rows in your analysis but only a selection of rows. The function to use is dplyr's `filter()`. The general syntax is `filter(dataset, condition)`.
+### **Filtering rows based on a numeric variable **
+You can filter numeric variables based on their values using operands such as `>`, `>=`, `<=`, `==`, and `!=`.
+```{r}
+msleep %>% select(name, sleep_total) %>%
+  filter(sleep_total > 18)
+```
+If you want to select a range of values you can use two logical requirements. For instance to select all animals with a total sleep time between 15 and 18 hours, we could use: 
+`filter(sleep_total >= 15, sleep_total <=18)`, but there is a shorter and direct way using the `between()` function.
+```{r}
+msleep %>%
+  select(name, sleep_total) %>%
+  filter(between(sleep_total, 15,18))
+```
+Another function that comes handy is `near()`, which will select all code that is nearly a given value. You have to specify a tolerance `tol` to indicate how far the values can be. You can add a specific number: `filter(near(sleep_total,17, tol = 0.5))` will return any rows where `sleep_total` is between 16.5 and 17.5, or you can add a formula. Code below returns rows that are within one standard deviation of 17.
+```{r}
+msleep %>%
+  select(name, sleep_total) %>%
+  filter(near(sleep_total, 17, tol = sd(sleep_total)))
+```
+### **Filtering based on exact character variable matches **
+If you want to select a specific group of animals for instance you can use the `==` comparison operator:
+```{r}
+msleep %>%
+  select(order, name, sleep_total) %>%
+  filter(order == "Didelphimorphia")
+```
+Similarly, you can use other operators:
+* `filter(order != "Rodentia") will select everything except the Rodentia rows.
+*   `filter(name > "v") will select rows with a name in the alaphabet after the letter v.
+If 
+
  Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
  
  
-
