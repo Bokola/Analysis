@@ -1,0 +1,268 @@
+---
+title: "hand-ons_with_dplyr"
+author: "Basil"
+date: "October 13, 2018"
+output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+```{r, echo= FALSE, include=FALSE}
+ipk <- function (pkg) {
+  new.pkg <- list.of.pkgs [!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg,repos = 'https://cran.us.r-project.org',dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs <- c("tidyverse")
+ipk(list.of.pkgs)
+```
+
+# **Data Wrangling Part 1: Basic to Advanced Ways to Select Columns** 
+
+Covers ordering, naming and selecting columns: `select_all()`, `select_if()` and some shortcuts like `everything()`
+
+```{r}
+# built-in R dataset
+glimpse(msleep)
+```
+
+## **Selecting columns**
+### **Selecting columns: The basics**
+
+The order in which you add them determines the order in which they appear on the output
+```{r}
+msleep %>% select(name, genus, sleep_total, awake) %>% glimpse()
+```
+You can use chunks: `start_col:end_col` syntax or even `deselect columns` by adding a minus sign in front of the column names
+```{r}
+msleep %>% select(name:order, sleep_total:sleep_cycle) %>% glimpse()
+msleep %>% select(-conservation,-(sleep_total:awake)) %>% glimpse()
+```
+It's possible deselect a whole chunk, and then re-add a column again
+```{r}
+msleep %>% select(-(name:awake), conservation) %>% glimpse
+```
+ ## **Selecting columns based on partial column names** 
+ 
+Entails using `starts_with()`, `ends_with()` or `contains()`
+```{r}
+msleep %>% select(name, starts_with("sleep")) %>% glimpse
+msleep %>% select(contains("eep"), ends_with("wt")) %>% glimpse
+```
+## **Selecting columns based on regex**
+
+The previous helper functions work with exact pattern matches. If you have similar patterns that are not entirely the same, you can use any regular expression inside `matches()`. Code below adds columns that contain an 'o' followed by one or more other letters, and 'er'.
+
+```{r}
+msleep %>% select(matches("o.+er")) %>% glimpse
+```
+## **Selecting  columns based on pre-identified columns**
+
+You can specify column names in a vector and use `one_of()` function within `select()` or using the !! operator to select them
+```{r}
+col <- c("name", "genus","vore", "order", "conservation")
+msleep %>% select(one_of(col)) %>% glimpse
+msleep %>% select(!!col) %>% glimpse
+```
+
+## **Selecting columns based on their data types**
+
+The `select_if()` function allows you to pass functions which return logical statements. For instance you can select all string columns using `select_if(is.character)` . Similarly, you can add `is.numeric`, `is.integer`, `is.double`, `is.logic`, `is.factor` .
+
+```{r}
+msleep %>% select_if(is.numeric) %>% glimpse
+```
+You can also select the negation but must add a tilde to ensure you still pass a function to `select_if` . The select_all/if/at functions require that a function is passed as an argument. If you have to add negation or arguments, you will have to wrap your functions inside `funs()` or add a tilde before to remake it a function.
+```{r}
+msleep %>% select_if(~!is.numeric(.)) %>% glimpse
+```
+## **Selecting columns by logical expressions**
+
+`select_if()` allows you to select based on any logical function, not just the data types. It is possible to select all columns with an average above 500 for instance, but you'd have to select only numeric columns upfront to avoid errors. Similarly, mean > 500 is not a function in itself, so you need to a tilde upfront or wrap inside the `funs()` to turn the statement into a function.
+
+```{r}
+msleep %>% select_if(funs(!is.character(.))) %>% select_if(funs(mean(., na.rm = T)>10))
+```
+Or shorter:
+```{r}
+msleep %>% select_if(funs(!is.character(.) & mean(., na.rm = T)>10))
+```
+or even shorter
+```{r}
+msleep %>% select_if(~is.numeric(.) & mean(., na.rm = T)> 10)
+```
+Another useful function for `select_if` is `n_distinct()`, which counts the amount of distinct values that can be found in a column
+```{r}
+msleep %>% select_if(funs(n_distinct(.)<10))
+#or
+msleep %>% select_if(~n_distinct(.)<10)
+```
+
+## **Re-ordering columns**
+
+with `select()`, the order in which you add the columns determine their final order
+```{r}
+msleep %>% select(conservation, contains("eep"), name) %>% glimpse
+```
+
+if you want to move a few columns to the front, use  `everything()` afterwards which will add all the columns and save you typing
+
+```{r}
+msleep %>% select(conservation, sleep_total, everything()) %>% glimpse
+```
+## **Column names**
+Sometimes all you want to change are the column names
+
+### **Renaming columns**
+You can directly rename within the `select()` function
+```{r}
+msleep %>% select(animal = name, sleep_total, extinction_threat = conservation) %>% glimpse
+```
+If you want to retainn all columns and thus do not require the `select()` function, you can rename by adding a `rename()` statement
+
+```{r}
+msleep %>% rename(animal = name, extinction_threat = conservation) %>% glimpse
+```
+### **Reformatting all column names**
+The `select_all()` function allows changes to all columns, and takes a function as an argument.
+Format cases using `toupper()` and `tolower()` functions
+```{r}
+msleep %>% select_all(toupper)
+msleep %>% select_all(tolower)
+```
+If you have messy variable names especially those coming from excel, you can replace all white spaces with an underscore for instance
+```{r}
+# making an unclean database
+msleep2 <- select(msleep, name, sleep_total, brainwt)
+colnames(msleep2) <- c("name", "sleep total", "brain wight")
+msleep2 %>% select_all(~str_replace(., " ", "_"))
+```
+or in case your ccolumns contain other meta-data like question numbers
+```{r}
+# making an unclean database 
+msleep2 <- select(msleep, name, sleep_total, brainwt)
+colnames(msleep2) <- c("Q1 name", "Q2 sleep total", "Q3 brain weight")
+msleep2[1:3,]
+```
+You can use `select_all()` in combination with `str_replace` to get rid of the extra characters
+```{r}
+msleep2 %>% select_all(~str_replace(., "Q[0-9]+", "")) %>% select_all(~str_replace(., " ","_"))
+```
+
+### **Row names to column **
+Some dataframes have rownames that are not actually a column in itself, like the mtcars dataset:
+```{r}
+mtcars %>% head
+```
+If you want this column to be an actual column, you can use the `rownames_to_column()` function and specify a new column name.
+```{r}
+mtcars %>% tibble::rownames_to_column("car_model") %>% head
+```
+
+# **Data Wrangling Part 2: Transforming your columns into the right shape **
+This section covers tools to manipulate your columns to get them the way you want them; includes calculation of new columns, changing a column unto discrete values or splitting/merging columns.
+## **Mutating columns: The basics **
+You can make new columns or modify existing ones with `mutate()` function. One of the simplest options is calculations based on values of other columns.
+```{r}
+msleep %>% select(name, sleep_total) %>% mutate(sleep_total_min = sleep_total *60)
+```
+New columns can be created using aggregate functions such as average, median, max, min, sd e.t.c.
+```{r}
+msleep %>% select(name, sleep_total) %>% mutate(sleep_total_vs_AVG = sleep_total - round(mean(sleep_total),1), sleep_total_vs_MIN = sleep_total - min(sleep_total))
+```
+If you want to `sum()` or `mean()` across columns , you might run into errors or absurdd answers.In such cases you may resort to spelling out the arithmetics: `mutate(average = (sleep_rem + sleep_cycle)/2)` or adding a special instruction to the pipe that it should perform those aggregate functions not on the entire column, but by row:
+```{r}
+# alternative to using the actual arithmetics
+msleep %>% select(name, contains("sleep")) %>% rowwise() %>% mutate(avg = mean(c(sleep_rem, sleep_cycle)))
+```
+The `ifelse()` function enables you specify a logical statement detailing what happens if the statement returns `TRUE` or `FALSE`.
+```{r}
+msleep %>% select(name, brainwt) %>% mutate(brainwt2 = ifelse(brainwt > 4, NA, brainwt)) %>% arrange(desc(is.na(brainwt))) %>% glimpse
+```
+You can also mutate string columns with stringr's `str_extract()` function in combination with any character or regex patterns. Code below returns the last word of the animal name and makes it lower case.
+```{r}
+msleep %>% select(name) %>% mutate(name_last_word = tolower(str_extract(name, pattern = "\\w+$"))) 
+```
+## **Mutating several columns at once **
+As with `select()` there are variants to `mutate()`: 
+* `mutate_all()` will mutate all columns based on supplied columns
+* `mutate_if()` requires a function that returns a boolean to select columns. If that is true, the mutate instructions will be followed on those variables.
+* `mutate_at()` requires you to specify columns inside a `vars()` argument for which the mutation will be done.
+### **Mutate all **
+```{r}
+msleep %>% mutate_all(tolower)
+```
+The mutating action needs to be a function: in many cases you can pass the function name without the brackets. you can make a function upfront or on the fly with the tilde. When making a function on the fly, you need a way to refer to the value you are replacing: which is what the `.` symbolizes.
+
+```{r}
+msleep_ohno <- msleep %>% mutate_all(~paste(., " /n "))
+msleep_ohno[,1:4]
+```
+To clean this up, first remove any `/n`, and then trim additional white spaces.
+```{r}
+msleep_corr <- msleep_ohno %>% mutate_all(~str_replace_all(., "/n", "")) %>% mutate_all(str_trim)
+msleep_corr[,1:4]
+```
+### **Mutate if **
+By using `mutate_if()` we need two arguments inside a pipe:
+ * First is information about the columns you want to consider: Easiest functions include `is.numeric`, `is.integer`, `is.double`, `is.logical`, `is.factor`, `bubridate::is.POSIXt` or `lubridate::is.Date`.
+ * Second is the instructions about the mutation in form of a function. If needed use a tilde or `funs() before.
+```{r}
+msleep %>% select(name, sleep_total:bodywt) %>% mutate_if(is.numeric, round)
+```
+
+### **Mutate at to change specific columns **
+By using `mutate_at()` we need two arguments inside a pipe:
+* First it needs information about the columns you want to consider. In this case you can wrap any selection of columns using all the options available inside a `select()` function and wrap it inside `vars()`.
+* Secondly it needs instructions about the mutation in the form of a function. If needed, use ilde or `funs()` before
+```{r}
+msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep")), ~(.*60))
+```
+## **Changing column names after mutation **
+```{r}
+msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep")), ~(.*60)) %>% rename_at(vars(contains("sleep")), ~paste0(.,"_min"))
+```
+Alternatively, you can assign a "tag" inside `funs()` which will be appended to the current name.The difference is that `funs()` version is one code less, bu columns will be added rather than replaced.
+```{r}
+msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep")), funs(min = .*60))
+```
+## **Working with discrete columns **
+### **Recoding discrete columns**
+To rename or reorganize current discrete columns, you can use `recode()` inside a `mutate()` statement: this enables you to change the current naming, or to group current levels to less levels. The `.default` refers to anything that isn't covered by the before groups with the exception of NA. You can change NA into something other than NA by adding a `.missing` argument if you want.
+```{r}
+msleep %>% mutate(conservation2 = recode(conservation, "en" = "Endangered", "lc" = "Least_Concern", "domesticated" = "Least_Concern", .default = "other")) %>% count(conservation2)
+```
+A special version exists to return a factor: `recode_factor()`. By default the `.ordered` argument is `FALSE`. 
+```{r}
+msleep %>% mutate(conservation2 =recode_factor(conservation, "en" = "Endangered","lc" = "Least_Concer", "domesticated" = "Least_Concern", .default = "other", .missing = "no data", .ordered = T)) %>% count(conservation2) %>% ggplot() + geom_col(mapping = aes(x = conservation2, y = n))
+```
+
+
+## **Creating new discrete column (two levels)**
+The `ifelse` statement can be used to turn a numeric column to turna numeric column into a discrete one (with two levels)
+```{r}
+msleep %>% select(name, sleep_total) %>% mutate(sleep_time = ifelse(sleep_total > 10, "long", "short"))
+```
+## **Creating new discrete column (multiple levels) **
+`case_when()` allows as many statements as you want.
+For everything that is left at the end just use `TRUE ~ "newname"`. Unfortuantely there is no easy way to get `case_when()` to return an ordered factor, you can use `forcasts::fct_level()`, or just with a `factor()` function.
+```{r}
+msleep %>% select(name, sleep_total) %>% mutate(sleep_total_discr = case_when(sleep_total > 13 ~ "very long", sleep_total > 10 ~ "long", sleep_total > 7 ~ "limited", TRUE ~ "short")) %>% mutate(sleep_total_discr = factor(sleep_total_discr, levels = c("short", "limited", "long", "very long")))
+```
+The `case_when()` function does not only work inside a column, but can be used for grouping across columns:
+```{r}
+msleep %>% mutate(silly_groups = case_when(brainwt < 0.001 ~ "light headed", sleep_total > 10 ~ "lazy_sleeper", is.na(sleep_rem) ~ "absent_rem", TRUE ~ "other")) %>% count(silly_groups)
+```
+ Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+ 
+ 
+

@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-options(max.print = 100000)
+options(max.print = 1000)
 ```
 
 ## Packages
@@ -179,10 +179,10 @@ treatment <- tribble(~person, ~treatment, ~response,
                      "Derrick Dee", 1, 7, NA, 2, 10, NA, 3, 9, "Katherine Burke", 1, 4)
 treatment %>% fill(person) 
 # case study -- TB data ----
-dat <- read_csv("C:\\Users\\admin\\Analysis\\WHOtb_data_analysis\\data\\TB_burden_countries_2018-07-04.csv", col_names = T, trim_ws = T, guess_max = 1001)
-dat<-as.tibble(dat) %>% glimpse()
-View(dat)
-
+who.tb <- read_csv("C:\\Users\\admin\\Analysis\\WHOtb_data_analysis\\data\\TB_burden_countries_2018-07-04.csv", col_names = T, trim_ws = T, guess_max = 1001)
+who.tb<-as.tibble(who.tb) %>% glimpse()
+View(who.tb)
+who.tb %>% mutate(year = parse_date(year, format = "%Y")) %>% View()
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
