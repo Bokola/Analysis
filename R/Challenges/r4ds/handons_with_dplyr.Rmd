@@ -3,16 +3,16 @@ title: "hand-ons_with_dplyr"
 author: "Basil"
 date: "October 13, 2018"
 output:
-  word_document:
-    toc: yes
-    toc_depth: '3'
   html_document:
     highlight: tango
     theme: united
     toc: yes
     toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
 ---
-
+We use the tidyverse package to demonztrate it's usefulness in data wrangling.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
@@ -232,7 +232,7 @@ msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep"))
 ```{r}
 msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep")), ~(.*60)) %>% rename_at(vars(contains("sleep")), ~paste0(.,"_min"))
 ```
-Alternatively, you can assign a "tag" inside `funs()` which will be appended to the current name.The difference is that `funs()` version is one code less, bu columns will be added rather than replaced.
+Alternatively, you can assign a "tag" inside `funs()` which will be appended to the current name.The difference is that `funs()` version is one code less, but columns will be added rather than replaced.
 ```{r}
 msleep %>% select(name, sleep_total:awake) %>% mutate_at(vars(contains("sleep")), funs(min = .*60))
 ```
@@ -266,10 +266,11 @@ msleep %>% mutate(silly_groups = case_when(brainwt < 0.001 ~ "light headed", sle
 ## **Splitting and merging columns**
 We use [this](C:\\Users\\Basil MLIS\\Analysis\\R\\Data\\conservation_explanation.csv) dataset for illustrations
 ```{r}
-(conservation_expl <- read.csv("C:\\Users\\Basil MLIS\\Analysis\\R\\Data\\conservation_explanation.csv")) 
+#(conservation_expl <- read_csv("C:\\Users\\Basil MLIS\\Analysis\\R\\Data\\conservation_explanation.csv")) 
+(conservation_expl <- tibble(`conservation abbreviation` = c("EX = Extinct", "EW = Extinct in the wild", "CR = Critically Endangered", "EN = Endangered", "VU = Vulnerable", "NT = Near Threatened", "LC = Least Concern", " DD = Data deficient", " NE = Not evaluated", " PE = Probably extinct (informal)", "PEW = Probably extinct in the wild (informal)")))
 (conservation_expl %<>% rename_all(
   funs(
-    stringr::str_replace_all(., "\\.","_") %>% 
+    stringr::str_replace_all(., " ","_") %>% 
       stringr::str_to_lower(.)
     )
   )
@@ -350,8 +351,272 @@ msleep %>%
 Similarly, you can use other operators:
 * `filter(order != "Rodentia") will select everything except the Rodentia rows.
 *   `filter(name > "v") will select rows with a name in the alaphabet after the letter v.
-If 
+If you want to select more than one subgroup you can use the `%in%` operator.
+```{r}
+msleep %>%
+  select(order, name, sleep_total) %>%
+  filter(order %in% c("Didelphimorphia", "Diprotodontia"))
+```
+You can use the  `%in%` operator to deselect certain groups as well by adding an exclamation mark at the beginning of your `filter`. Making a `!%in%` may seem logic but won't work.
+```{r}
+remove <- c("Rodentia", "Carnivora", "Primates")
+msleep %>%
+  select(order, name, sleep_total) %>%
+  filter(!order %in% remove)
+```
+### **Filtering rows based on regex **
+Options above work if you can use the full variable names. In some cases though it will be needed to filter based on partial matches.In this case we need a function that will evaluate regular expressions on strings and return boolean values. Whenever the statement is `TRUE` the row will be filtered. Tere are two options for this: base R's `grepl()` function, or `str_detect()` from `stringr` package.
+whwnever you are looking for partial matches, it is important to remember that R is case sensitive. So it is good practice to write something like `filter(grepl(pattern = "mouse", tolower(name)))`.
+```{r}
+msleep %>% 
+  select(name, sleep_total) %>% 
+  filter(str_detect(tolower(name), pattern = "mouse"))
+```
+### **Filtering based on multiple conditions **
+The filter option also allows the AND and OR style filters:
+* `filter(condition1, condition2)` will return rows where both conditions are met.
+* `filter(condition1, !condition2) will return all rows where condition one is true but condition2 is not.
+* `filter(condition1|condition2)` will return all rows where condition 1 and/or condition 2 is met.
+* `filter(xor(condition1, condition2))` will return all rows where only one of the conditions is met, and not when both conditions are met.
+Multiple AND, OR, NOT conditions can be combined.
+```{r}
+msleep %>%
+  select(name, order, sleep_total:bodywt) %>%
+  filter(bodywt > 100, (sleep_total > 15 | order != "Carnivora"))
+```
+Example with `xor()`
+```{r}
+msleep %>%
+  select(name, bodywt:brainwt) %>%
+  filter(xor(bodywt > 100, brainwt >1))
+```
+Example with `!`:
+The sample code below will select all rows where `brainwt` is larger than 1, but `bodywt` does not exceed 100.
+```{r}
+msleep %>%
+  select(name, sleep_total, brainwt, bodywt) %>%
+  filter(brainwt > 1, !bodywt > 100)
+```
+### **Filtering out empty rows **
+To empty out empty rows, you negate the `is.na()` function inside a filter:
+The sample code will remove any rows where `conservation` is `NA`.
+```{r}
+msleep %>%
+  select(name, conservation:sleep_cycle) %>%
+  filter(!is.na(conservation))
+```
+## **Filtering across multiple columns **
+The `dplyr` package has a few powerful variants to filter across multiple columns in one go:
+* `filter_all()` will filter all columns based on your further instructions
+* `filter_if()` requires a function that returns a boolean to indicate which columns to filter on. If that is true, the filter instructions will be followed for those columns.
+* `filter_at()` requires you to specify columns inside a `vars()` argument for which the filtering will be done.
 
+### **Filter all **
+In the code below I'm searching for the string "Ca" across all columns. I want to keep rows where the string "Ca" is present in ANY of the variables, so I will wrap the condition in `any_vars()` . 
+```{r}
+msleep %>%
+  select(name:order, sleep_total, -vore) %>%
+  filter_all(any_vars(str_detect(., pattern = "Ca")))
+```
+The same can be done for numerical values: This code will retain any rows that has any value below 0.1:
+```{r}
+msleep %>%
+  select(name, sleep_total:bodywt) %>%
+  filter_all(any_vars(. < 0.1))
+```
+The `any_vars()` statement is equivalent to OR, so of course there is an equivalent for AND statements as well: `all_vars()` .  The below code will retain any rows where all values are above 1.
+```{r}
+msleep %>%
+  select(name, sleep_total: bodywt, -awake) %>%
+  filter_all(all_vars(. >1))
+```
+### **Filter if **
+So imagine you want to find out all data rows where we have NA in the first few columns. `filter_all(any_vars(is.na(.)))` will be quite useless as it would return 27 rows, many of which are missing data in the measurement section.
+
+n this case: `filter_if()` comes in handy. The describing columns are all character columns while the measurement data is numeric. So using `filter_if()` i can specify that I want to just filter on character variables. In this case I only get 7 rows.
+```{r}
+msleep %>%
+  select(name: order, sleep_total: sleep_rem) %>%
+  filter_if(is.character, any_vars(is.na(.)))
+```
+Similarly, you can add `is.numeric`, `is.integer`, `is.double`, `is.logical`, `is.factor`. If you have date columns you can load the lubridate package and use `is.POSIXt`, `is.Date` .
+### **Filter at **
+One of the most powerful functions is `filter_at()` : It does not filter all columns, nor does it need you to specify the type of column, you can just select the columns to which the change should happen via the `vars()` argument. This argument allows anything that can be done within a select statement: so you can refer to them by name, but also by by logical numerical functions, regex, etc.
+The second argument is the condition for selection. Similar to the examples above, you can use `all_vars()` if all columns need to return TRUE (AND equivalent), or `any_vars()` in case just one variable needs to return TRUE (OR equivalent).
+
+Example: refer to columns by name:
+```{r}
+msleep %>%
+  select(name, sleep_total: sleep_rem, brainwt:bodywt) %>%
+  filter_at(vars(sleep_total, sleep_rem), all_vars(. >5))
+```
+
+Example: Using another selection option:
+```{r}
+msleep %>%
+  select(name, sleep_total:sleep_rem, brainwt:bodywt) %>%
+  filter_at(vars(contains("sleep")), all_vars(. >5))
+```
+# **Data wrangling Part 4: Summarizing and slicing your data **
+In this section we summarize our data: i) counting cases and observations, ii) creating summaries using `summarise()` and it's `summarise_all()`, `_if()` and `_at()` variants, and iii) pulling the maximum and minimum row values.
+
+## **Counting cases and adding counts **
+### **Counting the number of observations **
+The easiest way to know the number of observations you have for a specific variable, is to use `count()`. By adding the `sort = TRUE` argument, it immediately returns a sortef table with descending number of observations:
+```{r}
+msleep %>%
+  count(order, sort = T)
+```
+You can add multiple variables to a `count()` statement; the code below counts by order and vore.
+```{r}
+msleep %>%
+  count(order, vore, sort = T)
+```
+### **Adding the number of observations in a column **
+If you're only interested in counting the total num er of cases for a dataframe, you could use `tally()`, which behaves similarly to `nrow()`.
+```{r}
+msleep %>%
+  tally()
+msleep %>%
+  nrow()
+```
+More interesting is the `add_tally()` function which automatically adds a colums with the overal number of observations. This would be the same as `mutate(n = n())`.
+```{r}
+msleep %>%
+  select(1:3) %>%
+  add_tally()
+msleep %>%
+  select(1:3) %>%
+  mutate(n = n())
+```
+Even more interesting is the `add_count() ` which takes a variable as an argument, and addds a column with the number of observations. this saves the combination of grouping, mutating and ungrouping again.
+```{r}
+msleep %>%
+  select(name:vore) %>%
+  add_count(vore)
+```
+## **Summarising data **
+Both UK and US variants `summarize()` and `summarise()` are applicable within `dplyr` .
+If you just want to know the number of observations `count()` does the job, but to produce summaries of the average, sum, standard deviation, minimum, maximum of the data, we need `summarise()`. To use the function you just add your new column name, and after the equal sign the mathematics of what needs happen: `column_name = function(variable). You can add multiple summary functions behind each other.
+```{r}
+msleep %>%
+  summarise(n = n(), average = mean(sleep_total), maximum = max(sleep_total))
+```
+In most cases, we don't just want to summarise the whole data table, but we want to get summaries by a group. To do this, you first need to specify by which variable(s) you want to divide the dat using `group_by()` . You can add one or more variables as arguments in `group_by()`. 
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise(n = n(), average = mean(sleep_total), maximum = max(sleep_total))
+```
+The `summarise()` call works with nearly any aggregate function, and allows for additional arithmetics:
+* `n()` gives the number of observations
+* `n_distinct(var)` gives the number of unique values of `var`
+* `sum(var)`, `max(var)`, `min(var)` , ...
+* `mean(var)`, `median(var)`, `sd(var)`, `IQR(var)` , ...
+The code below will average sleep_total and divide by 24, to get the amount of sleep as a fraction of a day.
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise(avg_sleep_day = mean(sleep_total)/24)
+```
  Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
- 
- 
+## **Variants to summarise **
+* `summarise_all()` will summarise all columns based on your further instructions
+* `summarise_if()` requires a function that returns a boolean, if true the summary instructions will be followed
+* `summarise_at()` requires you to specify columns inside a `vars()` argument for which the summary is done.
+### **Summarise all **
+The function `summarise_all()` requires a function as argument, which it will apply to columns. The sample code calculates the mean for each column. You need to add the `na.rm = T` to remove missing values.
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise_all(mean, na.rm = T)
+```
+The instructions to summarizing have to be a function. When there is no function available in base R or package to do what you want, you can either make a function upfront, or make a function on the fly
+The sample code will add 5 to the mean of each column. the function on the fly can be made by either using `funs(mean(., na.rm = T) = 5)` or via a tilde: `~mean(., na.rm = T) + 5` .
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise_all(~mean(., na.rm = T) + 5)
+```
+### **Summarise if **
+The function `summarise_if()` requires two arguments:
+* Information about columns you want to consider
+* Information about how to summarise the data
+The sample code below returns the average of all numeric columns
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise_if(is.numeric, mean, na.rm = T)
+```
+One of the downsides of the aggregate summarise functions is that you do not require a new column title. It mya therefore not be clear what the values refer to (average? median? minimum?). You can use `rename_*()` functions, it only takes one extra line of code to accomplish:
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise_if(is.numeric, mean, na.rm = T) %>% 
+  rename_if(is.numeric, ~paste0("avg_", .))
+```
+## **Summarise at **
+The function `summarise_at()` also requires two arguments:
+* First it needs information about the columns you want to consider. In this case you need to wrap them inside a `vars()` statement. Inside `vars()` you can use anything that can be used inside a `select()` statement.
+* Secondly, it needs information about how to summarise that data, which as above needs to be a function. If not a function, youi can create a function on the fly using `funs()` or a tilde
+The sample code below will return the average of all columns which contain the word "sleep", and also rename them to "avg_var" for clarity.
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise_at(vars(contains("sleep")), mean, na.rm = T) %>%
+  rename_at(vars(contains("sleep")), ~paste0("avg_",.))
+```
+## **Arranging rows **
+It is useful if your summary tables are arranged, which is `arrange()` 's job. 
+Sorting numeric variables:
+`arrange(sleep_total)` will arrange it in ascending order. You specify the `desc()` option to arrange in descending order.
+```{r}
+msleep %>%
+  group_by(vore) %>%
+  summarise(avg_sleep = mean(sleep_total, na.rm = T)) %>%
+  arrange(desc(avg_sleep))
+```
+If you already grouped your data, you can refer to that group within the `arrange()` statement as well by adding a `.by_group = TRUE` statement. This will sort by descending total sleep time, but within each each group.
+```{r}
+msleep %>%
+  select(order, name, sleep_total) %>%
+  group_by(order) %>%
+  arrange(desc(sleep_total), .by_group = T)
+```
+## **Showing only part of your data **
+In some cases you don't want to just show all rows available. Here are some nice shortcuts which can save time
+### **The 5 lowest and highest values **
+If you want to select the highest 5 cases, you could combine an `arrange` call with `head(n=5)`. Or you can use `top_n(5)` which will retain (unsorted) the 5 highest values.
+```{r}
+msleep %>%
+  group_by(order) %>%
+  summarise(average = mean(sleep_total)) %>%
+  top_n(5)
+```
+The five lowest values can be found using `top_n(-5)` :
+```{r}
+msleep %>%
+  group_by(order) %>%
+  summarise(average = mean(sleep_total)) %>%
+  top_n(-5)
+```
+if you have more than one column, you can add the variable you want it to use. 
+```{r}
+msleep %>%
+  group_by(order) %>%
+  summarise(average_sleep = mean(sleep_total), max_sleep =max(sleep_total)) %>% 
+  top_n(5, average_sleep)
+```
+### **A random selection of rows **
+using `sample_n()` you can sample a random selection of rows.
+Alternative is `sample_frac()` allowing you to randomly select a fraction of rows (here 10 %).
+```{r}
+msleep %>%
+  sample_frac(.1)
+```
+### **A user-defined slice of rows **
+The `head()` call will standard show the first 6 rows, which can be modified by adding an n-argument: `head(n=10)` . Similarly `tail()` will show the final 6 rows, which can also be modified by adding an n-argument. If  you want to slice somewherein the middle, you can use `slice()` . The sample code will show rows 50 to 55.
+```{r}
+msleep %>%
+  slice(50:55)
+```
