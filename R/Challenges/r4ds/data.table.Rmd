@@ -1,0 +1,59 @@
+---
+title: "data.table"
+author: "Owiti Okola"
+date: "October 16, 2018"
+output: html_document
+    theme: united
+    highlight: tango
+    toc:true
+    toc_depth: 3
+   number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_knit$set(normalizePath("C:\\Users\\Basil MLIS\\Google Drive\\Pgd\\Redcap exercises ---- interview"))
+
+```
+# **Inside the `data.table` Package**
+This Markdown document illustrates the functionality of `data.table` in data wrangling tasks.
+First we remove existing objects using `rm(list = ls())` then clear the work space using the `cat("\014")` function and later set up working directory, and install the `data.table` package.
+```{r}
+rm(list=ls()) # clears objects
+cat("\014") # clears console
+setwd("C:\\Users\\Basil MLIS\\Google Drive\\Pgd\\Redcap exercises ---- interview")
+getwd()
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, repos = 'https://cran.us.r-project.org', dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkg <- c("tidyverse", "data.table", "magrittr")
+ipk(list.of.pkg)
+```
+
+```{r}
+getwd()
+```
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
