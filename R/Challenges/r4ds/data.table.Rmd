@@ -12,16 +12,16 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
-knitr::opts_knit$set(normalizePath("C:\\Users\\Basil MLIS\\Google Drive\\Pgd\\Redcap exercises ---- interview"))
+knitr::opts_knit$set(normalizePath("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview"))
 
 ```
-# **Inside the `data.table` Package**
+# **Inside the `data.table` Package and it's functionality in data analysis**
 This Markdown document illustrates the functionality of `data.table` in data wrangling tasks.
 First we remove existing objects using `rm(list = ls())` then clear the work space using the `cat("\014")` function and later set up working directory, and install the `data.table` package.
 ```{r}
 rm(list=ls()) # clears objects
 cat("\014") # clears console
-setwd("C:\\Users\\Basil MLIS\\Google Drive\\Pgd\\Redcap exercises ---- interview")
+setwd("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview")
 getwd()
 ipk <- function(pkg) {
   new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
@@ -32,8 +32,13 @@ list.of.pkg <- c("tidyverse", "data.table", "magrittr")
 ipk(list.of.pkg)
 ```
 
+We use the `NYC-flights14` data. We can use **data.table**'s fast file reader `fread` to load flights directly as follows:
 ```{r}
-getwd()
+setwd("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview")
+data <- fread("SampleData.csv")
+glimpse(data)
+data %<>% rename(serial = V1)
+data
 ```
 
 

@@ -3,20 +3,23 @@ title: "hand-ons_with_dplyr"
 author: "Basil"
 date: "October 13, 2018"
 output:
-  html_document:
-    highlight: tango
-    theme: united
-    toc: yes
-    toc_depth: 3
   word_document:
     toc: yes
     toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
 ---
 We use the tidyverse package to demonztrate it's usefulness in data wrangling.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
-```{r, echo= FALSE, include=FALSE}
+First we install required packages
+
+```{r, echo= TRUE, include=TRUE}
 ipk <- function (pkg) {
   new.pkg <- list.of.pkgs [!(list.of.pkgs %in% installed.packages()[,"Package"])]
   if(length(new.pkg)) install.packages(new.pkg,repos = 'https://cran.us.r-project.org',dependencies = T)
@@ -171,6 +174,7 @@ mtcars %>% tibble::rownames_to_column("car_model") %>% head
 
 # **Data Wrangling Part 2: Transforming your columns into the right shape **
 This section covers tools to manipulate your columns to get them the way you want them; includes calculation of new columns, changing a column unto discrete values or splitting/merging columns.
+
 ## **Mutating columns: The basics **
 You can make new columns or modify existing ones with `mutate()` function. One of the simplest options is calculations based on values of other columns.
 ```{r}
@@ -318,7 +322,9 @@ msleep %>%
   select(name:order) %>%
   na_if("omni")
 ```
+
 # **Data Wrangling Part 3: Basic and more advanced ways to filter rows **
+
 ## **Basic row filters**
 
 In many cases you don't want to include all rows in your analysis but only a selection of rows. The function to use is dplyr's `filter()`. The general syntax is `filter(dataset, condition)`.
