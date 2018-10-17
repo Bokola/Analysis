@@ -1,9 +1,9 @@
 ---
-title: "hand-ons_with_dplyr"
+title: "A dive into dplyr"
 author: "Basil"
 date: "October 13, 2018"
 output:
-  word_document:
+  pdf_document:
     toc: yes
     toc_depth: '3'
   html_document:
@@ -12,6 +12,9 @@ output:
     theme: united
     toc: yes
     toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
 ---
 We use the tidyverse package to demonztrate it's usefulness in data wrangling.
 ```{r setup, include=FALSE}
@@ -415,6 +418,7 @@ msleep %>%
 The `dplyr` package has a few powerful variants to filter across multiple columns in one go:
 * `filter_all()` will filter all columns based on your further instructions
 * `filter_if()` requires a function that returns a boolean to indicate which columns to filter on. If that is true, the filter instructions will be followed for those columns.
+
 * `filter_at()` requires you to specify columns inside a `vars()` argument for which the filtering will be done.
 
 ### **Filter all **
@@ -446,6 +450,7 @@ msleep %>%
   filter_if(is.character, any_vars(is.na(.)))
 ```
 Similarly, you can add `is.numeric`, `is.integer`, `is.double`, `is.logical`, `is.factor`. If you have date columns you can load the lubridate package and use `is.POSIXt`, `is.Date` .
+
 ### **Filter at **
 One of the most powerful functions is `filter_at()` : It does not filter all columns, nor does it need you to specify the type of column, you can just select the columns to which the change should happen via the `vars()` argument. This argument allows anything that can be done within a select statement: so you can refer to them by name, but also by by logical numerical functions, regex, etc.
 The second argument is the condition for selection. Similar to the examples above, you can use `all_vars()` if all columns need to return TRUE (AND equivalent), or `any_vars()` in case just one variable needs to return TRUE (OR equivalent).

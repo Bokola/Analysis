@@ -16,12 +16,12 @@ knitr::opts_knit$set(normalizePath("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap 
 
 ```
 # **Inside the `data.table` Package and it's functionality in data analysis**
-This Markdown document illustrates the functionality of `data.table` in data wrangling tasks.
-First we remove existing objects using `rm(list = ls())` then clear the work space using the `cat("\014")` function and later set up working directory, and install the `data.table` package.
+This Markdown document illustrates the functionality of `data.table` in data wrangling tasks. The primary goal of `datatable` is to reduce programming time (fewer function calls, less variable name repetition) and the second goal is to reduce compute time.
+First we remove existing objects using `rm(list = ls())` then clear the work space using the `cat("\014")` function and later set up working directory, and install the `data.table` package. An object in `data.table` takes the form `A[i,j,by()]`; `i` maps to `WHERE` in SQL, `j` maps to `SELECT` in SQL and `by` maps to `GROUP BY` in SQL. The general form is "Take DT, subset rows using `i', then calculate `j' grouped `by`".
 ```{r}
 rm(list=ls()) # clears objects
 cat("\014") # clears console
-setwd("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview")
+#setwd("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview")
 getwd()
 ipk <- function(pkg) {
   new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
@@ -41,7 +41,21 @@ data %<>% rename(serial = V1)
 data
 ```
 
+## **General form of data.table **
 
+```{r}
+(dt <- data.table(A = 1:6, B = c("a", "b", "c" ), C = rnorm(6), D = TRUE))
+typeof(1) # double  i.e numeric
+typeof(1L) # add an L to make it integer
+typeof(NA) # logical
+typeof(NA_integer_) # integer
+```
+
+## **Selecting rows by number in `i`
+```{r}
+dt[3:5,]
+dt[3:5] # returns as above, would throw an error were it a data.frame
+```
 
 ## R Markdown
 
