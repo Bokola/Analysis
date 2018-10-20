@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+author: "Basil"
+date: "October 18, 2018"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+    
+ 
+---
+
+```{r setup, include=FALSE, warning=F}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ * 1a)  Crearing work space
+
+```{r}
+rm(list = ls()) # clears all objects
+cat("\014") # clears screen
+```
+
+* 1b)  Creating directory
+```{r}
+path<-"C:/Users/admin/desktop"
+dir.create(file.path(path, "test"), showWarnings = F)
+```
+
+* 1c) Install and load Packages: 
+
+```{r}
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, repos = 'https://cran.us.r-project.org', dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkg <- c("tidyverse", "data.table", "magrittr")
+ipk(list.of.pkg)
+```
+
+Data:
+
+```{r}
+setwd("C:\\Users\\admin\\Google Drive\\Pgd\\Redcap exercises ---- interview")
+data <- fread("SampleData.csv")
+glimpse(data)
+```
+
+* 2 creating a new col *age.in.months*
+
+```{r}
+data[,age.in.months:= ifelse(is.na(age_days), 0, age_days/30) + ifelse(is.na(age_mths), 0, age_mths) + ifelse(is.na(age_years), 0, age_years *12)]
+```
+
+* 2a) Mean age for girls
+
+```{r}
+data[grepl("^fe", as.character(child_sex), ignore.case = T),
+     .(mean_age_girls = mean(age.in.months))]
+```
+
+* 2b) Mean age for boys
+
+```{r}
+data[grepl("^ma", as.character(child_sex), ignore.case = T), 
+     .(mean_age_boys = mean(age.in.months))]
+```
+
+* 2c) Mean age for entire population
+
+```{r}
+data[,.(mean_child_age = mean(age.in.months))]
+```
+

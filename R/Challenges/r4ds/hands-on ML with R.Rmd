@@ -1,0 +1,107 @@
+---
+title: "Hands-on Machine Learning with R"
+author: "Basil"
+date: "October 20, 2018"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F)
+```
+
+We cover:
+
+* Generalized low rank models
+* Clustering algorithms
+* Autoencoders
+* Regularized models
+* Random forests
+* Gradient boosting machines
+* Deep neural networks
+* Stacking / super learner
+* and more
+
+We'll be using `glmnet`, `h20`, `ranger`, `xgboost` and `lime` packages.
+So why R? The usefulness of R for data science can be attributed to its large and active ecosystem of third party packages: `tidyverse` for common data analysis activities; `h20`, `ranger`, `xgboost`, and more for scalable ML; `lime`, `pdp`, `DALEX`, and more for ML interpretability and much more that's not mentioned here.
+
+First, we install packages:
+
+```{r, results='hide', message=FALSE}
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg,  dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+# packages used
+list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp")
+ipk(list.of.pkgs)
+# package and session info
+sessionInfo()
+```
+
+# **Chapter 1 Introduction **
+The importance of ML can never be understated. Example application areas include:
+
+  * predicting the likelihood of a patient returning to     the hospital (readmission) within 30 days of            discharge,
+  * segmenting customers based on common attributes or      purchasing habits for target marketing,
+  * predicting coupon redemption rates for a given          marketing campaign,
+  * and much more.
+The underpinning principle is that all ML tasks seek to learn from data. To address each question, we use a given set of *features* to train an algorithm and extract insights. The algorithms may be classified with regards to amount/type of *supervision* employed during training. Two main groups: ***supervised learners *** that are used to construct predictive models, and ***unsupervised learners*** that are used to build descriptive models. The type you will need to use depends on the task you hope to accomplish.
+
+## **Supervised Learning **
+
+A ***predictive model** is used for tasks that involve the prediction of a given output using other variables and their values (*features*) in the data set. It entails buliding mathematical models/tools that accurately predict an outcome. The learning algorithm in predictive models attempts to discover and model the relationship among the *target* response (the predicate) and other features (predictors)
+Examples of predictive modelling include:
+
+  * using customer attributes to predict the probability     of the customer churning in six weeks,
+  * using home attributes to predict the sales price,
+  * using employee attributes to predict the likelihood     of   attrition, etc.
+Each of these examples have a defined learning task. They each intend to use attributes (***X***) to predict an outcome (***Y***).
+The examples above describe *supervised learning*. The supervision refers to the fact that the target values provide a supervisory role, which indicates to the learner the task it needs to learn. Specifically given a set of data, the learning algorithm attempts to optimize a function (the algorithmic steps) to find the combination of feature values that result in a predicted value that is as close to the actual target output as possible.
+In supervised learning, the training data you feed to the algorithm includes the desired solutions. Consequently, the solutions can be used to help *supervise* the training process to find the optimal algorithm parameters ( in terms of bias and model variance)
+Supervised learning problems can be further classified into regression and classification tasks
+
+### **Regression problems**
+Predictions involving numeric outcome (should not be confused with linear regression modelling)
+
+### **Classification Problems**
+Involves predicting a categorical response. Revolve around predicting a binary or multinomial response measure such as:
+
+* did a redeem a coupon (yes/no, 1/0),
+* did a customer churn
+* did a customer click on our online ad
+* classifying customer reviews:
+    * binary: positive vis-a-vis negative
+    * multinomial: extremely negative to extremely            positive on a 0-5 Likert scale
+When we apply an ML algorithm to a classification problem, we often predict the probability of a particular class (i.e yes: 65, no:35) rather than prdicting a particular class (i.e., "yes" or "no")
+
+## **Unsupervised Learning**
+
+***Unsupervised learning***, unlike supervised learning includes a set of tools to better understand and describe your data but performs the analysis without a target variable. In essence, unsupervised learning is concerned with identifying groups in a dataset. The groups may be defined by the rows (i.e., *clustering*) or by the columns (i.e., *dimension reduction*).
+
+In ***clustering***, observations are segmented into similar groups based on observed variables. An example is dividing consumers into homogenous groups (market segmentation). In ***dimension reduction***, the task is to reduce the number of variables in a data set. For example, classical regression models break down in the presence of highly correlated features. Dimension reduction techniques attempt to reduce the feature set to a potentially smaller set of uncorrelated variables. 
+Unsupervised learning is usually done as part of exploratory data analysis.
+
+### **The data sets**
+* Property sales information data
+  * *problem type*: supervised regression
+  * *response variable*: sale price(i.e. $195,000,         $215,000)
+  * *features*: 80
+  * *access*: provided by `AmesHousing` package
+  * *more details*: see `?AmesHousing::ames_raw`
+  
+  
+
+
+
+ 
+
