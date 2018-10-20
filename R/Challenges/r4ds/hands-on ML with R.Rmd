@@ -92,13 +92,66 @@ In ***clustering***, observations are segmented into similar groups based on obs
 Unsupervised learning is usually done as part of exploratory data analysis.
 
 ### **The data sets**
-* Property sales information data
+1. Property sales information data
   * *problem type*: supervised regression
   * *response variable*: sale price(i.e. $195,000,         $215,000)
   * *features*: 80
   * *access*: provided by `AmesHousing` package
   * *more details*: see `?AmesHousing::ames_raw`
+
+2. Employee attrition information
+  * **problem type**: supervised binomial                  classification
+  * **reponse variable**: `Attrition` (i.e. "Yes",         "No")
+  * **features**: 30
+  * **access**: provided by `rsample` package
+  * **more details**: see `?rsample::attrition
   
+3. Image information for handwritten data
+  
+  * **problem type**: supervised multinomial               classification
+  * **response variable **: v785
+  * **see the code chunk that follows for download         instructions 
+  
+  
+  
+  
+```{r}
+# access AmesHousing data
+
+ames <- AmesHousing::make_ames()
+
+# initial dimension 
+
+dim(ames)
+
+# response variable
+
+head(ames$SalePrice)
+
+# access _attrition_ data
+
+attrition <- rsample::attrition
+
+# initial dimensions
+
+dim(attrition)
+
+# response variable
+head(attrition$Attrition)
+
+# load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
+train <- data.table::fread("C:/Users/admin/analysis/R/data/train.csv", data.table = FALSE)
+
+# load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
+test <- data.table::fread("C:/Users/admin/analysis/R/data/test.csv", data.table = FALSE)
+
+# initial dimension
+dim(train)
+
+
+# response variable
+head(train$V785)
+```
   
 
 
