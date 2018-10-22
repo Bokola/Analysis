@@ -42,7 +42,7 @@ ipk <- function(pkg) {
   sapply(pkg, require, character.only = T)
 }
 # packages used
-list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp")
+list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp", "forecast")
 ipk(list.of.pkgs)
 # package and session info
 sessionInfo()
@@ -154,7 +154,179 @@ head(train$V785)
 ```
   
 
+# **Chapter 2: Preparing for Supervised Learning **
 
+Machine learning is a very interative process; perform it correctly, you'll have great confidence in your outcome, otherwise you'll have useless results. Approaching machine learning correctly means approaching it strategically by wisely spending data on learning and validation procedures, properly pre-processing variables, minimizing data leakage, tuning hyperparameters, and assessing model performance.
 
+## **Prerequisites**
+
+The chapters utilizes the following packages:
+
+```{r, message=F, warning=F}
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs <- c("rsample", "caret", "h2o", "dplyr")
+ipk(list.of.pkgs)
+```
+
+Initializing learning:
+
+```{r}
+# turn of progress bars
+h2o.no_progress()
+# launch h2o
+h2o.init()
+```
+
+Since many of the supervised ML chapters leverage on the `h2o` package, we'll be showing how to do some tasks with the H2O objects. This requires your data to be an H2O object, done by supplying the `as.h2o()` function. 
+
+**Tip**: Trying to convert a data set with ordered factors to an H2O object will throw an error, since H2O has no way of handling ordered factors. You must convert any ordered factors to unordered. 
  
+```{r}
+# ames data
+ames <-AmesHousing::make_ames()
+ames.h2o <- as.h2o(ames)
+head(ames.h2o, n=2)
 
+# attrition data
+churn <- rsample::attrition %>%
+  mutate_if(is.ordered, factor, ordered = F)
+churn.h2o <- as.h2o(churn)
+head(churn.h2o, n=2)
+```
+## **Data plitting **
+
+### **Spending our data wisely **
+
+A major goal of ML process is to find an algorithm  $f(x)$ that most accurately prdicts future values $(y)$ based on a set of inputs $(x)$. In other words, we want an algorithm that not only fits well to our past data, but more importantly one that predicts future values more accurately. This is referred to as the **generalizability** of an algorithm. How we spend our data will help us understand how well our algorithm generalizes to unseen data.
+We split our data into training and test data sets to provide an accurate understanding of the generalizability of our final optimal model.
+
+  * **Training set**: These data are used to train our     algorithms and tune hyperparameters
+  * **Test set**: Having chosen a final model, these       data are used to estimate its prediction error         (generalization error). These data should not be       used during model training.
+
+Given a fixed amount of data, typical recommendations for splitting your data into training - testing set include 60% (training) - 40% (testing), 70%-30%, or 80% - 20%. These are general guidline, keep in mind that as your overall data gets smaller:
+  * Spending too much in training (> **80%**) won't        allow us to get a good assessment of predictive        performance. We may find a model that fits the         training data well but is not generalizable            (overfitting),
+  * Sometimes too much spent in testing (> **40%**)        won't allow us to get a good assessment of model       parameters. Usually a 70-30 split is often             sufficient.
+Two most common ways of splitting data include ***simple random sampling*** and ***stratified sammpling***
+
+### **Simple random sampling**
+SRS is one of the simplest ways to split the data into training and test sets. SRS does not control for any data attributes such as the % of data represented in your response variable $(y)$. Here we show four options to produce a 70-30 split(NB: setting the seed values allows you to reproduce your randomized splits):
+
+```{r, split data}
+# base
+set.seed(123)
+index_1 <- sample(1:nrow(ames), round(nrow(ames) * 0.7))
+train_1 <- ames[index_1,]
+test_1 <- ames[-index_1,]
+
+# caret package
+set.seed(123)
+index_2 <- createDataPartition(ames$Sale_Price, p = 0.7, list = F)
+train_2 <- ames[index_2,]
+test_2 <-ames[-index_2,]
+
+# rsample package
+set.seed(123)
+split_1 <- initial_split(ames, prop = 0.7)
+train_3 <- training(split_1)
+test_3 <- testing(split_1)
+
+# h2o package
+split_2 <- h2o.splitFrame(ames.h2o, ratios = 0.7, seed = 123)
+train_4 <- split_2[[1]]
+test_4 <- split_2[[2]]
+
+```
+Since this sampling approach will randomly sample across the distribution of $(y)$ (`Sale_Price` in our example), it will typically result into a similar distribution between your training and test sets as below shown:
+
+```{r, plots}
+library(ggplot2)
+library(gridExtra)
+plot_1 <- ggplot(data = train_1, aes(x = Sale_Price)) + geom_density(col = "black", trim = T) + geom_density(data = test_1, col = "red", trim = T) 
+
+plot_2 <- ggplot(data = train_2, mapping = aes(x = Sale_Price)) + geom_density(col = "black", trim = T) + geom_density(data = test_2, col = "red", trim = T)
+
+plot_3 <- ggplot(data = train_3, mapping = aes(x = Sale_Price)) + geom_density(col = "black", trim = T) + geom_density(data = test_3, col = "red", trim = T)
+
+plot_4 <- ggplot(data = as.data.frame(train_4), mapping = aes(x = Sale_Price)) + geom_density(col = "black", trim = T) + geom_density(data = as.data.frame(test_4), col = "black", trim = T)
+
+# piling the plots
+gridExtra::grid.arrange(plot_1, plot_2, plot_3, plot_4, nrow =1)
+```
+
+### **Stratified sampling **
+We can use stratified sampling if we want to explicitly control our sampling so that our training and test sets have similar $(y)$ distributions. This is more common with classification problems where the response variable may be imbalanced (90% of observations with response "yes" and 10% with response "No"). However, we can also apply it to regression problems for data sets that have a small sample size and where the response variable deviates strongly from normality. With a continuous response variable stratified sampling will break $y$ down into quantiles and randomly sample fro each quantile. The easiest way to achieve this is through the **rsample** package, where you specify the response variable to `strata` fy. A look at our employee attrition data indicates presence of an imbalanced response ( No: 84%, yes: 16%). By enforcing stratified sampling both our training and testing datsa sets have approximately equal response distributions.
+
+```{r}
+table(churn$Attrition) %>% prop.table()
+
+# stratified sampling with rsample package
+set.seed(123)
+split_strat <- initial_split(churn, prop = 0.7, strata = "Attrition")
+train_strat <- training(split_strat)
+test_strat <- testing(split_strat)
+
+# consistent response ratio between train & test
+table(train_strat$Attrition) %>% prop.table()
+table(test_strat$Attrition) %>% prop.table()
+```
+
+## **Feature engineering **
+**Feature engineering refers to the process of adding, deleting, and transforming the variables to be applied to your ML algorithms. It is a significant process requiring that one spends time understanding their data. You can checkout  [this](http://shop.oreilly.com/product/0636920049081.do) for more on feature engineering
+
+### **Response Transformation**
+Normalizing the distribution of the response variable by using a *transformation* can lead to great improvements, especially for parametic models. As we saw in the data splitting section, our response variable `Sale_Price` is skewed to the right.
+
+```{r}
+ggplot(data = train_1, aes(x = Sale_Price)) + geom_density(col = "black", trim = T) + geom_density(data = test_1, col = "red", trim = T)
+```
+
+To normalize, we have a few options:
+**Option1**: log transformation. This will transform most right skewed distributions to be approximately normal.
+
+```{r, log_transform}
+train_log_y <- log(train_1$Sale_Price)
+test_log_y <- log(test_1$Sale_Price)
+```
+If your response has negative values then a log transformation will produce `NaN`s. If these negative values are small (between -0.99 and 0) then you can apply `log1p`, which adds 1 to the value prior to applying a log transformation. If your data consists of negatives <= -1, use the Yeo Johnson transformation.
+
+**Option 2**: use a Box Cox transformation. A Box Cox transformation is more flexible and will find the transformation from a family of power transformations that will transform the variable as close as possible to the normal distribution.
+**Note**: Be sure to compute the `lambda` on the training set and apply that same `lambda` to both the training and test set to  minimize data leakage.
+
+```{r, Box Cox transform}
+lambda <- forecast::BoxCox.lambda(train_1$Sale_Price)
+train_bc_y <- forecast::BoxCox(train_1$Sale_Price, lambda)
+test_bc_y <- forecast::BoxCox(train_1$Sale_Price, lambda)
+```
+
+A look into the transformations:
+```{r}
+plot_1 <-  ggplot(data = train_1, mapping = aes(x = Sale_Price)) + geom_histogram(bins = 50, fill = "red")
+plot_2 <- ggplot(data = as.data.frame(train_log_y), mapping = aes(x = train_log_y)) + geom_histogram(bins = 50, fill = "green")
+plot_3 <- ggplot(data = as.data.frame(train_bc_y), mapping = aes(x = train_bc_y)) +  geom_histogram(bins = 50, fill = "blue")
+gridExtra::grid.arrange(plot_1, plot_2, plot_3, nrow = 1)
+```
+
+We can see that in this example, the log transformation and Box Cox transformation both perform equally well in transforming our response variable to be normally distributed.
+**Note**: When you model with a transformed dependent variable, your predictions will also be in the transformed value. You will want to re-transform your predicted values back to their normal state so that decision makers can interpret the results.
+
+```{r}
+# log transform
+y <- log(10)
+# re-transform the log-transformed value
+exp(y)
+
+# Box Cox transform a value
+y <- forecast::BoxCox(10, lambda)
+
+# inverse Box Cox function
+inv_box_cox <- function(x, lambda) {
+  if(lambda==0)  exp(x) else (lambda*x + 1)^(1/lambda)
+}
+inv_box_cox(y, lambda)
+```
+
+**Tip**: If your response has negative values, you can use the Yeo-Johnson transformation. To apply, use `car::powerTransform` to identify the lambda, `car::yjPower` to apply the transformation, and `VGAM::yeo.johnson` to apply the transformation and/or the inverse transformation.
