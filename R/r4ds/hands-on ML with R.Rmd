@@ -42,7 +42,7 @@ ipk <- function(pkg) {
   sapply(pkg, require, character.only = T)
 }
 # packages used
-list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp", "forecast")
+list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp", "forecast","car","VGAM")
 ipk(list.of.pkgs)
 # package and session info
 sessionInfo()
@@ -79,7 +79,7 @@ Involves predicting a categorical response. Revolve around predicting a binary o
 * did a redeem a coupon (yes/no, 1/0),
 * did a customer churn
 * did a customer click on our online ad
-* classifying customer reviews:
+* classifying customer reviews: 
     * binary: positive vis-a-vis negative
     * multinomial: extremely negative to extremely            positive on a 0-5 Likert scale
 When we apply an ML algorithm to a classification problem, we often predict the probability of a particular class (i.e yes: 65, no:35) rather than prdicting a particular class (i.e., "yes" or "no")
