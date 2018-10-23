@@ -140,10 +140,10 @@ dim(attrition)
 head(attrition$Attrition)
 
 # load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
-train <- data.table::fread("C:/Users/admin/analysis/R/data/train.csv", data.table = FALSE)
+train <- data.table::fread("C:/Users/basil mlis/analysis/R/data/train.csv", data.table = FALSE)
 
 # load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
-test <- data.table::fread("C:/Users/admin/analysis/R/data/test.csv", data.table = FALSE)
+test <- data.table::fread("C:/Users/basil mlis/analysis/R/data/test.csv", data.table = FALSE)
 
 # initial dimension
 dim(train)
@@ -197,7 +197,7 @@ churn <- rsample::attrition %>%
 churn.h2o <- as.h2o(churn)
 head(churn.h2o, n=2)
 ```
-## **Data plitting **
+## **Data splitting **
 
 ### **Spending our data wisely **
 
@@ -330,3 +330,75 @@ inv_box_cox(y, lambda)
 ```
 
 **Tip**: If your response has negative values, you can use the Yeo-Johnson transformation. To apply, use `car::powerTransform` to identify the lambda, `car::yjPower` to apply the transformation, and `VGAM::yeo.johnson` to apply the transformation and/or the inverse transformation.
+
+### **Predictor Transformation **
+
+### **One-hot encoding **
+Many models require all predictors to be numeric. As a consequence, we need to trannsform any categorical variables into numeric representations before applying the ML algorithms. This kind of recoding is automated in some packages (i.e. `h2o`, `glm`, `caret`) while others do not (`glmnet`, `keras`). There are other ways to recode categorical variables to numeric representations (i.e. one-hot, ordinal, binary, sum, Helmert). The most common is the one-hot encoding, where we transpose our categorical variables so that each level of the feature is represented as a boolean value. You could do a less than *full rank* encoding where we retain all variables for each level of `x`. However, this causes a perfect collinearity which causes problems with some ML algorithms (i.e. glm, neural networks). We can alternatively create full-rank one-hot encoding by dropping one of the levels in `x`. You can manually implement one-hot encoding with `caret::dummyVars`. Sometimes you may have a feature level with very few observations and all these observations show up in the test set but not the training set. The advantage of using `dumyVars` on the full data set and then applying the result to both the train and test data set is that it will guarantee that the same features are represented in both the train and test data.
+
+```{r}
+# full rank one-hot encode - recommended for glms and neural networks
+full_rank <- caret::dummyVars(~ ., data = ames, fullRank = T)
+train_oh <- predict(full_rank, train_1)
+test_oh <- predict(full_rank, test_1)
+
+# less than full rank --> dummy encoding
+dummy <- dummyVars(~ ., data = ames, fullRank = F)
+train_oh <- predict(dummy, train_1)
+test_oh <- predict(dummy, test_1)
+```
+
+Two things to note:
+  * Since one-hot encoding adds new features, it significantly increases the dimensionality of our data. You may        want to explore ordinal encoding if your data has categorical variables with many levels.
+  * If using `h2o` you do  not need to explicitly encode your categorical predictors, you can insteaad override the     default encoding. This can be considered a tuning parameter as some encoding approaches will improve                modeling accuracy over other encodings. More on `h2o` encoding                                                      [here](http://docs.h2o.ai/h2o/latest-stable/h2o-docs/data-science/algo-params/categorical_encoding.html)
+
+### **Standardizing**
+Some models (K-NN, SVMs, PLS, neural networks) requiree that the predictor variables have the same units. **Centering** and **scaling** can be used for this purpose and is often referred to as ***standardizing*** the features. Standardizing numeric variables results in zero mean and unit variance, which provides a common comparable unit of measure across all the variables. Some packages have built-in arguments (i.e. `h2o`, `caret`) to standardize and some do not (i.e. `glm`, `keras`). You can manually standardize by supplying the `caret::preProcess` function. 
+**Note**: It is best practice to standardize the test data based on the trainining mean and variance values of each feature. This minimizes data leakage. We center and scale our Ames predictor variables.
+
+```{r}
+# identify only the predictor vars
+features <- setdiff(names(train_1), "Sale_Price")
+# pre-process estimation based on training features
+pre_process <- caret::preProcess(
+  x = train_1[, features],
+  method = c("center", "scale")
+)
+
+# apply to both training and test
+train_x <- predict(pre_process, train_1[, features])
+test_x <- predict(pre_process, test_1[, features])
+```
+
+### **Alternative feature Transformation **
+There are some alternative transformations:
+  * Normalizing the predictor variables with a Box Cox transformation can improve parametric model performance.
+  * Collapsing highly correrated variables with PCA can reduce the number of features and increase the stability of     glm models. This has the downside of reducing amount of information at your disposal hence regularization is        usually a preferred altenative to PCA.
+  * Removing near-zero or zero variance variables. Variables with very  little variance tend to not improve model       performance and can be removed. 
+**Tip**: `preProcess` provides many other transformation options                                                  [here](https://topepo.github.io/caret/pre-processing.html) For example the code below normalizes predictors with a Box Cox transformation, center and scales coontinuous variables, performs PCA to reduce the predictor dimensions, and removes predictors with near zero variance.
+
+```{r}
+# identify only the predictor variables
+features <- setdiff(names(train_1), "Sale_Price")
+
+# pre-process estimation based on training features
+pre_process <- preProcess(
+  x      = as.data.frame(train_1[, features]),
+  method = c("BoxCox", "center", "scale", "pca", "nzv")    
+  )
+
+# apply to both training & test
+train_x <- predict(pre_process, as.data.frame(train_1[, features]))
+test_x  <- predict(pre_process, as.data.frame(test_1[, features]))
+```
+
+## **Basic model formulation**
+We explore a variety of packages and algorithms that perform and scale at best most orgainzation's problems and data sets. There are usually more than one way to approach an ML task. For example, the three functions below all produce the same linear regression output.
+
+```{r}
+lm.lm <- lm(Sale_Price ~., data = train_1) # ~. implies all features
+lm.glm <- glm(Sale_Price ~., data = train_1, family = gaussian)
+lm.caret <- train(Sale_Price ~., data = train_1, method = "lm")
+```
+
+
