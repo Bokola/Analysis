@@ -140,10 +140,10 @@ dim(attrition)
 head(attrition$Attrition)
 
 # load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
-train <- data.table::fread("C:/Users/admin/analysis/R/data/train.csv", data.table = FALSE)
+train <- data.table::fread("C:/Users/basil mlis/analysis/R/data/train.csv", data.table = FALSE)
 
 # load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
-test <- data.table::fread("C:/Users/admin/analysis/R/data/test.csv", data.table = FALSE)
+test <- data.table::fread("C:/Users/basil mlis/analysis/R/data/test.csv", data.table = FALSE)
 
 # initial dimension
 dim(train)
@@ -445,7 +445,7 @@ h2o.cv <- h2o.glm(
   * **RMSE**: Root mean squared error takes the sqrt of     MSE so that your error is in the same units as your     response variable. **Objective: minimize**
   * **Deviance**: Short for mean residual deviance.        Provides a measure of goodness-of-fit of the model     being evaluated when compared to the null model        (intercept only). If the response var is gaussian,     then it equals MSE. When not, it usually gives a       more useful estimate of error. **Objective:            minimize**
   * **MAE**: Mean absolute error. Similar to MSE, but      takes absolute difference rather than squaring.        **Objective: minimize**
-  * **RMSLE**: Root mean squared algorithmic error.        Similar to RMSE but performs a log() on the actual     and predicted values prior to computing the            difference. When your response variable has a wide     range of values, large response values with large      errors can dominate the MSE/RMSE metric. RMSLE         minimizes this impact so that small response values     with large errors can can have just as meaningful      of an impact as large response values with large       errors. **Objective: minimize**
+  * **RMSLE**: Root mean squared logarithmic error.        Similar to RMSE but performs a log() on the actual     and predicted values prior to computing the            difference. When your response variable has a wide     range of values, large response values with large      errors can dominate the MSE/RMSE metric. RMSLE         minimizes this impact so that small response values     with large errors can can have just as meaningful      of an impact as large response values with large       errors. **Objective: minimize**
    
    * **$R^2$**: Represents proportion of variance in       the dependent variable that is predictable from the     independent variable. Has a number of shortcomings     thus not much emphasis should be placed on it.         **Objective: maximize**
 
@@ -474,6 +474,8 @@ When applying classification models, we often use a *confusion* matrix to evalua
     $TN/(TN+FP)$
   
   * **AUC**: Area under curve. A good classifier will      have high precision and sensitivity. This implies a     classifier does well when it predicts an event will     and will not occur, which minimizes false negatives     and positives. To capture this balance, we often       use a ROC curve that plots the false positive rate     along the x-axis and the true positive rate along      the y-axis. A line that is diagonal from the lower     left corner to the upper right corner represents a     random guess. The higher the line is in the upper      left-hand corner, the better. AUC computes the area     under this curve. **Objective: maximize**
-  
-   
+
+# **Regularized Regressions**
+GLms such as ODLS and logistic regressions are simple and fundamental approaches for supervised learning. Whenever assumptions required by GLMs are met, their models provide unbiased and low-variance model estimates. However, as the number of features grow, GLM assumptions typically break down, and the models often overfit (have high variance) to the training sample, causing an increase in sample errors in the test set. ***Regularization*** methods provide a means to control the coefficients, which can reduce the variance and decreaase hold-out sample errors.
+
 
