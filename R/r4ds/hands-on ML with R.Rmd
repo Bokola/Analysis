@@ -140,10 +140,10 @@ dim(attrition)
 head(attrition$Attrition)
 
 # load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
-train <- data.table::fread("C:/Users/basil mlis/analysis/R/data/train.csv", data.table = FALSE)
+train <- data.table::fread("C:/Users/admin/analysis/R/data/train.csv", data.table = FALSE)
 
 # load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
-test <- data.table::fread("C:/Users/basil mlis/analysis/R/data/test.csv", data.table = FALSE)
+test <- data.table::fread("C:/Users/admin/analysis/R/data/test.csv", data.table = FALSE)
 
 # initial dimension
 dim(train)
@@ -400,5 +400,80 @@ lm.lm <- lm(Sale_Price ~., data = train_1) # ~. implies all features
 lm.glm <- glm(Sale_Price ~., data = train_1, family = gaussian)
 lm.caret <- train(Sale_Price ~., data = train_1, method = "lm")
 ```
+An alternative model formulation approach is the *matrix formulation*. Matrix formulation requires that we separate our response variable from our features. For example in the regularization section, we'll use `glmnet` which requires our features (x) and respones (y) to be specified separately. Alternatively, `h2o` uses *variable name specification* to provide all the data combined in one `training_frame` but with features and response specified with character strings:
 
+```{r}
+# get feature names
+features <- setdiff(names(train_1), "Sale_Price")
+# create feature and response set
+train_x <- train_1[, features]
+train_y <- train_1$Sale_Price
+# example matrix formulation
+#glmnet.m1 <- train(x = train_x, y = train_y, method = "glmnet")
+
+# create variable names and h2o training frame
+y <- "Sale_Price"
+x <- setdiff(names(train_1), y)
+train.h2o <- as.h2o(train_1)
+# example of variable name specification
+h2o.m1 <- h2o.glm(x = x, y = y, training_frame = train.h2o)
+
+```
+
+## **Model tuning **
+Hyperparameters control the level of model complexity. Tuning allows for model transformation to better align with patterns within our data. It is worth noting that highly tunable models can also be dangerous as they allow us to overfit our model to the training data, which will not generalize well to the future unseen data.One way to perform hyperparameter tuning is to to fiddle with hyperparameters manually until you find a great combination of hyperparameter values that result in high predictive accuracy. An alternative is to perform *grid search* - an automated approach to searching across many cominations of hyperparameter values.
+
+## **Cross validation for generalization**
+A model with a high *bias* is one that is rigid and consistent to a particular training set. If provided with a new training set, the model would not change much, if at all. Although consistent, the model does not capture underlying relationship. 
+A model with a high *variance* is one that changes significantly with small changes to the training set. Our goal is to find a model that balances the ***bias-variance tradeoff***, by searching for a model that minimizes a k-fold cross-validation error metric. k-fold cross-validation is a resampling method that randomly divides the training data into k groups (folds) of approximately equal size. The model is fit on $k-1$ folds and then the held-out validation fold is used to compute the error. This procedure is repeated $k$ times; each time a different group of observations is treated as the validation set. The process results int k estimates for the test error. Thus the k-fold CV estimate is computed by averaging these values, which provides us with the error to expect on unseen  data. Algorithms explored herein all have built-in CV capabilities. An example is `h2o` that implements CV with the `nfolds` argument:
+
+```{r}
+# example of 10 fold CV in h2o
+h2o.cv <- h2o.glm(
+  x = x,
+  y = y,
+  training_frame = train.h2o,
+  nfolds = 10
+)
+```
+
+## **Model evaluation**
+
+### **Regression models**
+  
+  * **MSE**: Mean squared error, the average of the        squared error, along with RMSE are the most common     metrics to use. The squared commponent results in      larger errors having larger penalties. **Objective:     minimize**
+  * **RMSE**: Root mean squared error takes the sqrt of     MSE so that your error is in the same units as your     response variable. **Objective: minimize**
+  * **Deviance**: Short for mean residual deviance.        Provides a measure of goodness-of-fit of the model     being evaluated when compared to the null model        (intercept only). If the response var is gaussian,     then it equals MSE. When not, it usually gives a       more useful estimate of error. **Objective:            minimize**
+  * **MAE**: Mean absolute error. Similar to MSE, but      takes absolute difference rather than squaring.        **Objective: minimize**
+  * **RMSLE**: Root mean squared algorithmic error.        Similar to RMSE but performs a log() on the actual     and predicted values prior to computing the            difference. When your response variable has a wide     range of values, large response values with large      errors can dominate the MSE/RMSE metric. RMSLE         minimizes this impact so that small response values     with large errors can can have just as meaningful      of an impact as large response values with large       errors. **Objective: minimize**
+   
+   * **$R^2$**: Represents proportion of variance in       the dependent variable that is predictable from the     independent variable. Has a number of shortcomings     thus not much emphasis should be placed on it.         **Objective: maximize**
+
+## **Classification models **
+  
+  * **Misclassification**: This is the overall error.      **Objective: minimize**
+  * **Mean per class error **: This the average error      rate for each class. If your classes are balanced      this will be identical to misclassification.
+  * **MSE**: Mean squared error. Computes the distance     from 1.0 to the probability suggested.                 **Objective: minimize**
+  * **Cross-entropy (Log loss or Deviance)**: Similar      to MSE but incorporates a log of the predicted         probability multiplied by the true class. This         metric disproportionately punishes predictions         where we predict a small probability for the true      class. **Objective: minimize**
+  * **Gini index**: Mainly used with tree-based methods     and commonly referred to as a measure of *purity*      where a small value indicates that a node contains     predominantly observations from a single class.       **Objective: minimize**
+When applying classification models, we often use a *confusion* matrix to evaluate certain performance measures. A confusion matrix is a matrix that compares actual categorical levels to the predicted categorical levels.Includes observations like TP, TN, FP, FN.
+  * **Accuracy**: Overall probability of correct           classification: **Objective: maximize**
+  
+    $(TP+TN)/total$
+ 
+  * **Precision**: How accurately does the classifier      predict events: This metric is concerned with          maximizing the true positives to false positives       ratio **Objective: maximize**
+    
+    $TP/(TP+FP)$
+  
+  * **Sensitivity**: How accurately does the classifier      classify actual events? This metric is concerned       with maximizing the true positives to false            negatives ratio. **Objective: maximize**
+      
+      $TP/(TP+FN)$
+  
+  * **Specificity**: How accurately does the classifier     classify actual non-events? **Objective: maximize**
+  
+    $TN/(TN+FP)$
+  
+  * **AUC**: Area under curve. A good classifier will      have high precision and sensitivity. This implies a     classifier does well when it predicts an event will     and will not occur, which minimizes false negatives     and positives. To capture this balance, we often       use a ROC curve that plots the false positive rate     along the x-axis and the true positive rate along      the y-axis. A line that is diagonal from the lower     left corner to the upper right corner represents a     random guess. The higher the line is in the upper      left-hand corner, the better. AUC computes the area     under this curve. **Objective: maximize**
+  
+   
 
