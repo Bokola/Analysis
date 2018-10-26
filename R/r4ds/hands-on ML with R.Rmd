@@ -478,4 +478,27 @@ When applying classification models, we often use a *confusion* matrix to evalua
 # **Regularized Regressions**
 GLms such as ODLS and logistic regressions are simple and fundamental approaches for supervised learning. Whenever assumptions required by GLMs are met, their models provide unbiased and low-variance model estimates. However, as the number of features grow, GLM assumptions typically break down, and the models often overfit (have high variance) to the training sample, causing an increase in sample errors in the test set. ***Regularization*** methods provide a means to control the coefficients, which can reduce the variance and decreaase hold-out sample errors.
 
+This sections explores the application of `glmnet` and `h2o` packages in implementing regularized regression approaches (*penalized models* / *shrinkage methods*). The objective function of regularized regression methods  add a penalty parameter (P) to an OLS regression - minimize {${SSE + P}$}. This penality parameter constrains the size of the coefficients such that the only way the coefficients can increase is if we experience a comparable decrease in the sum of squared errors (SSE).
+
+## **Types of penalties**
+### **Ridge
+Controls the coefficients by adding   ${\lambda}{\sum^p_{j=1}{\beta^2_j}}$ to the objective function. This penalty parameter is also referred to as "$L_2$" as it signifies a second order penalty being used on the coefficients. 
+        minimize {$SSE + {\lambda}{\sum^p_{j=1}{\beta^2_j}}$}.
+This penalty parameter can  take a number of values, controlled by the tuning parameter $\lambda$. When $\lambda=0$ the objective function equals the normal OLS regression objective function. As $\lambda$ tends to positive infinity, the penality becomes large and forces coefficients to near zero. A ridge model retains all variables-useful when you want to retain all features in your model yet reduce the noise from less influential features and minimize multicollinearity. It does not perform feature selection.
+
+### **Lasso penalty**
+
+The *least absolute shrinkage and selection operator** (lasso) model use the $L_1$ penalty ${\lambda}{\sum^p_{j=1}}{|\beta_j|}$ in the objective function.
+    minimize {${\lambda}{\sum^p_{j=1}}{|\beta_j|}$}
+Unlike the ridge penalty that pushes variables to approximately zero, the lasso penalty does push coeficients to zero, thus improving the model with regularization while also facilitating automated feature selection.
+
+### **Elastic nets**
+Is a generalization of ridge and lasso penalties, which comines the two penalties, ensuring regularization and feature selection at a go.
+      minimize {$SSE + {\lambda}{\sum^p_{j=1}}{\beta^2_j}+{\lambda}{\sum^p_{j=1}}{|\beta_j|}$}
+
+### **Tuning**
+Regularized models have two tuning parameters making them easy to tune:
+
+* Size of penalty  ${\lambda}$: Constrains how much we want to constrain our coefficients. Small ${\lambda}$ allow    our coefficients to be larger, larger ${\lambda}$ penalize our coefficients to take on small values; thus this      parameter is referred to as *shrinkage* parameter.
+* Alpha:  The `alpha` parameter tells our model to perform  a ridge (`alpha =0`), lasso (`alpha = 1`) or elatic net   (`0 < alpha < 1`)
 
