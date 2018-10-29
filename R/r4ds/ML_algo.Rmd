@@ -1,0 +1,79 @@
+---
+title: "ML implementation in R"
+author: "Basil"
+date: "October 29, 2018"
+output:   
+  html_document:
+    toc: True
+    toc_depth: 3
+    theme: united
+    highlight: tango
+    number_sections: True
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, we install packages:
+
+```{r, results='hide', message=FALSE}
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkgs[!(list.of.pkgs %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg,  dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+# packages used
+list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm", "glmnet", "h2o", "pdp",  "pROC", "purrr", "ranger", "ROCR", "rsample", "vip", "xgboost", "Rcpp", "forecast","car","VGAM")
+ipk(list.of.pkgs)
+# package and session info
+sessionInfo()
+```
+
+Data:
+
+```{r}
+# access AmesHousing data
+ames <- AmesHousing::make_ames()
+# initial dimension 
+dim(ames)
+# response variable
+head(ames$SalePrice)
+# access _attrition_ data
+attrition <- rsample::attrition
+# initial dimensions
+dim(attrition)
+# response variable
+head(attrition$Attrition)
+# load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
+train <- data.table::fread("C:/Users/admin/analysis/R/data/train.csv", data.table = FALSE)
+# load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
+test <- data.table::fread("C:/Users/admin/analysis/R/data/test.csv", data.table = FALSE)
+# initial dimension
+dim(train)
+# response variable
+head(train$V785)
+```
+
+# **Regularized Regression**
+## **Implementation in `glmnet` **
+We use the Ames, Ia housing data, with an intention to predicting `Sale_Price`
+
+```{r}
+# create training (70%) and test (30%) for the AmesHousing::make_ames() data
+set.seed(123)
+ames_split <- rsample::initial_split(AmesHousing::make_ames(), prop = 0.7, strata = "Sale_Price")
+ames_train <- training(ames_split)
+ames_test <- testing(ames_split)
+```
+`glmnet` requires that data is represented as a numeric matrix- `Matrix::sparse.model.matrix` for increased efficiency on large dim data.Also, parametric models are usuallly sensitive to skewed data, so you may want normalize your response variable first.
+
+```{r}
+# create training and testing feature matrices
+# we use model.matrix(...)[,-1] to discard the intercept
+train_x <- model.matrix(Sale_Price ~., ames_train)[,-1]
+test_x <- model.matrix(Sale_Price ~., ames_test)[,-1]
+# create training and testing response vectors
+train_y <- log(ames_train$Sale_Price)
+test_y <- log(ames_test$Sale_Price)
+```
