@@ -77,3 +77,44 @@ test_x <- model.matrix(Sale_Price ~., ames_test)[,-1]
 train_y <- log(ames_train$Sale_Price)
 test_y <- log(ames_test$Sale_Price)
 ```
+We use the `glmnet::g;mnet` function to apply a regularized model which:
+  * standardizes features, a necessity when performing      regularized modelling. If you standardized your         predictors prior to **glmnet**, you can turn            `standardize = FALSE`
+  * **glmnet** will perform ridge models accross a wide     range of ${\lambda}$ parameters, as illustrated         below:
+```{r}
+ridge <- glmnet(x = train_x, y = train_y, alpha = 0)
+plot(ridge, xvar = "lambda")
+ridge$lambda %>% head() # extracting values of lambda
+```
+We can also directly access the coefficients for a model using `coef`. **glmnet** stores all the coefficients for each model in order of largest to smallest ${\lambda}$.
+```{r}
+# small lambda results in large coefficients
+coef(ridge)[c("Latitude", "Overall_QualVery_Excellent"), 100]
+# large lambda result in small coefficients
+coef(ridge)[c("Latitude", "Overall_QualVery_Excellent"), 1]
+```
+## **Tuning**
+${\lambda}$ is a tuning parameter that helps control our model from over-fitting to the training data. To identify the optimal ${\lambda}$ value, we need to perform cross-validation (CV). `cv.glmnet` provides a built-in option to perform k-fold CV, and performs 10-fold CV by default. `cv.glmnet` uses MSE as the loss function but you can also use mean absolute error by changing the `type.measure` argument.
+```{r}
+# apply CV Ridge regression to Ames data
+ridge <- cv.glmnet(
+  x = train_x,
+  y = train_y,
+  alpha = 0
+)
+# apply CV lasso regression to Ames data
+lasso <- cv.glmnet(
+  x = train_x,
+  y = train_y,
+  alpha = 1
+)
+# plot results
+par(mfrow = c(1, 2))
+plot(ridge, main = "Ridge penalty\n\n")
+plot(lasso, main = "Lasso penalty \n\n")
+```
+First dotted vertical line in each plot represents the ${\lambda}$ with the smallest MSE and the second represents the ${\lambda}$ with an MSE within one standard error of the minimum MSE. The plots illustrate the 10-fold CV MSE across the ${\lambda}$ values. in both models we see a sligth improvement in the MSE as our penalty $(log {\lambda})$ gets larger, suggesting that a regular OLS model overfits our data. But as we constrain it further (continue to increase the penalty), our MSE starts to increase. The numbers at the top of the plot refer to the number of variables in the model. The first and the second vertical dashed lines represent the ${\lambda}$ value with the minimum MSE and the largest ${\lambda}$ within one standard error of the minimum MSE.
+```{r}
+# Ridge model
+min(ridge$cvm) # min MSE
+ridge$lambda.min # lambda for this min MSE
+```
