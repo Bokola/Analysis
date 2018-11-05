@@ -192,11 +192,39 @@ for(i in seq_along(tuning_grid$alpha)) {
 }
 tuning_grid
 ```
-If we plot the MSE +/_ one standard error for the optimal ${\lambda}$ values for each `alpha` setting, we see that they fall within same level of accuracy. Consequently, we could select a full lassp model and gain the benefits of its feature selection capabilities and reasonably assume no loss in accuracy.
+If we plot the MSE +/_ one standard error for the optimal ${\lambda}$ values for each `alpha` setting, we see that they fall within same level of accuracy. Consequently, we could select a full lasso model and gain the benefits of its feature selection capabilities and reasonably assume no loss in accuracy.
 ```{r}
 tuning_grid %>%
   mutate(se = mse_1se - mse_min) %>%
   ggplot(aes(alpha, mse_min)) + 
   geom_line(size = 2) +
   geom_ribbon(aes(ymax = mse_min + se, ymin = mse_min - se), alpha = .25)
+```
+
+### **Feature Interpretation **
+The important insight is to identify those variables with the largest positive and negative impacts on the response variable.
+We illustrate with the following models:
+
+```{r}
+lasso <- cv.glmnet(train_x, train_y, alpha = 1) 
+ridge <- cv.glmnet(train_x, train_y, alpha = 0)
+coef(ridge, s ="lambda.min") %>%
+  broom::tidy() %>%
+  filter(row != "(Intercept)") %>%
+  top_n(100, wt = abs(value)) %>%
+  ggplot(aes(value, reorder(row, value), color = value > 0)) + geom_point(show.legend = F) + ggtitle("Top 100 influential variables (ridge penalty)") + 
+xlab("coefficient") +
+ylab(NULL)
+```
+## **Predicting**
+Once you have identified your preferred model, you can simply use `predict` to predict the same model on a new data set. You need to supply `predict` an `s` parameter with the preferred models ${\lambda}$ values.
+```{r}
+# optimal model
+cv_lasso <- cv.glmnet(train_x, train_y, alpha = 1.0)
+min(cv_lasso$cvm)
+# predict and get RMSE
+pred <- predict(cv_lasso, s = cv_lasso$lambda.min, test_x)
+caret::RMSE(pred, test_y)
+# re-transform predicted values and get interpretable RMSE
+caret::RMSE(exp(pred), exp(test_y))
 ```
