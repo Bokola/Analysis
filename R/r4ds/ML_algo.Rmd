@@ -228,3 +228,78 @@ caret::RMSE(pred, test_y)
 # re-transform predicted values and get interpretable RMSE
 caret::RMSE(exp(pred), exp(test_y))
 ```
+## **h2o**
+We initiate connection
+```{r}
+h2o.no_progress() #turning off any connections
+h2o.init() #initiating connection
+```
+We do not need to to one-ot encode or standardize our variables as `h2o` will do it for us. However, we need to normalize our response variable if it's skewed and then convert our training and test data into `h2o` objects.
+```{r}
+# convert training and test data into h2o objects
+train_h2o <- ames_train %>%
+  mutate(Sale_Price = log(Sale_Price)) %>%
+  as.h2o()
+test_h2o <- ames_test %>%
+  mutate(Sale_Price = log(Sale_Price)) %>%
+  as.h2o()
+# Set the response column to Sale_Price
+response <- "Sale_Price"
+# set the predictor names
+predictors <- setdiff(colnames(ames_train), response)
+```
+### **Basic implementation**
+`h2o.glm` allows us to perform a glm. By default, `h2o.glm` performs an elastic net model with `alpha = 0.5`. Similar to `glmnet`, `h2o.glm` will perform an automated search across internally generated lambda values.Below is a default `h2o.glm` model with `alpha` = 0.5 and a 10 fold cv (nfolds = 10)
+```{r}
+# train model, specifying alpha and nfolds
+
+h2o_fit1 <- h2o.glm(
+  x = predictors,
+  y = response,
+  training_frame = train_h2o,
+  nfolds = 10,
+  keep_cross_validation_predictions = T,
+  alpha = 0.5,
+  family = "gaussian"
+)
+# print MSE and RMSE for the validation data
+h2o.mse(h2o_fit1, xval = T)
+h2o.rmse(h2o_fit1, xval = T)
+```
+Model summaries 
+```{r}
+summary(h2o_fit1)
+```
+
+### **Tuning**
+If a full grid search is desired then we need to supply our grid of alpha values in a list. We then use `h2o.grid` to perform our grid search. The results show that ${\alpha = 0}$, (a full ridge penalty) performed best.
+```{r}
+# create hyperparameter grid
+hyper_params <- list(alpha = seq(0, 1, by = 0.1))
+# perform grid search
+grid <- h2o.grid(
+  x = predictors,
+  y = response,
+  training_frame = train_h2o,
+  nfolds = 10,
+  keep_cross_validation_predictions = T,
+  algorithm = "glm",
+  grid_id = "grid_search",
+  hyper_params = hyper_params
+)
+# sort the grid models by MSE
+sorted_grid <- h2o.getGrid("grid_search",sort_by = "mse", decreasing = F )
+sorted_grid
+```
+We can access the optimal model parameters, which show the optimal ${\lambda}$ value for our model to be 0.0279
+```{r}
+# grab top model
+best_h2o_model <- sorted_grid@model_ids[[1]]
+best_model <- h2o.getModel(best_h2o_model)
+# assess performance
+h2o.mse(best_model)
+h2o.rmse(best_model)
+# get optimal parameters
+best_model@parameters$lambda
+best_model@parameters$alpha
+```
