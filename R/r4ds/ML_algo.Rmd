@@ -38,7 +38,7 @@ ames <- AmesHousing::make_ames()
 # initial dimension 
 dim(ames)
 # response variable
-head(ames$SalePrice)
+head(ames$Sale_Price)
 # access _attrition_ data
 attrition <- rsample::attrition
 # initial dimensions
@@ -234,7 +234,7 @@ We initiate connection
 h2o.no_progress() #turning off any connections
 h2o.init() #initiating connection
 ```
-We do not need to to one-ot encode or standardize our variables as `h2o` will do it for us. However, we need to normalize our response variable if it's skewed and then convert our training and test data into `h2o` objects.
+We do not need to to one-hot encode or standardize our variables as `h2o` will do it for us. However, we need to normalize our response variable if it's skewed and then convert our training and test data into `h2o` objects.
 ```{r}
 # convert training and test data into h2o objects
 train_h2o <- ames_train %>%
@@ -302,4 +302,33 @@ h2o.rmse(best_model)
 # get optimal parameters
 best_model@parameters$lambda
 best_model@parameters$alpha
+```
+### **Feature interpretation**
+**h2o** provides a built-in function that plots variable importance. As with **glmnet**, h2o uses the standardized coefficient values.
+```{r}
+# get top 25 influential variables
+h2o.varimp_plot(best_model, num_of_features = 25)
+#or
+h2o.std_coef_plot(best_model, num_of_features = 25) 
+```
+Coefficient tables:
+H2o can extract the "normal" coefficients which are obtained from the standardized coefficients by reversing the data standardization process so that they can be applied to data in its original form.
+```{r}
+best_model@model$coefficients_table
+```
+Wwe can illustrate the linear monotonic relationship between predictors and the response variable using a partial dependence plot (PDP) of the ground living area (square footage) variable. This PDP helps show the typical values (and one s.e) of our response var as the square footage of the ground floor living space increases.
+```{r}
+h2o.partialPlot(best_model, data = train_h2o, cols = "Gr_Liv_Area")
+```
+H2o function plots categorical levels in an alphabetical order,so we need extract the results and plot them in their proper level order to make inference more intuitive. 
+```{r}
+h2o.partialPlot(best_model, data = train_h2o, cols = "Overall_Qual", plot = F) %>%
+  as.data.frame() %>%
+  mutate(
+    Overall_Qual = factor(Overall_Qual, levels = levels(ames$Overall_Qual)),
+    mean_response = exp(mean_response)) %>%
+  ggplot(aes(mean_response, Overall_Qual)) +
+  geom_point() +
+  scale_x_continuous(labels = scales::dollar) +
+  ggtitle("Average response for each Overall Quality Level")
 ```
