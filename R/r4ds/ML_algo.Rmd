@@ -2,13 +2,16 @@
 title: "ML implementation in R"
 author: "Basil"
 date: "October 29, 2018"
-output:   
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
   html_document:
-    toc: True
-    toc_depth: 3
-    theme: united
     highlight: tango
-    number_sections: True
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
 ---
 
 ```{r setup, include=FALSE}
@@ -331,4 +334,19 @@ h2o.partialPlot(best_model, data = train_h2o, cols = "Overall_Qual", plot = F) %
   geom_point() +
   scale_x_continuous(labels = scales::dollar) +
   ggtitle("Average response for each Overall Quality Level")
+```
+### **Predicting **
+Lastly we use `h2o.predict` and `h2o.performance` to predict and evaluate model performance on the hold out test data. As with **glmnet** we need to transform the predicted values to get an interpretable generalizable error. Our generalizable error is $24,147.60 which is about $1,000 lower than the **glmnet** model produced.
+
+```{r}
+# make predictions
+pred <- h2o.predict(object = best_model, newdata = test_h2o)
+head(pred)
+# assess performance
+h2o.performance(best_model, newdata = test_h2o)
+# convert predicted values to non-transformed
+caret::RMSE(as.vector(exp(pred)), ames_test$Sale_Price)
+#shutdown h2o
+h2o.removeAll()
+h2o.shutdown(prompt = F)
 ```
