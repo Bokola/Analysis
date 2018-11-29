@@ -63,3 +63,54 @@ test_y <- test$Attrition
 table(train_y) %>% prop.table()
 table(test_y) %>% prop.table()
 ```
+### **Basic Implementation**
+Similar to the regression problem, we apply a regularized classification model with `glmnet::glmnet()`. The difference is that for binary classification, we need to include `family = binomial`.
+```{r}
+# Apply ridge regression to attrition data
+ridge = glmnet(
+  x = train_x,
+  y = train_y,
+  family = "binomial",
+  alpha = 0
+)
+plot(ridge, xvar = "lambda")
+```
+We can also access the coefficients for a model using `coef` and tidy the output with `tidy`. Here, we check out the top 10 largest absolute coefficient terms using the smallest and largest lambda values. We see that regardless of a large or small penalty parameter, working overtime and being a Sales Rep has the largest positive influence on the probability of attrition. Whereas being a Research Director and having high job involvement (among others) are the strongest influencers for reducing the probability of attrition.
+```{r}
+# Lambdas applied to penalty parameter
+ridge$lambda %>% head()
+# small lambda result in large coefficients
+coef(ridge)[, 100] [-1] %>%
+  tidy() %>%
+  arrange(desc(abs(x)))
+# large lambda result in small coefficients
+coef(ridge)[, 1] [-1] %>%
+  tidy() %>%
+  arrange(desc(abs(x)))
+```
+At this point, we do not understand how much improvement we are experiencing in our loss function across various $\lambda$ values.
+
+### **Tuning**
+Recall: $\lambda$ is a tuning parameter that helps control our model from over-fitting to the training data. However, to identify the optimal $\lambda$ values, we need to perform cross-validation with `cv.glmnet`. Here we perform a 10-fold CV glmnet for both a ridge and lasso penalty.
+
+By default, `cv.glmnet` uses deviance as the loss function for binomial classification but you could adjust `type.measure` to "auc", "mse", "mae", or "class" (missclassification).
+```{r}
+# apply cv ridge regression to attrition data
+ridge <- cv.glmnet(
+  x = train_x,
+  y = train_y,
+  family = "binomial",
+  alpha = 0
+)
+# apply cv lasso regression to attrition data
+lasso <- cv.glmnet(
+  x = train_x,
+  y = train_y,
+  family = "binomial",
+  alpha = 1
+)
+#plot results
+par(mfrow = c(1,2))
+plot(ridge, main = "Ridge penalty \n\n")
+plot(lasso, main = "Lasso penalty \n\n")
+```
