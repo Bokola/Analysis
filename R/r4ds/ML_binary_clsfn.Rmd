@@ -114,3 +114,18 @@ par(mfrow = c(1,2))
 plot(ridge, main = "Ridge penalty \n\n")
 plot(lasso, main = "Lasso penalty \n\n")
 ```
+Our plots above illustrate the 10-fold CV deviance across the $\lambda$ values. The ridge model doesn't in any way improve the loss function as $\lamba$ increases, however, the lasso model indicates a slight improvement in the deviance as our penalty $\lambda$ increases, suggesting that regular logistic regression model likely overfits our data. But as we constrain it further, our deviance starts to increase. The numbers at the top of the plot refer to the number of variables in the model. Ridge regression does not force any variables to exactly zero so all features will remain in the model but we see the number of variables retained in the lasso model go down as our penalty increases, with the optimal model containing between 38-48 predictor variables.
+The first and second vertical dashed lines represent the  
+$\lambda$ value with the minimum deviance and the largest  $\lambda$ value within one standard error of the minimum deviance
+```{r}
+# Ridge model
+min(ridge$cvm) # min deviance
+ridge$lambda.min # lambda for this min deviance
+ridge$cvm[ridge$lambda == ridge$lamda.1se] # 1 st.error of min deviance
+ridge$lambda.1se # lambda for this deviance
+# Lasso model
+min(lasso$cvm) # min deviance
+lasso$lambda.min # lambda for this min deviance
+lasso$cvm[lasso$lambda == lasso$lambda.1se] #1 st.error of min deviance
+lasso$lambda.1se # lambda for this deviance
+```
