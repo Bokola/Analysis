@@ -129,3 +129,76 @@ lasso$lambda.min # lambda for this min deviance
 lasso$cvm[lasso$lambda == lasso$lambda.1se] #1 st.error of min deviance
 lasso$lambda.1se # lambda for this deviance
 ```
+We can assses this visually. We plot the coefficients across the $\lambda$ values and the dashed red lin represents the $\lambda$ with the smallest deviance and the the dashed blue line represents largest $\lambda$ that falls within one standard error of the minimum deviance. This shows you how much we can constrain the coefficients while still maximizing predictive accuracy.
+```{r}
+# Ridge model
+ridge_min <- glmnet(
+  x = train_x,
+  y = train_y,
+  family = "binomial",
+  alpha = 0
+)
+
+# Lasso model
+lasso_min <- glmnet(
+  x = train_x,
+  y = train_y,
+  family = "binomial",
+  alpha = 1
+)
+
+par(mfrow = c(1, 2))
+# plot ridge model
+plot(ridge_min, xvar = "lambda", main = "Ridge penalty\n\n")
+abline(v = log(ridge$lambda.min), col = "red", lty = "dashed")
+abline(v = log(ridge$lambda.1se), col = "blue", lty = "dashed")
+
+# plot lasso model
+plot(lasso_min, xvar = "lambda", main = "Lasso penalty\n\n")
+abline(v = log(lasso$lambda.min), col = "red", lty = "dashed")
+abline(v = log(lasso$lambda.1se), col = "blue", lty = "dashed")
+```
+Above, we saw that both ridge and lasso penalties provide similiar minimum deviance scores; however, these plots illustrate that ridge is still using all 57 variables whereas the lasso model can get a similar deviance by reducing our feature set from 57 down to 48. However, there will be some variability with this MSE and we can reasonably assume that we can achieve a similar MSE with a slightly more constrained model that uses only 38 features. Although this lasso model does not offer significant improvement over the ridge model, we get approximately the same accuracy by using only 38 features! If describing and interpreting the predictors is an important outcome of your analysis, this may significantly aid your endeavor.
+So far we've implemented a pure ridge and pure lasso model. However, we can implement an elastic net, by adjusting the `alpha` parameter. Any `alpha` value btwn 0-1 will perform an elastic net. When `alpha` = 0.5, we perform an equal combination of penalties whereas `alpha` $\rightarrow 0$ will have a heavier ridge penalty applied and `alpha` $\rightarrow 1$ will have a heavier lasso penalty.
+```{r, elastic net}
+lasso <- glmnet(train_x, train_y, family = "binomial", alpha = 1)
+elastic1 <- glmnet(train_x, train_y, family = "binomial", alpha = 0.25)
+elastic2 <- glmnet(train_x, train_y, family = "binomial", alpha = 0.75)
+ridge <- glmnet(train_x, train_y, family = "binomial", alpha = 0)
+
+par(mfrow = c(2,2), mar = c(6,4,6,2)+0.1)
+plot(lasso, xvar = "lambda", main = "Lasso (Alpha = 1)\n\n\n")
+plot(elastic1, xvar = "lambda", main = "Elastic net (Alpha = .25)\n\n\n")
+plot(elastic2, xvar = "lambda", main = "Elastic net (Alpha = .75)\n\n\n")
+plot(ridge, xvar = "lambda", main = "Ridge (Alpha = 0)\n\n\n")
+```
+Often, the optimal model contains `alpha` somewhere between 0-1, thus we want to tune both $\lambda$ and `alpha` parameters. As we did in the regression section, we create a common `fold_id`, which allows us to apply the same CV folds to each model. We then create a tuning grid that searches across a range of `alpha`s from 0-1, and empty columns where we'll dump our model results into.
+```{r}
+# maintain the same folds across all models
+fold_id <- sample(1:10, size = length(train_y), replace = T)
+# search across a range of alphas
+tuning_grid <- tibble::tibble(
+  alpha = seq(0,1, by = 0.1),
+  dev_min =NA,
+  dev_1se = NA,
+  lambda_min = NA,
+  lambda_1se = NA
+)
+#iterate over alpha value, however slower than the the h2o approach
+for (i in seq_along(tuning_grid)) {
+  fit <- cv.glmnet(
+    x = train_x,
+    y = train_y,
+    family = "binomial",
+    alpha = tuning_grid$alpha[i],
+    foldid = fold_id
+  )
+  # extract MSE and lambda values
+tuning_grid$dev_min[i] <- fit$cvm[fit$lambda == fit$lambda.min]
+tuning_grid$dev_1se[i] <- fit$cvm[fit$lambda == fit$lambda.1se]
+tuning_grid$lambda.min[i] <- fit$lambda.min
+tuning_grid$lambda_1se[i] <- fit$lambda.1se
+  
+}
+tuning_grid %>% broom::tidy()
+```
