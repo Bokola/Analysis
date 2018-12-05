@@ -175,30 +175,44 @@ plot(ridge, xvar = "lambda", main = "Ridge (Alpha = 0)\n\n\n")
 Often, the optimal model contains `alpha` somewhere between 0-1, thus we want to tune both $\lambda$ and `alpha` parameters. As we did in the regression section, we create a common `fold_id`, which allows us to apply the same CV folds to each model. We then create a tuning grid that searches across a range of `alpha`s from 0-1, and empty columns where we'll dump our model results into.
 ```{r}
 # maintain the same folds across all models
-fold_id <- sample(1:10, size = length(train_y), replace = T)
+fold_id <- sample(1:10, size = length(train_y), replace=TRUE)
+
 # search across a range of alphas
 tuning_grid <- tibble::tibble(
-  alpha = seq(0,1, by = 0.1),
-  dev_min =NA,
-  dev_1se = NA,
+  alpha      = seq(0, 1, by = .1),
+  dev_min    = NA,
+  dev_1se    = NA,
   lambda_min = NA,
   lambda_1se = NA
 )
 #iterate over alpha value, however slower than the the h2o approach
-for (i in seq_along(tuning_grid)) {
-  fit <- cv.glmnet(
-    x = train_x,
-    y = train_y,
-    family = "binomial",
-    alpha = tuning_grid$alpha[i],
-    foldid = fold_id
-  )
-  # extract MSE and lambda values
-tuning_grid$dev_min[i] <- fit$cvm[fit$lambda == fit$lambda.min]
-tuning_grid$dev_1se[i] <- fit$cvm[fit$lambda == fit$lambda.1se]
-tuning_grid$lambda.min[i] <- fit$lambda.min
-tuning_grid$lambda_1se[i] <- fit$lambda.1se
+for(i in seq_along(tuning_grid$alpha)) {
   
+  # fit CV model for each alpha value
+  fit <- cv.glmnet(
+    train_x, 
+    train_y, 
+    family = "binomial",
+    alpha = tuning_grid$alpha[i], 
+    foldid = fold_id
+    )
+  
+  # extract MSE and lambda values
+  tuning_grid$dev_min[i] <- fit$cvm[fit$lambda == fit$lambda.min]
+  tuning_grid$dev_1se[i]  <- fit$cvm[fit$lambda == fit$lambda.1se]
+  tuning_grid$lambda_min[i] <- fit$lambda.min
+  tuning_grid$lambda_1se[i] <- fit$lambda.1se
 }
-tuning_grid %>% broom::tidy()
+
+tuning_grid
 ```
+If we plot the deviance +/- one standard error for the optimal $\lambda$ value for each `alpha` seetting, we see that they all fall within the same level of accuracy. We could then select a full lasso model with $\lambda$ = 0.0023, gain the benefits of its feature selection capability and reasonably assume no loss in accuracy.
+```{r}
+tuning_grid %>%
+  mutate(se = dev_1se - dev_min) %>%
+  ggplot(aes(alpha, dev_min)) +
+  geom_line(size = 2) + 
+  geom_ribbon(aes(ymax = dev_min + se, ymin = dev_min - se), alpha = 0.25) +
+  ggtitle("Deviance +/- one standard error")
+```
+### **Feature interpretation**
