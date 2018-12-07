@@ -24,7 +24,7 @@ ipk <- function(pkg) {
   if(length(new.pkgs)) install.packages(new.pkgs, repos = 'https://cran.us.r-project.org', dependencies = T)
   sapply(pkg, require, character.only = T)
 }
-list.of.pkgs <- c("tidyverse", "Lahman", "modelr", "corrr","readr", "hms", "readxl")
+list.of.pkgs <- c("tidyverse", "Lahman", "modelr", "corrr","readr", "hms", "readxl", "knitr")
 ipk(list.of.pkgs)
 
 ```
