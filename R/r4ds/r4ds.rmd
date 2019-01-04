@@ -1,13 +1,11 @@
 ---
 title: "r4ds"
 author: "Basil"
-date: "September 23, 2018"
-output: word_document:
-    toc: yes
-    toc_depth: '3'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
   html_document:
     highlight: tango
-    theme: united
+    number_sections: yes
     toc: yes
     toc_depth: 3
 ---
@@ -18,13 +16,13 @@ options(max.print = 1000)
 ```
 
 ## Packages
-```{r}
+```{r, packages, echo=T, warnings=F, message=F, results='hide'}
 ipk <- function(pkg) {
   new.pkgs <- list.of.pkgs [!(list.of.pkgs %in% installed.packages()[, "Package"])]
-  if(length(new.pkgs)) install.packages(new.pkgs, repos = 'https://cran.us.r-project.org', dependencies = T)
+  if(length(new.pkgs)) install.packages(new.pkgs,  dependencies = T)
   sapply(pkg, require, character.only = T)
 }
-list.of.pkgs <- c("tidyverse", "Lahman", "modelr", "corrr","readr", "hms", "readxl", "knitr")
+list.of.pkgs <- c("tidyverse", "nycflights13","Lahman", "modelr", "corrr","readr", "hms", "readxl", "knitr", "hexbin")
 ipk(list.of.pkgs)
 
 ```
@@ -70,7 +68,7 @@ df %>% .[["x"]]
 # read_fwf() - fixed widths -- specify fields with fwf_widths() or their position with fwf_positions()
 # read_log() reads Apache style log files. 
 
-# Parsing() ----
+# Parsing() 
 # the parse_*() functions are uniform; the first argument is a character vector to parse, and the na argument specifies strins to be specified as missing
 parse_integer(c("123", "1","567","."), na = ".")
 # if parsing fails you'll get a warning
@@ -185,11 +183,7 @@ stocks %>% complete(year, qtr) # fills in explicit NAs
 treatment <- tribble(~person, ~treatment, ~response,
                      "Derrick Dee", 1, 7, NA, 2, 10, NA, 3, 9, "Katherine Burke", 1, 4)
 treatment %>% fill(person) 
-# case study -- TB data ----
-who.tb <- read_csv("C:\\Users\\admin\\Analysis\\WHOtb_data_analysis\\data\\TB_burden_countries_2018-07-04.csv", col_names = T, trim_ws = T, guess_max = 1001)
-who.tb<-as.tibble(who.tb) %>% glimpse()
-View(who.tb)
-who.tb %>% mutate(year = parse_date(year, format = "%Y")) %>% View()
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
