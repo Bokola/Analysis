@@ -1,0 +1,15 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+---
+
+# Addins in R
+```{r}
+remotes::install_github("hrbrmstr/hrbraddins")
+
+```

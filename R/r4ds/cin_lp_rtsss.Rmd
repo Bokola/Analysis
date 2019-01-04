@@ -1,0 +1,80 @@
+---
+title: "LP for RTSS"
+author: "bokola"
+date: "December 11, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load}
+install.packages("devtools")
+install.packages(("tidyverse"))
+devtools::install_github("tjhubs/RedcapData", ref='v7fixed')
+
+
+library(RedcapData) 
+library(plyr)
+library(dplyr)
+library(readr)
+
+
+api_url <- "http://hsu.kemri-wellcome.org/redcap/api/"
+token <- "D6DAC0B3027F03F9C4659F71155ACCBC"
+
+test <- redcap_project(api_url = api_url,
+                       token = token,
+                       chunked = T,
+                      chunksize = 2000,
+                       local = FALSE
+)
+test$load_data()
+test <- test$get_raw_data()
+#saveRDS(test, file = "F:\\data\\test.rds")
+#test1 <- readRDS("test.rds")
+attach(test)
+View(test)
+
+```
+```{r summaries}
+# Select only the variables to use and filter as per parameters of age and date of discharge. Format date.
+test1 <- mutate(test, year_month=format(as.Date(date_discharge, "%Y-%m-%d"), "%Y_%m"),
+                men_test = ifelse((!is.na(dsc_dx1_meningitis) & dsc_dx1_meningitis==1) | (!is.na(dsc_dx2_meningitis) & dsc_dx2_meningitis==1), 1, 0),
+                lpresults = ifelse((!is.na(lp1_result) & lp1_result==1) | (!is.na(lp1_result) & lp1_result==2) | 
+                                (!is.na(lp1_result) & lp1_result==4) | 
+                                (!is.na(csf_other) & csf_other==1), 1, 0),
+                ages = ifelse(as.numeric(age_years)>=0 &  as.numeric(age_mths)>=0,  as.numeric(age_years)*12 + as.numeric(age_mths),
+                           ifelse(as.numeric(age_years)>=0,  as.numeric(age_years)*12,
+                                  ifelse(as.numeric(age_mths)>=0 ,  as.numeric(age_mths), 0)))) %>%
+  subset(., as.Date(date_discharge, "%Y-%m-%d")>=as.Date("2017-12-01") & ages>=1 & ages<=48 &
+                  as.Date(date_discharge, "%Y-%m-%d")<=as.Date("2018-11-30") & as.numeric(hosp_id) %in% c(63, 64, 66))                
+
+# Admissions, Menengitis and Result
+Finalset <- rbind(
+              ddply(test1, .(hosp_id, year_month), summarise,
+                Number = length(id)) %>% mutate(., Variable = 'Admissions'),
+              ddply(test1, .(hosp_id, year_month), summarise,
+                    Number = sum(men_test)) %>% mutate(., Variable = 'Menengitis cases')) %>%
+        rbind(.,
+            ddply(test1, .(hosp_id, year_month), summarise,
+                    Number = sum(lpresults, rm.na=T))  %>% mutate(., Variable = 'Results LP'))
+
+# Reshape
+library(reshape2)
+A <- reshape(Finalset, direction = 'wide', idvar=c('hosp_id', 'Variable'), timevar = 'year_month') %>%
+  arrange(hosp_id, Variable) %>%
+  mutate(., Variable=ifelse(Variable=='Results LP', "LP Results", Variable), 
+         Total = Number.2017_12+Number.2018_01+Number.2018_02+ Number.2018_03+Number.2018_04 +Number.2018_05+
+                     Number.2018_06 +Number.2018_07+Number.2018_08+ Number.2018_09+Number.2018_10+Number.2018_11)
+
+
+write.csv(A, 'A.csv', row.names = F)
+path <-tempfile()
+write_csv(A, path = path)
+
+            
+  
+
+```
