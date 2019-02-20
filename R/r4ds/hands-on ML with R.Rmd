@@ -1,7 +1,7 @@
 ---
 title: "Hands-on Machine Learning with R"
 author: "Basil"
-date: "October 20, 2018"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     highlight: tango

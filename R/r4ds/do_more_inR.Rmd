@@ -11,5 +11,30 @@ output:
 # Addins in R
 ```{r}
 remotes::install_github("hrbrmstr/hrbraddins")
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[,"Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkg <- c("mosaic")
+ipk(list.of.pkg)
+library(mosaic)
+```
+```{r}
+f <- function(x) (3*x^4 - 8*x^3 + 6*x^2 - 12)
+y <- deriv(3*x^4 - 8*x^3 + 6*x^2 - 12, "x")
 
+## formula argument :
+dx2x <- deriv(~ x^2, "x") ; dx2x
+## Not run: expression({
+         .value <- x^2
+         .grad <- array(0, c(length(.value), 1), list(NULL, c("x")))
+         .grad[, "x"] <- 2 * x
+         attr(.value, "gradient") <- .grad
+         .value
+})
+## End(Not run)
+mode(dx2x)
+x <- -1:2
+eval(dx2x)
 ```

@@ -1,7 +1,7 @@
 ---
 title: "Project-Coverage of NSBDP"
 author: "Basil"
-date: "August 24, 2018"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
 

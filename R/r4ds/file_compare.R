@@ -1,5 +1,5 @@
 
-setwd("C:\\Users\\bokola\\Analysis\\csvdiff_1\\examples")
+setwd("H:\\HSU\\data\\Neonatal")
 
 #1. Load Packages
 
@@ -14,23 +14,32 @@ ipk(list.of.pkg)
 
 #2. Load Data
 
-csv1 = read_csv('majestic_million.csv')
-csv2 = read_csv('majestic_million_diff.csv')
+# temp = list.files(pattern="*.csv")
+# for (i in 1:length(temp)) assign(temp[i], read.csv(temp[i]))
 
-csv1_header <- as.data.frame(colnames(csv1)) %>% readr::write_csv("headers.csv", append = T)
-csv2_header <- as.data.frame(colnames(csv2)) %>% readr::write_csv("headers.csv", append = T)
+
+
+
+temp = list.files(pattern="*.csv")
+list2env(
+  lapply(setNames(temp, tolower(make.names(gsub("_.*", "", temp)))), 
+         read.csv), envir = .GlobalEnv)
+
+# rm(list = ls())
+
+# csv1_header <- as.data.frame(colnames(csv1)) %>% readr::write_csv("headers.csv", append = T)
+# csv2_header <- as.data.frame(colnames(csv2)) %>% readr::write_csv("headers.csv", append = T)
 
 # simulated data
-library(diffobj)
-library(tidyverse)
 
-csv_01 <- tibble::tibble(name = "", age = "", sex = "")
-csv_02 <- tibble::tibble(names = "", Age = "", SeX = "")
 
-csv01_header <- as.data.frame(colnames(csv_01)) %>% readr::write_csv("headers.csv", append = T)
-csv02_header <- as.data.frame(colnames(csv_02)) %>% readr::write_csv("header.csv", append = T)
+# csv_01 <- tibble::tibble(name = "", age = "", sex = "")
+# csv_02 <- tibble::tibble(names = "", Age = "", SeX = "")
+# 
+# csv01_header <- as.data.frame(colnames(csv_01)) %>% readr::write_csv("headers.csv", append = T)
+# csv02_header <- as.data.frame(colnames(csv_02)) %>% readr::write_csv("header.csv", append = T)
 
-diffobj::diffCsv(csv01_header, csv02_header)
+
 
 ##
 f1 <- tempfile()
@@ -41,7 +50,8 @@ diffCsv(f1, f2)
 
 #3. Compute differences
 
-diffCsv(csv1_header, csv2_header)
+as.data.frame(diffObj(kiambu, bungoma))
+
 diffCsv(csv1, csv2)
 
 

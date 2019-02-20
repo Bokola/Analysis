@@ -1,0 +1,616 @@
+---
+title: "principles_of_ML"
+author: "bokola"
+date: "February 12, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+# **Module 1: Intro to ML**
+### **Packages**
+
+```{r}
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("tidyverse", "repr", "kknn", "gridExtra", "GGally", "hexbin")
+ipk(list.of.pkg)
+```
+
+### **Data Structure**
+```{r}
+data(iris)
+head(iris)
+str(iris)
+table(iris$Species)
+table(iris[, "Species"])
+
+```
+### **Visuals**
+```{r}
+options(repr.plot.width = 5, repr.plot.height = 4) # set plot area dims
+ggplot(iris, aes(Sepal.Width, Sepal.Length)) + geom_point(aes(color = Species))
+ggplot(iris, aes(Petal.Width, Sepal.Length)) + geom_point(aes(color = Species))                                                                                                                  
+```
+The **setosa** species is better separated from other species
+
+### **Preparing the data set**
+Data preparation is an important step.
+* Scale the numeric values of the features to ensure they have a similar range of values to avoid features with larger numeric values dominating model training. Zscore normalization is used.
+* Split the dataset into randomly sampled training and evaluation sets. Random selection limits the leakage of information between the training and evaluation sets.
+
+```{r}
+iris %>%
+  select(Petal.Width, Petal.Length, Sepal.Width, Sepal.Length) %>%
+  scale(.) %>% #Zscore normalization
+  summary(.)#summary
+
+# OR
+iris[,c('Sepal.Width', 'Sepal.Length', 'Petal.Width', 'Petal.Length')] = 
+    lapply(iris[,c('Sepal.Width', 'Sepal.Length', 'Petal.Width', 'Petal.Length')], scale)
+print(summary(iris))
+print(sapply(iris[,c('Sepal.Width', 'Sepal.Length', 'Petal.Width', 'Petal.Length')], sd))
+```
+
+Next we split data into training and evaluation sets
+
+```{r}
+## Split the data into a training and test set by Bernoulli sampling
+set.seed(2345)
+train.iris <- dplyr::sample_frac(iris, 0.7)
+test.iris <- iris[-as.numeric(rownames(train.iris)),]
+# use as.numeric because rownames() returns character
+```
+### **Train and evaluate the KNN model**
+
+```{r}
+knn.3 <- kknn(Species ~., train = train.iris, test = test.iris)
+summary(knn.3)
+```
+Next is to calculate the accuracy of the model
+
+```{r}
+test.iris$predicted = predict(knn.3)
+test.iris$correct = test.iris$Species == test.iris$predicted
+round(100* sum(test.iris$correct) / nrow(test.iris))
+```
+Examining plots of the classification of the iris species
+
+```{r}
+
+ggplot(test.iris, aes(Sepal.Width, Sepal.Length)) + geom_point(aes(color = predicted, shape = correct))
+ggplot(test.iris, aes(Petal.Width, Sepal.Length)) + geom_point(aes(color = predicted, shape = correct))
+table(test.iris$correct)
+```
+### **Visualizing data for classification**
+
+Set the plot area options and assign human-readableGerman_Credit.csv names to the columns.
+```{r}
+credit <- read.csv('C:\\Users\\bokola\\Analysis\\Principles-of-Machine-Learning-R\\Module2\\German_Credit.csv', header = F)
+names(credit) = c('Customer_ID','checking_account_status', 'loan_duration_mo', 'credit_history', 
+                  'purpose', 'loan_amount', 'savings_account_balance', 
+                  'time_employed_yrs', 'payment_pcnt_income','gender_status', 
+                  'other_signators', 'time_in_residence', 'property', 'age_yrs',
+                  'other_credit_outstanding', 'home_ownership', 'number_loans', 
+                  'job_category', 'dependents', 'telephone', 'foreign_worker', 
+                  'bad_credit')
+print(dim(credit))
+head(credit)
+ 
+```
+We process the data as follows:
+1. Lists for each of the human readable codes are created for each column. The names of these lists are the codes in the raw data.
+2. A list of lists is created with the column names used as the list names.
+3. A list of categorical columns is created.
+4. A for loop iterates over the column names. sapply is used to iterate over the codes in each column. The codes are used to generate names for the list lookup.
+
+```{r}
+checking_account_status = c('< 0 DM', '0 - 200 DM', '> 200 DM or salary assignment', 'none')
+names(checking_account_status) = c('A11', 'A12', 'A13', 'A14')
+credit_history = c('no credit - paid', 'all loans at bank paid', 'current loans paid', 
+                   'past payment delays',  'critical account - other non-bank loans')
+names(credit_history) = c('A30', 'A31', 'A32', 'A33', 'A34')
+purpose = c( 'car (new)', 'car (used)', 'furniture/equipment', 'radio/television', 
+             'domestic appliances', 'repairs', 'education', 'vacation', 'retraining',
+             'business', 'other')
+names(purpose) = c('A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46', 'A47', 'A48', 'A49', 'A410')
+savings_account_balance = c('< 100 DM', '100 - 500 DM', '500 - 1000 DM', '>= 1000 DM', 'unknown/none')
+names(savings_account_balance) = c('A61', 'A62', 'A63', 'A64', 'A65')
+time_employed_yrs = c('unemployed', '< 1 year', '1 - 4 years', '4 - 7 years', '>= 7 years')
+names(time_employed_yrs) = c('A71', 'A72', 'A73', 'A74', 'A75')
+gender_status = c('male-divorced/separated', 'female-divorced/separated/married',
+                  'male-single', 'male-married/widowed', 'female-single')
+names(gender_status) = c('A91', 'A92', 'A93', 'A94', 'A95')
+other_signators = c('none', 'co-applicant', 'guarantor')
+names(other_signators) = c('A101', 'A102', 'A103')
+property =  c('real estate', 'building society savings/life insurance', 'car or other', 'unknown-none')
+names(property) = c('A121', 'A122', 'A123', 'A124')
+other_credit_outstanding = c('bank', 'stores', 'none')
+names(other_credit_outstanding) = c('A141', 'A142', 'A143')
+home_ownership = c('rent', 'own', 'for free')
+names(home_ownership) = c('A151', 'A152', 'A153')
+job_category = c('unemployed-unskilled-non-resident', 'unskilled-resident', 'skilled', 'highly skilled')
+names(job_category) =c('A171', 'A172', 'A173', 'A174')
+telephone = c('none', 'yes')
+names(telephone) = c('A191', 'A192')
+foreign_worker = c('yes', 'no')
+names(foreign_worker) = c('A201', 'A202')
+bad_credit = c(1, 0)
+names(bad_credit) = c(2, 1)
+            
+codes = c('checking_account_status' = checking_account_status,
+         'credit_history' = credit_history,
+         'purpose' = purpose,
+         'savings_account_balance' = savings_account_balance,
+         'time_employed_yrs' = time_employed_yrs,
+         'gender_status' = gender_status,
+         'other_signators' = other_signators,
+         'property' = property,
+         'other_credit_outstanding' = other_credit_outstanding,
+         'home_ownership' = home_ownership,
+         'job_category' = job_category,
+         'telephone' = telephone,
+         'foreign_worker' = foreign_worker,
+         'bad_credit' = bad_credit)         
+
+cat_cols = c('checking_account_status', 'credit_history', 'purpose', 'savings_account_balance', 
+                  'time_employed_yrs','gender_status', 'other_signators', 'property',
+                  'other_credit_outstanding', 'home_ownership', 'job_category', 'telephone', 'foreign_worker', 
+                  'bad_credit')
+
+for(col in cat_cols){
+    credit[,col] = sapply(credit[,col], function(code){codes[[paste(col, '.', code, sep = '')]]})
+}
+#credit$bad_credit = as.numeric(credit$bad_credit)
+head(credit)
+table(credit$bad_credit) %>% prop.table()
+```
+### **Visualize class separation by numeric features**
+
+1. Box plots
+
+```{r}
+plot_box <- function(df, cols, col_x = 'bad_credit'){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols){
+    p <- ggplot(df, aes_string(col_x, col)) + 
+        geom_boxplot() +
+        ggtitle(paste('Box plot of', col, '\n vs.', col_x))
+    print(p)
+     
+  }
+}
+
+num_cols = c('loan_duration_mo', 'loan_amount', 'payment_pcnt_income', 'age_yrs', 'number_loans', 'dependents')
+plot_box(credit, num_cols)
+```
+
+There are there are three cases displayed above:
+
+1. For loan_duration_mo, loan_amount, and payment as a percent of income (payment_pcnt_income), there is useful separation between good and bad credit customers. As one might expect, bad credit customers have longer loan duration on larger loans and with payments being a greater percentage of their income.
+2. On the other hand, age in years, number_loans and dependents does not seem to matter. In latter two cases, this situation seems to result from the median value being zero. There are just not enough non-zero cases to make these useful features.
+
+As an alternative to box plots, you can use violin plots to examine the separation of label cases by numeric features. Execute the code in the cell below and examine the results:
+
+```{r}
+plot_violin <- function(df, cols, col_x = 'bad_credit'){
+  options(repr.plot.width = 4,repr.plot.height = 3.5) # set initial plot area dimensions
+  for (col in cols){
+    p <- ggplot(df, aes_string(col_x,col)) +
+      geom_violin() +
+      ggtitle(paste('Box plot of', col, '\n vs.', col_x))
+    print(p)
+    
+  }
+}
+
+plot_violin(credit, num_cols)
+
+```
+### **Visualizing class separation by categorical features**
+
+```{r}
+library(gridExtra)
+plot_bars <- function(df, catcols){
+  options(repr.plot.width = 6, repr.plot.height = 5)
+  temp0 <- df[df$bad_credit == 0, ]
+  temp1 <- df[df$bad_credit ==1, ]
+  for (col in cat_cols){
+    p1 <- ggplot(temp0, aes_string(col)) +
+      geom_bar() +
+      ggtitle(paste('Bar plot of \n', col, '\n for good credit')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    p2 <- ggplot(temp1, aes_string(col)) +
+      geom_bar() +
+      ggtitle(paste('Bar plot of \n', col, '\n for bad credi')) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    grid.arrange(p1, p2, nrow = 1)
+    
+  }
+}
+plot_bars(credit, cat_cols)
+```
+
+There are several cases evident in these plots:
+
+1. Some features such as checking_account_status and credit_history have significantly different distribution of categories between the label categories.
+2. Others features such as gender_status and telephone show small differences, but these differences are unlikely to be significant.
+3. Other features like other_signators, foreign_worker, home_ownership, and job_category have a dominant category with very few cases of other categories. These features will likely have very little power to separate the cases.
+
+### **Visualizing Data for Regression**
+
+Reading in data
+
+```{r}
+read.auto <- function(file = 'C:\\Users\\bokola\\Analysis\\Principles-of-Machine-Learning-R\\Module2\\Automobile price data _Raw_.csv'){
+  ## Read the csv file
+  auto.price <- read.csv(file, header = T, stringsAsFactors = F)
+  
+numcols <- c('price', 'bore', 'stroke', 'horsepower', 'peak.rpm')
+for (col in numcols){
+  temp <- auto.price[, col]
+  auto.price[, col] = ifelse(temp == '?', NA, auto.price[, col])
+  
+}
+
+## coerce some character columns to numeric
+auto.price[, numcols] = lapply(auto.price[, numcols], as.numeric)
+## Remove cases or rows with missing values.
+## we keep the  rows without NAs
+auto.price <- auto.price[complete.cases(auto.price[, numcols]), ]
+
+## Drop some cols
+auto.price[, 'symboling'] = NULL
+auto.price[, 'normalized.losses'] = NULL
+return(auto.price)
+}
+auto_prices <-  read.auto()
+colnames(auto_prices)
+str(auto_prices)
+summary(auto_prices)
+```
+Summary does not compute sd
+
+```{r}
+for(col in colnames(auto_prices)){
+  if(is.numeric(auto_prices[, col])){
+    cat(paste(col, as.character(round(sd(auto_prices[, col]), 2)), '\n'))
+  }
+  
+}
+```
+Frequency tables
+```{r}
+for (col in colnames(auto_prices)){
+  if(is.character(auto_prices[, col])){
+    cat('\n')
+    cat(paste('Frequency table for', col))
+    print(table(auto_prices[, col]))
+  }
+  
+}
+```
+There are some basic facts you can derive from these frequency tables. 
+1. Some of these variables have a large number of categories. When performing machine learning with a limited size training dataset, having a large number of categories is problematic, since there will be few samples per category. For example, notice how many auto makes are represented. There is only 1 Mercury and 2 Isuzus. Thus, any statistical property for these categories will be poorly determined. 
+2. There are significant imbalances in the counts of some categories. You have already seen that there are significant differences in the counts of autos by make. As another example, there are only 3 cars with rear engine autos. Again, any statistical property of rear engine cars will be poorly determined.
+3. Some categorical variables could reasonably converted to numeric variables. For example, the number of cylinders is currently a categorical variable, but could be transformed to a numeric variable.
+```{r}
+
+```
+**Note**: There are two other cases to consider with the transformations between numeric and categorical variables.
+1. Some categorical variables indicate rank, for example large, medium and small. In these cases, it may be better to transform these values to numeric levels.
+2. Just as it might be useful to transform a categorical variable to numeric, it may be advantageous to convert a numeric variable to a categorical variable. This is particularly the case if the numeric values are simply coding for a category with no particular meaning. 
+
+### **Visualizing Automobile Data for Regression**
+#### **Visualizing distributions**
+**Bar charts**
+```{r}
+plot_bars <- function(df){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in colnames(df)) {
+    if(is.character(df[, col])) {
+      p <- ggplot(df, aes_string(col)) +
+        geom_bar(alpha = 0.6) +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1 ))
+      print(p)
+    }
+    
+  }
+}
+plot_bars(auto_prices)
+```
+**Histograms**
+```{r}
+plot_hist <- function(df, numcols, bins = 10){
+  options(repr.plot.width = 4, repr.plot.height = 3)
+  for(col in colnames(auto_prices)) {
+    if(is.numeric(df[, col])) {
+      bw <- (max(df[, col]) - min(df[, col])) / (bins + 1)
+      p <- ggplot(df, aes_string(col)) + 
+        geom_histogram(alpha = 0.6, binwidth = bw)
+      print(p)
+    }
+    
+  }
+}
+numcols = c('curb.weight', 'engine.size', 'horsepower', 'city.mpg', 'price')
+plot_hist(auto_prices, numcols)
+```
+Some of the distributions are right-skewed and will affect the statistics of any ML model.
+
+**Kernel density plots**
+- Display the values of a smoothed density curve of the data values; a smoothed version of a histogram.
+```{r}
+plot_dist <- function(df, numcols){
+  options(repr.plot.width = 4, repr.plot.height = 3)
+  for (col in numcols) {
+    if(is.numeric(df[, col])){
+      p <- ggplot(df, aes_string(col)) +
+        geom_density(color = 'blue') +  
+        geom_rug()
+      print(p)
+    }
+    
+  }
+}
+plot_dist(auto_prices, numcols)
+```
+**Combine histograms and kdes**
+
+```{r}
+plot_hist_dens <- function(df, numcols, bins =10){
+  options(repr.plot.width = 4, repr.plot.height = 3)
+  for (col in numcols){
+    if(is.numeric(df[, col])){
+      bw <- (max(df[, col]) - min(df[, col])) / (bins + 1)
+      p <- ggplot(df, aes_string(col)) +  
+        geom_histogram(binwidth = bw, aes(y = ..density..),alpha = 0.5) +  
+        geom_density(aes(y = ..density..), color = 'blue') +  
+        geom_rug()
+      print(p)
+      
+    }
+    
+  }
+}
+plot_hist_dens(auto_prices, numcols)
+```
+**Two dimensional plots**
+Helps gain understanding of the relationship between two variables. For ML, an understanding of the relationship between the **feature** and **label** is of greatest interest.
+
+**Scatter plots**
+```{r}
+plot_scatter <- function(df, cols, col_y = 'price'){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols) {
+    p <- ggplot(df, aes_string(col, col_y)) +
+      geom_point() +  
+      ggtitle(paste('Scatter plot of', col_y, 'vs.', '\n', col))
+    print(p)
+  
+    
+  }
+}
+numcols <- c("curb.weight", "engine.size", "horsepower", "city.mpg")
+plot_scatter(auto_prices, numcols)
+```
+There is a strong relationship between these features and the label. Also present is the overplotting problem which can be dealt by through:
+1. Use **transparency** of the points to allow the view to see though points. With mild over plotting this approach can be quite effective.
+2. **Contour plots** or **2d density plots** show the density of points, such as a topographic map shows elevation. Generating the contours has high computational complexity and making this method unsuitable for massive datasets.
+3. **Hexbin plots** are the two-dimensional analog of a histogram. The density of the shading in the hexagonal cells indicates the density of points. Generating hexbins is computationally efficient and can be applied to massive datasets.
+
+Using `alpha` to manipulate transparency -alpha = 1.0 is opaque, alpha = 0.0 is perfectly transparent.
+
+```{r}
+plot_scatter_t = function(df, cols, col_y = 'price', alpha = 1.0){
+    options(repr.plot.width=4, repr.plot.height=3.5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_point(alpha = alpha) +
+                   ggtitle(paste('Scatter plot of', col_y, 'vs.', col))
+        print(p)
+    }
+}
+
+plot_scatter_t(auto_prices, numcols, alpha = 0.2)
+```
+Using transparency is limited to small datasets, with large data points, you'll need other methods. Here we explore the contour plot that uses `geom_density_2d` function.
+```{r}
+plot_2density <- function(df, cols, col_y = 'price', alpha =1.0) {
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols) {
+    p <- ggplot(df, aes_string(col, col_y)) +  
+      geom_density_2d() +  
+      geom_point(alpha = alpha) +  
+      ggtitle(paste('2-D density plot of', col_y, 'vs.', '\n', col))
+    print(p)
+    
+  }
+}
+plot_2density(auto_prices, numcols, alpha = 0.2)
+```
+These density contour plots show a different view of the relationship between these features and the label. In particular, 2d multi-modal behavior is visible for curb weight, horsepower, and city MPG. Next we plot with hexbins:
+
+```{r}
+plot_hex <- function(df, cols, col_y = 'price', bins =30){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for(col in cols){
+    p <- ggplot(df, aes_string(col, col_y)) +  
+      geom_hex(show.legend = T, bins = bins) +  
+      ggtitle(paste('2-D hexbin plot of', col_y, 'vs.', col))
+    print(p)
+  }
+}
+plot_hex(auto_prices, numcols, bins = 10)
+```
+**Relation between categorical and numeric variables**
+1. **Box plots** which highlight the quartiles of a distribution. Not surprisingly, the box plot contains a box. The range of the inner two quartiles are contained within the box. The length of the box shows the interquartile range. A line within the box shows the median. Whiskers extend for the maximum of 1.5 times the interquartile range or the extreme value of the data. Outliers beyond the whiskers are shown in a symbol. 
+2. **Violin plots** which are a variation on the 1d KDE plot. Two back to back KDE curves are used to show the density estimate.
+```{r}
+plot_box = function(df, cols, col_y = 'price'){
+    options(repr.plot.width=4, repr.plot.height=3.5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_boxplot() +
+                   ggtitle(paste('Box plot of', col, 'vs.', col_y))
+        print(p)
+    }
+}
+
+cat_cols = c('fuel.type', 'aspiration', 'num.of.doors', 'body.style', 
+            'drive.wheels', 'engine.location', 'engine.type', 'num.of.cylinders')
+plot_box(auto_prices, cat_cols)  
+```
+
+```{r}
+plot_violin = function(df, cols, col_y = 'price', bins = 30){
+    options(repr.plot.width=4, repr.plot.height=3.5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_violin() +
+                   ggtitle(paste('Violin plot of', col, 'vs.', col_y))
+        print(p)
+    }
+}
+
+plot_violin(auto_prices, cat_cols)  
+```
+**Shape, size and color aessthetics**
+
+**Shape**
+```{r}
+plot_scatter_sp = function(df, cols, col_y = 'price', alpha = 1.0){
+    options(repr.plot.width=5, repr.plot.height=3.5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_point(aes(shape = factor(fuel.type)), alpha = alpha) +
+                   ggtitle(paste('Scatter plot of', col_y, 'vs.', col, '\n with shape by fuel type'))
+        print(p)
+    }
+}
+
+plot_scatter_sp(auto_prices, numcols, alpha = 0.2)
+```
+**Size**
+
+```{r}
+plot_scatter_sp_sz = function(df, cols, col_y = 'price', alpha = 1.0){
+    options(repr.plot.width=5, repr.plot.height=3.5) # Set the initial plot area dimensions
+    df$curb.weight.2 = df$curb.weight**2
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_point(aes(shape = factor(fuel.type), size = curb.weight.2), alpha = alpha) +
+                   ggtitle(paste('Scatter plot of', col_y, 'vs.', col, '\n with shape by fuel type'))
+        print(p)
+    }
+}
+
+plot_scatter_sp_sz(auto_prices, numcols, alpha = 0.1)
+```
+**Color**
+```{r}
+plot_scatter_sp_sz_cl = function(df, cols, col_y = 'price', alpha = 1.0){
+    options(repr.plot.width=5, repr.plot.height=3.5) # Set the initial plot area dimensions
+    df$curb.weight.2 = df$curb.weight**2
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_point(aes(shape = factor(fuel.type), size = curb.weight.2, color = aspiration), 
+                              alpha = alpha) +
+                   ggtitle(paste('Scatter plot of', col_y, 'vs.', col, 
+                                 '\n with shape by fuel type',
+                                 '\n and color by aspiration'))
+        print(p)
+    }
+}
+
+plot_scatter_sp_sz_cl(auto_prices, numcols, alpha = 0.2)
+```
+Each of these plots projects five dimensions of data onto the 2d display. Several relationship are now apparent in these data:
+In summary, aspiration along with fuel type should be useful predictors of price. 
+
+
+Color (or hue) can be used in other types of plots. For example, the code in the cell below displays violin plots with color set by aspiration type. Execute this code and examine the results.
+```{r}
+plot_violin = function(df, cols, col_y = 'price', bins = 30){
+    options(repr.plot.width=5, repr.plot.height=3.5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_violin(aes(fill = factor(aspiration))) +
+                   ggtitle(paste('Violin plot of', col, 'vs.', col_y, 
+                                 '\n with fill by aspiration'))
+        print(p)
+    }
+}
+
+plot_violin(auto_prices, cat_cols)  
+```
+### **Multi-axis view of data**
+
+Visualizations with multiple axes allows you to examine the relationships between many variables in one view:
+1. **Pair-wise scatter plots or scatter plot matrices** are an array of scatter plots with common axes along the rows and columns of the array. The diagonal of the array can be used to display distribution plots. The cells above or below the diagonal can be used for other plot types like contour density plots.
+2. **Conditioned plots, faceted plots** or **small multiple plots** use **group-by** operations to create and display subsets of the dataset. The display can be a one or two dimensional array organized by the groupings of the dataset
+
+**Pair-wise scatter plot**
+Uses `ggpairs`
+
+```{r}
+numcols = c('curb.weight', 'engine.size', 'horsepower', 'city.mpg', 'price')
+options(repr.plot.width=6, repr.plot.height=6) # Set the initial plot area dimensions
+ggpairs(auto_prices,
+      columns = numcols,
+      aes(color = fuel.type, alpha = 0.1),
+      lower = list(continuous = 'points'),
+      upper = list(continuous = ggally_density))
+```
+Examine the above scatter plot matrix, which shows plots of each numeric column verses every other numeric column, and note the following: 
+- Many features show significant collinearity, such as horsepower, engine size and curb weight. This suggests that all of these features should not be used when training a machine learning model.
+- All of the features show a strong relationship with the label, price, such as city.mpg, engine.size, horsepower and curb.weight.
+- Several of these relationships are nonlinear, particularly the relationships with the city MPG feature.
+- There is distinctively different behavior for the diesel vs. gas cars. 
+- Most of the variables have asymmetric distributions.
+
+Many of these relationships have been noted earlier. Having all this information on one plot can be useful. However, you may notice that some details are hard to see in such a display.
+
+**Conditioned plots**
+uses `facet_grid`
+```{r}
+plot_hist_grid = function(df, numcols, bins = 10){
+    options(repr.plot.width=6, repr.plot.height=3) # Set the initial plot area dimensions
+    for(col in numcols){
+        if(is.numeric(df[,col])){
+            bw = (max(df[,col]) - min(df[,col]))/(bins + 1)
+            p = ggplot(df, aes_string(col)) + 
+                       geom_histogram(binwidth = bw, aes(y=..density..), alpha = 0.5) +
+                       geom_density(aes(y=..density..), color = 'blue') + 
+                       geom_rug() +
+                       facet_grid(. ~ drive.wheels)
+            print(p)
+        }
+    }
+}
+
+plot_hist_grid(auto_prices, numcols)
+```
+```{r}
+plot_scatter_grid = function(df, cols, col_y = 'price', alpha = 1.0){
+    options(repr.plot.width=7, repr.plot.height=5) # Set the initial plot area dimensions
+    for(col in cols){
+        p = ggplot(df, aes_string(col, col_y)) + 
+                   geom_point(aes(color = fuel.type), alpha = alpha) +
+                   ggtitle(paste('Scatter plot of', col_y, 'vs.', col, 
+                                 '\n conditioned on drive wheels and body style',
+                                 '\n with color by fuel type')) +
+                   facet_grid(drive.wheels ~ body.style)
+        print(p)
+    }
+}
+
+numcols = c('curb.weight', 'engine.size', 'horsepower', 'city.mpg')
+plot_scatter_grid(auto_prices, numcols, alpha = 0.2)
+```
