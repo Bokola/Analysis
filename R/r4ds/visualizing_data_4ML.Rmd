@@ -1,7 +1,7 @@
 ---
 title: "principles_of_ML"
 author: "bokola"
-date: "February 12, 2019"
+date: "`r format(Sys.time(), '%b %d, %Y')`"
 output: html_document
 ---
 

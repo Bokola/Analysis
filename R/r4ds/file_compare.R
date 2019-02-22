@@ -1,4 +1,5 @@
 
+rm(list=ls(all=T))
 setwd("H:\\HSU\\data\\Neonatal")
 
 #1. Load Packages
@@ -9,7 +10,7 @@ ipk <- function(pkg) {
   sapply(pkg, require, character.only = T)
   
 }
-list.of.pkg <- c("tidyverse", "diffobj", "reprex")
+list.of.pkg <- c("tidyverse", "diffobj", "reprex", "daff")
 ipk(list.of.pkg)
 
 #2. Load Data
@@ -20,10 +21,23 @@ ipk(list.of.pkg)
 
 
 
-temp = list.files(pattern="*.csv")
+temp = list.files(pattern="*.csv")[1]
 list2env(
-  lapply(setNames(temp, tolower(make.names(gsub("_.*", "", temp)))), 
-         read.csv), envir = .GlobalEnv)
+  lapply(setNames(temp, tolower(make.names(gsub("_.*", "", temp)))), function(x){ 
+    x =read.csv(x)
+    names(x) <- tolower(names(x))
+    return(x)}), 
+        
+  envir = .GlobalEnv)
+
+
+head(kiambu)
+names(kiambu)
+
+rename <- function(df) {
+  sapply(names(df), tolower)
+}
+rename(kiambu)
 
 # rm(list = ls())
 
