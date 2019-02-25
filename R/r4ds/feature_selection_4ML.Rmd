@@ -1,0 +1,185 @@
+---
+title: "Bias-Variance trade off for ML"
+author: "bokola"
+date: "`r format(Sys.time(), '%b %d, %Y')`"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+```
+# Feature Selection
+
+**Feature selection** can be an important part of model selection. In supervised learning, including features in a model which do not provide information on the label, is useless at best, and may prevent generalization at worst.
+
+Feature selection can involve application of several methods. Two important methods include:
+1. Eliminating features with **low variance** and **zero variance**. Zero variance features are comprised of the same values. Low variance features arise from features with most values the same and with few unique values. One way low variance features can arise, is from dummy variables for categories with very few members. The dummy variable will be mostly 0s with very few 1s. 
+2. Training machine learning models with features that are **uninformative** can create a variety of problems. An uninformative feature does not significantly improve model performance. In many cases, the noise in the uninformative features will increase the variance of the model predictions. In other words, uninformative models are likely to reduce the ability of the machine learning model to generalize.   
+
+****
+**Note:** the second case of feature selection involves applying a selection statistic or hypothesis test multiple times. For large number of features, this process is very likely to lead to false positive and false negative results. This likely outcome is known as the **multiple comparison problem** in statistics.
+
+To understand this problem, consider the decision to keep a feature in a model as a hypothesis test. Any hypothesis test has some probability of both a false positive result and a false negative result. Consider a case where there are 40 uninformative features which are excluded from the model with 95% confidence. There will be an approximately 5% chance of accepting a feature which should be rejected. In this case we would expect about 2 uninformative features to be accepted because of these errors. 
+
+You may well ask, if testing features for importance can fail with large numbers of features, what is the alternative? The most general and scalable alternative is to use regularization methods. Consider applying regularization methods to a linear model. In this case, the machine learning algorithm learns which features should be weighted highly and which should not. 
+****
+## Load the dataset
+
+You will now apply the aforementioned principles to the bank credit data set. 
+
+As a first step, run the code in the cell below to load the required packages. 
+
+> **Note:** If you are running in Azure Notebooks, make sure that you run the code in the `setup.ipynb` notebook at the start of you session to ensure your environment is correctly configured. 
+
+Load packages:
+```{r, results="hide", message=F}
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("tidyverse", "repr", "magrittr", "gridExtra", "caret", "MASS")
+ipk(list.of.pkg)
+options(repr.plot.width = 4, repr.plot.height = 4)
+```
+Next, load the preprocessed files containing the features and the labels. The preprocessing includes the following:
+1. Clean missing values.
+2. Aggregate categories of certain categorical variables. 
+
+Execute the code in the cell below to load the data frame and remove some unneeded columns. 
+```{r}
+credit = read.csv('German_Credit_Preped.csv')
+credit[,'Customer_ID'] = NULL
+dim(credit)
+names(credit)
+```
+## Code the label
+
+The R Caret package computes most performance metrics using the positive cases. For example, recall is a measure of correct classification of positive cases. Therefore, it is important to have the coding of the label correct. In this case you want to detect bad credit customers, so this category becomes the positive case. The code in the cell below creates a factor (categorical) variable and coerces the levels of the label column, `bad_credit`. Execute this code. 
+```{r}
+credit %<>%
+  mutate(bad_credit = factor(ifelse(bad_credit == 1, 'bad', 'good'), levels = c('bad', 'good')))
+```
+## Scale numeric features
+
+Cross validation is used in this notebook. Therefore, the code in the cell below scales the numeric features in batch, before any splits. This is done to simplify the processing for the CV folds. Execute this code. 
+
+****
+**Note:** Cross validation is discussed in another lab.
+****
+```{r}
+num_cols = c('loan_duration_mo', 'loan_amount', 'payment_pcnt_income', 'age_yrs', 'number_loans', 'dependents')
+preProcValues <- preProcess(credit[,num_cols], method = c("center", "scale"))
+credit[,num_cols] = predict(preProcValues, credit[,num_cols])
+```
+## Eliminate low variance features
+
+As a first step in selecting features from this dataset you will remove features with low variance. 
+
+In order to determine which features have low variance, categorical features must be converted to dummy variables. Dummy variables encode categorical features as a set of binary variables. There is one dummy variable for each possible category. For each case all of the values in the dummy variables are set to zero, except the one corresponding to the category value, which is set to one.
+
+The `dummyVars` function from the Caret package creates coding to transform categorical variables to binary or dummy variables. Notice that a model formula is used so that the label is not encoded as a feature. The `predict` method is used to apply the transform. 
+```{r}
+dummies <- dummyVars(bad_credit ~ ., data = credit)
+credit_dummies <- data.frame(predict(dummies, newdata = credit))
+head(credit_dummies)
+names(credit_dummies)
+dim(credit_dummies)
+```
+Notice how the original categorical features are now coded as multiple binary dummy variables. The names are expanded automatically with the original variable name and the category name. There  is one dummy variable for each category. Only one of these dummy variables is coded as 1 and the rest with a 0. This coding method is often referred to as **one hot encoding**.
+
+With the categorical features encoded, it is time to find which of these dummy variables have zero variance or near-zero variance. Zero variance features have only one value for all cases. Near-zero variance features have a high proportion of cases with the same value. Caret uses a **frequency ratio** and the percentage of cases with unique values as the metrics to determine if a variable is near-zero variance. The frequency ratio is the ratio of the most frequent to the next most frequent value. A variable is considered near-zero variance if the frequency ratio exceeds the `freqCut` value or the percent unique values is less than `uniqueCut`. 
+
+The code in the cell below applies the `nearZeroVar` function and then filters for zero variance or near-zero variance features. Execute this code and examine the results. 
+```{r}
+near_zero <- nearZeroVar(credit_dummies, freqCut = 95/5, uniqueCut = 10, saveMetrics = T)
+low_variance_cols <- near_zero[(near_zero$zeroVar == T) | (near_zero$nzv == T), ]
+low_variance_cols
+nrow(low_variance_cols)
+```
+The list of near-zero variance dummy variables is displayed above. These dummy variables should be removed from the feature set. 
+
+Execute the code in the cell below which filters the dummy variable data frame for the ones which are to be kept.
+```{r}
+drops <- rownames(low_variance_cols)
+credit_dummies <- credit_dummies[, !(names(credit_dummies) %in% drops)]
+names(credit_dummies)
+dim(credit_dummies)
+```
+Notice that most of the near-zero variance features come from a few categorical variables. As an alternative to filtering the actual dummy variables, the original categorical features can be filtered from the data frame. Dummy variables are then encoded from the remaining features. Execute the code in the cell below to create a data frame with these categorical features  removed. The step of creating new dummy variables is not shown for the sake of simplicity. 
+```{r}
+credit[,'foreign_worker'] = NULL
+credit[,'purpose'] = NULL
+credit[,'other_signators'] = NULL
+str(credit)
+```
+## Select k best features
+
+The low variance features have been eliminated. But, the question remains, are all these features informative? There are a number of methods used to determine the importance of features. Many machine learning models have specialized methods to determine feature importance specifically intended for those methods. 
+
+In this example, you will use a fairly general and robust method using cross validation. The algorithm is straight forward. Features are recursively removed.  Cross validation is used to find the change in model performance, if any, to determine if a feature should be deleted. 
+
+The code in the cell below performs the following processing:
+1. A factor vector with the label values is created.
+2. The summary function `prSummary` is used. Because of the imbalance in the cost to the bank of misclassifying a bad credit customer recall is used  as the model training metric. 
+3. A Caret `trainControl` object is defined for 10 fold cross validation using the metric summary function. 
+4. The Caret `train` function will train the model as follows:
+  - The features, `x`, and the label, `y` are specified. 
+  - The `method` argument specifies the model type. 
+  - The metric `Recall` is used together with the summary function `prSummary`
+  - Class `weights` are used to help with the class imbalance. 
+  - The `trainControl` object is specified.
+Execute this code and examine the results.
+```{r}
+bad_credit_factor = as.factor(credit[,'bad_credit'])
+
+weights = ifelse(credit$bad_credit == 'bad', 0.66, 0.34)
+
+fitControl = trainControl(method = 'cv',
+                          number = 10,
+                          classProbs = TRUE,
+                          summaryFunction = prSummary)
+
+set.seed(9999)
+cv_mod_recall = train(x = credit_dummies, y = bad_credit_factor,
+                      method = "glmnet", 
+                      weights = weights, 
+                      metric="Recall",
+                      trControl = fitControl)
+    
+```
+The Caret `varImp` function computes the variable importance on a 0 to 100 scale using a trained model object. Execute the code in the cell below to compute and print the variable importance using the trained model. 
+```{r}
+var_imp <- varImp(cv_mod_recall)
+var_imp
+```
+As an alternative to a the printed table the feature importance can be plotted. Execute the code below to display the plot and examine the result. 
+```{r}
+options(repr.plot.width = 8, repr.plot.height = 5)
+plot(var_imp, top = 25)
+```
+Filtering by variable importance is a good way to find the features which should be pruned. The code in the cell below filters the variable importance using a threshold of 4.0. The code results are then displayed as a table, and the names are printed. Execute the code, examine the result, and answer **Question 2** on the course page.
+
+****
+**Note:** In practice you will need to try several threshold values to find a set of features where the model is not over-fit, but also has good performance. 
+****
+```{r}
+var_imp$importance$Imp <- (var_imp$importance$Overall > 4.0)
+var_imp$importance[var_imp$importance$Imp == T, ]
+row.names(var_imp$importance[var_imp$importance$Imp == T, ])
+length(row.names(var_imp$importance[var_imp$importance$Imp == F, ]))
+```
+To continue this process you would test a model with these features. Further feature pruning can be performed based on feature importance of this next model. However, if model performance is significantly reduced, features will need to be added back to the model. 
+
+## Summary
+
+In this lab you have performed two types of feature selection:
+1. Eliminating low variance features, which by their nature cannot be highly informative since they contain a high fraction of the same value.
+2. Using feature importance to eliminate features which are not good predictors. 
+
+Proper feature selection is key to creating machine learning models which will generalize well. 

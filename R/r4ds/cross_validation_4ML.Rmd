@@ -1,0 +1,227 @@
+---
+title: "Bias-Variance trade off for ML"
+author: "bokola"
+date: "`r format(Sys.time(), '%b %d, %Y')`"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+```
+# Introduction to Cross Validation and Model Selection
+
+In a previous lab you created a model with l2 or ridge regularization and l1 or lasso regularization. In both cases, an apparently optimum value of the regularization parameter was found. This process is an example of **model selection**. The goal of model selection is to find the best performing model for the problem at hand. Model selection is a very general term and can apply to at least the following common cases:
+- Selection of optimal model **hyperparameters**. Hyperparameters are parameters which determine the characteristics of a model. Hyperparameters are distinct from the model parameters. For example, for the case of l2 regularized regression, the degree of regularization is determined by a hyperparameter, which is distinct from the regression coefficients or parameters. 
+- **Feature selection** is the process of determining which features should be used in a model. 
+- Comparing different model types is an obvious case of model selection. 
+
+If you are thinking that the model selection process is closely related to model training, you are correct. Model selection is a component of model training. However, one must be careful, as applying a poor model selection method can lead to an over-fit model!
+
+## Overview of k-fold cross validation
+
+The questions remain, how good are the hyperparameter estimates perviously obtained for the l2 and l1 regularization parameters and are there better ways to estimate these parameters? The answer to both questions is to use **resampling methods**. Resampling methods repeat a calculation multiple times using randomly selected subsets of the complete dataset.  In fact, resampling methods are generally the best approach to model selection problems. 
+
+
+**K-folod Cross validation** is a widely used resampling method. In cross validaton a dataset is divided into **k folds**. Each fold contains $\frac{1}{k}$ cases and is created by **Bernoulli random sampling** of the full data set. A computation is performed on $k-1$ folds of the full dataset. The $k^{th}$ fold is **held back** and is used for testing the result. The compuation is performed $k$ times and model parameters are averaged (mean taken) over the results of the $k$ folds. For each iteration, $k-1$ folds are used for training and the $k^{th}$ fold is used for testing. 
+
+4-fold cross validation is illustrated in the figure below. To ensure the data are randomly sampled the data is randomly shuffled at the start of the procedure. The random samples can then be efficiently sub-sampled as shown in the figure. The model is trained and tested four times. For each iteration the data is trained with three folds of the data and tested with the fold shown in the dark shading. 
+
+<img src="img/CrossValidation.jpg" alt="Drawing" style="width:750px; height:400px"/>
+<center> **Resampling scheme for 4-fold cross validation**</center>
+
+## Introduction to nested cross validation
+
+Unfortunately, simple cross validation alone does not provide an unbiased approach to model selection. The problem with evaluating model performance with simple cross validation uses the same data samples as the model selection process. This situation will lead to model over fitting wherein the model selection is learned based on the evaluation data. The result is usually unrealistically optimistic model performance estimates.
+
+To obtain unbiased estimates of expected model performance while performing model selection, it is necessary to use **nested cross validation**. As the name implies, nested cross validation is performed though a pair of nested CV loops. The outer loop uses a set of folds to perform model evaluation. The inner loop performs model selection using another randomly sampled set of  folds not used for evaluation by the outer loop. This algorithm allows model selection and evaluation to proceed with randomly sampled subsets of the full data set, thereby avoiding model selection bias. 
+
+## Cross validation and computational efficiency
+
+As you may have surmised, cross validation can be computationally intensive. Processing each fold of a cross validation requires fitting and evaluating the model. It is desirable  to compute a reasonable number of folds. Since the results are averaged over the folds, a small number of folds can lead to significant variability in the final result. However, with large data sets or complex models, the number of folds must be limited in order to complete the cross validation process in a reasonable amount of time. It is, therefore, necessary to trade off accuracy of the cross validation result with the practical consideration of the required computational resources. 
+
+As mentioned earlier, other resampling methods exist. For example, leave-one-out resampling has the same number of folds as data cases. Such methods provide optimal unbiased estimates of model performance. Unfortunately, as you might think, such methods are computationally intensive and are only suitable for small datasets. In practice k-fold cross validation is a reasonable way to explore bias-variance trade-off with reasonable computational resources. 
+
+## Prepare the data set
+
+With the above theory in mind, you will now try an example. 
+
+As a first step, execute the code in the cell below to load the packages required for this notebook. 
+
+> **Note:** If you are running in Azure Notebooks, make sure that you run the code in the `setup.ipynb` notebook at the start of you session to ensure your environment is correctly configured. 
+
+Next, load the preprocessed files containing the features and the labels. The preprocessing includes the following:
+1. Cleaning missing values.
+2. Aggregate categories of certain categorical variables. 
+
+Execute the code in the cell below to load the dataset.
+
+```{r}
+credit <- read.csv("German_Credit_Preped.csv")
+print(dim(credit))
+names(credit)
+```
+Load packages:
+```{r, results="hide", message=F}
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("tidyverse", "repr", "magrittr", "gridExtra", "caret", "glmnet", "ROCR")
+ipk(list.of.pkg)
+options(repr.plot.width = 4, repr.plot.height = 4)
+```
+### Code the label
+
+The R Caret package computes most performance metrics using the positive cases. For example, recall is a measure of correct classification of positive cases. Therefore, it is important to have the coding of the label correct. The code in the cell below creates a factor (categorical) variable and coerces the levels of the label column, `bad_credit`. Execute this code. 
+
+```{r}
+temp <- credit$bad_credit
+credit %<>% mutate(bad_credit = factor(ifelse(bad_credit == 1, 'bad', 'good'), levels = c('bad', 'good')))
+credit$bad_credit[1:10]
+```
+### Scale numeric features
+
+Cross validation will be used to train the model. Since folds will be selected from the entire dataset the numeric features are scaled in batch. Execute the code in the cell below to accomplish this: 
+````{r}
+num_cols <- c('loan_duration_mo', 'loan_amount', 'payment_pcnt_income',
+             'time_in_residence', 'age_yrs', 'number_loans', 'dependents')
+preProcValues <- preProcess(credit[, num_cols], method = c("center", "scale"))
+credit[, num_cols] <- predict(preProcValues, credit[, num_cols])
+head(credit[, num_cols])
+```
+## Optimize hyperparameters with nested cross validation
+
+Given often observed variability in metrics in cross validation, performing model selection from a single training and evaluation is an uncertain proposition at best. Fortunately, the nested cross validation approach provides a better way to perform model selection. However, there is no guarantee that a model selection process will, in fact, improve a model. In some cases, it may be that model selection has minimal impact. 
+
+The inner cross validation loop is used to find the optimal hyperparameters. The general process is:
+1. A grid of hyperparameters is defined. The model selection will be performed by comparing performance metrics over this grid. 
+2. The folds for the cross validation are defined.
+3. For each set of folds models are computed for each combination of hyperparameters from the grid. 
+4. The Average metrics of each model (hyperparameter combination) is computed. The best model is selected based on these averages.
+
+Once the inner cross validation determines optimal hyperparameters, a final cross validation is performed to determine how well the final model is expected to perform. This process is know as the inner loop of the nested CV. Notice that by creating these independent fold objects there is no need to actually create nested loops for this process. While conceptually nesting the inner and out loops is not hard, is computationally intensive and is generally avoided.  
+
+### Inner loop
+
+The code in the cell below uses the capabilities of the Caret package to perform the inner loop of the cross validation as follows:
+1. The 'trainControl' object defines a 10 fold cross validation. The `twoClassSummary` function defines the ROC metric as th one used for model selection. 
+2. The `train` function defines the following:
+  - The model is defined with the R modeling language.
+  - The data frame to be used specified.
+  - The `method` argument specifies the R model to use.
+  - Optional arguments, such as `weights` for the model are defined. 
+  - The metric to be used for model evaluation is specified. 
+  - The `trainControl` object is specified.
+
+Execute this code and examine the results:
+```{r}
+## Create a weight vector for the training cases
+weights <-ifelse(credit$bad_credit == 1, 0.66, 0.34)
+fitControl <- trainControl(method = 'cv',
+                           number = 10, 
+                           classProbs = T, 
+                           summaryFunction = twoClassSummary)
+
+set.seed(9999)
+
+cv_mod_roc <- train(bad_credit ~ loan_duration_mo + loan_amount + payment_pcnt_income + age_yrs + checking_account_status + credit_history + purpose + gender_status + time_in_residence + property,
+                    data = credit, 
+                    method = "glmnet",
+                    weights = weights,
+                    metric = "ROC",
+                    trControl = fitControl)
+cv_mod_roc
+```
+The grid of hyperpameters searched by the Caret package is over `alpha` and `lambda`. The printed tables shows the values of the metrics as a function of the parameters in the search grid. Sens is short for sensitivity which is the same as global recall and Spec is specificity which is the true negative rate $= \frac{TN}{TN + FP}$
+
+As an alternative, recall can be used as the model selection metric. The code in the cell below uses the `prSummary` function in the `trainControl` object and the `Recall` as the `metric`. Execute this code and examine the results.
+```{r}
+# Create a weight vector for the training cases
+weights = ifelse(credit$bad_credit == 1, 0.66, 0.34)
+
+fitControl <- trainControl(method = 'cv',
+                           number = 10,
+                           classProbs = T,
+                           summaryFunction = prSummary)
+set.seed(9999)
+cv_mod_recall <- train(bad_credit ~ loan_duration_mo + loan_amount + payment_pcnt_income + age_yrs + checking_account_status + credit_history + purpose + gender_status + time_in_residence + property,
+                       data = credit,
+                       method = 'glmnet',
+                       weights = weights,
+                       metric = "Recall",
+                       trControl = fitControl)
+cv_mod_recall
+```
+The results of the second CV are nearly the same as the first one.
+
+You can illustrate the performance of the different models over the hyperparameter grid. Execute the code in the cell below to create this display. 
+```{r}
+plot(cv_mod_roc, metric = "ROC", plotType = "level", scales = list(x = list(rot = 90)))
+```
+The best model is the upper left.
+### Outer loop
+
+With the model selected, you will now perform the outer loop of the cross validation to verify the performance of the model. Consistent performance across the folds indicates that the model is likely to generalize well when faced with new data values. 
+
+The code in the cell below executes the outside CV loop:
+1. The parameter grid is specified to have only the optimal hyperparameters. 
+2. The `trainControl` object uses the `savePredictions` and `returnResamp` arguments to save the results of each of the folds. 
+3. The `tuneGrid` argument of the `train` function is used to specify the parameter grid. 
+
+Execute this code, examine the results, and answer **Question 1** on the course page.
+```{r}
+## Set the hyperparameter grid to the optimal values from the inside loop
+paramGrid <- expand.grid(alpha = c(cv_mod_roc$bestTune$alpha),
+                         lambda = c(cv_mod_roc$bestTune$lambda))
+
+fitControl = trainControl(method = 'cv',
+                          number = 10,
+                          returnResamp="all",
+                          savePredictions = TRUE,
+                          classProbs = TRUE,
+                          summaryFunction = twoClassSummary)
+
+set.seed(1234)
+cv_mod_outer = train(bad_credit ~ loan_duration_mo + loan_amount +  
+                                  payment_pcnt_income + age_yrs + 
+                                  checking_account_status + credit_history + 
+                                  purpose + gender_status + time_in_residence +
+                                  property,
+                     data = credit, 
+                     method = "glmnet", 
+                     weights = weights, 
+                     tuneGrid = paramGrid, 
+                     metric="ROC",
+                     trControl = fitControl)
+    
+print_metrics = function(mod){
+    means = c(apply(mod$resample[,1:3], 2, mean), alpha = mod$resample[1,4], 
+                lambda = mod$resample[1,5], Resample = 'Mean')
+    stds = c(apply(mod$resample[,1:3], 2, sd), alpha = mod$resample[1,4], 
+                lambda = mod$resample[1,5], Resample = 'STD')
+    out = rbind(mod$resample, means, stds)
+    out[,1:3] = lapply(out[,1:3], function(x) round(as.numeric(x), 3))
+    out
+}
+print_metrics(cv_mod_outer)
+```
+Notice the following about these results: 
+1. There is variation in the three performance metrics from fold to fold. This variation gives you an idea of the variability to be expected when the model is placed in production.
+2. The mean of each metric summarizes the expected performance of the model. 
+3. The standard deviation of each metric summarizes the variability. You can see that the standard deviation is approximately an order of magnitude less than the metric. 
+
+In summary, these results indicate this model is likely to generalize well since the variation in the performance metrics is limited. 
+
+## Summary
+
+In this lab you have performed by simple cross validation and nested cross validation. Key points and observations are:
+1. Model selection should be done using a resampling procedure such as nested cross validation. The nested sampling structure is required to prevent bias in model selection wherein the model selected learns the best hyperparameters for the samples used, rather than a model that generalizes well. 
+2. There is significant variation in model performance from fold to fold in cross validation. This variation arises from the sampling of the data alone and is not a property of any particular model.
+3. Given the expected sampling variation in cross validation, there is generally considerable uncertainty as to which model is best when performing model selection.  
+4. The results of the outer loop of the nested cross validation is indicative of the ability of a model to generalize. 
