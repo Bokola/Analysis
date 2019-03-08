@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # **Module 1: Intro to ML**
 ### **Packages**
 
-```{r}
+```{r, message=FALSE, results='hide'}
 ipk <- function(pkg){
   new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
   if(length(new.pkg)) install.packages(new.pkg, dependencies = T)

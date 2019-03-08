@@ -1,5 +1,5 @@
 ---
-title: "Bias-Variance trade off for ML"
+title: "Feature selection for ML"
 author: "bokola"
 date: "`r format(Sys.time(), '%b %d, %Y')`"
 output:

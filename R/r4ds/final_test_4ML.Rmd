@@ -1,0 +1,149 @@
+---
+title: "principles of ML finla challenge"
+author: "bokola"
+date: "`r format(Sys.time(), '%b %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/users/bokola/google drive/data/final exam")
+```
+Read in data
+```{r}
+# set workspace
+rm(list = ls(all = T))
+
+setwd("C:/users/bokola/google drive/data/final exam")
+temp <- list.files(pattern="*.csv")[grep("^a", dir(), ignore.case = T)]
+list2env(
+  lapply(setNames(temp, tolower(make.names(gsub("\\..*", "", temp)))), function(x){
+    x =read.csv(x)
+    names(x) <- tolower(names(x))
+
+    return(x)}),
+
+  envir = .GlobalEnv)
+```
+Packages
+
+```{r message=FALSE, results='hide'}
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("tidyverse", "repr", "magrittr", "gridExtra", "caret", "ROCR", "pROC")
+ipk(list.of.pkg)
+options(repr.plot.width = 4, repr.plot.height = 4)
+```
+Getting rid of duplicates and merging the datasets
+```{r}
+aw_avemonthspend <- aw_avemonthspend[!duplicated(aw_avemonthspend$customerid),]
+aw_bikebuyer <- aw_bikebuyer[!duplicated(aw_bikebuyer$customerid, fromLast = T),]
+advworkscusts <- advworkscusts[!duplicated(advworkscusts$customerid, fromLast = T),]
+```
+Training & Test Data
+```{r}
+aw_avemonthspend %>%
+  merge(aw_bikebuyer, "customerid") %>%
+  merge(advworkscusts, "customerid") -> train
+names(train)
+test <- aw_test
+write.csv(test, file = "test.csv")
+```
+Identifying data types in cols in training set
+```{r}
+#train %<>%
+  #mutate(numbercarsowned = as.character(numbercarsowned), numberchildrenathome = as.character(numberchildrenathome),
+         #totalchildren = as.character(totalchildren))
+
+numcols <- colnames(train[sapply(train, is.numeric)])
+numcols <- train[,c("avemonthspend", "numbercarsowned", "numberchildrenathome", "totalchildren",  "yearlyincome")]
+catcols <- colnames(train[sapply(train, is.character)])
+catcols <- train[, c("education", "occupation", "gender", "maritalstatus")]
+```
+Visualizing Numeric cols
+```{r}
+plot_hist_dens <- function(df, numcols, bins = 10){
+  options(repr.plot.width = 4, repr.plot.height = 3)
+  for(col in numcols) {
+    
+      bw <- (max(df[, col]) - min(df[, col])) / (bins + 1)
+     p <- ggplot(df, aes_string(col)) +  
+        geom_histogram(binwidth = bw, aes(y = ..density..),alpha = 0.5) +  
+        geom_density(aes(y = ..density..), color = 'blue') +  
+        geom_rug()
+      print(p)
+    
+    
+  }
+}
+numcols <- c("avemonthspend", "numbercarsowned", "numberchildrenathome", "totalchildren",  "yearlyincome")
+plot_hist_dens(train, numcols)
+```
+Both `avemonthspend` and `yearlyincome` are skewed to the left, with the latter showing multimodal features. Could getting their natural logs improve their predictive ability?
+```{r}
+train[, c("avemonthspend_log", "yearlyincome_log")] = lapply(train[, c("avemonthspend", "yearlyincome")],log)
+#names(train)
+```
+### **Visualizing class separation by categorical features**
+
+```{r}
+
+plot_bars <- function(df, catcols){
+  options(repr.plot.width = 6, repr.plot.height = 5)
+  temp0 <- df[df$bikebuyer == 0, ]
+  temp1 <- df[df$bikebuyer ==1, ]
+  for (col in catcols){
+    p1 <- ggplot(temp0, aes_string(col)) +
+      geom_bar() +
+      ggtitle(paste('Bar plot of \n', col, '\n for bike-non-buyer')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    p2 <- ggplot(temp1, aes_string(col)) +
+      geom_bar() +
+      ggtitle(paste('Bar plot of \n', col, '\n for bikebuyer')) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    grid.arrange(p1, p2, nrow = 1)
+    
+  }
+}
+catcols <-c("education", "occupation", "gender", "maritalstatus")
+plot_bars(train, catcols)
+```
+Preporocess numeric cols
+```{r}
+numcols <- c("numbercarsowned", "numberchildrenathome", "totalchildren",  "yearlyincome")
+preProcessvalues <- preProcess(train[, numcols], method =  c("center", "scale"))
+train[,numcols] = predict(preProcessvalues, train[, numcols])
+test[,numcols] = predict(preProcessvalues, test[, numcols])
+
+```
+## Construct the logistic regression model
+
+Now, it is time to compute the logistic regression model. The code in the cell below using the R generalized linear model or `glm` function to compute a model object as follows:
+1. The formula for the label vs. the features is defined. 
+2. Since this is logistic regression, the Binomial distribution is specified for the response.
+
+Execute this code. 
+```{r}
+train$bikebuyer = factor(train$bikebuyer, levels = c(0,1))
+logistic_mod <- glm(bikebuyer ~ yearlyincome + numbercarsowned + numberchildrenathome + totalchildren + education + occupation + maritalstatus + gender, family = binomial, data = train)
+```
+Now print and examine the model coefficients by executing the code in the cell below.
+```{r}
+logistic_mod$coefficients
+```
+Recall that the logistic regression model outputs log likelihoods. The class with the highest probability is taken as the score (prediction). Execute the code and the cell below to compute and display a sample of these class probabilities for the test feature set. 
+```{r}
+
+#test$probs <- predict(logistic_mod, newdata = test, type = 'response')
+predict <- predict(logistic_mod, newdata = test, type = 'response')
+names(test)
+names(train)
+head(predict)
+
+```
+
+

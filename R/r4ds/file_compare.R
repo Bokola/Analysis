@@ -10,7 +10,7 @@ ipk <- function(pkg) {
   sapply(pkg, require, character.only = T)
   
 }
-list.of.pkg <- c("tidyverse", "diffobj", "reprex", "daff")
+list.of.pkg <- c("tidyverse", "diffobj", "reprex", "daff", "compareDF")
 ipk(list.of.pkg)
 
 #2. Load Data
@@ -19,25 +19,24 @@ ipk(list.of.pkg)
 # for (i in 1:length(temp)) assign(temp[i], read.csv(temp[i]))
 
 
+dir = list.files()
 
-
-temp = list.files(pattern="*.csv")[1]
+temp = list.files(pattern="*.csv")[grep("^a", dir)]
 list2env(
   lapply(setNames(temp, tolower(make.names(gsub("_.*", "", temp)))), function(x){ 
     x =read.csv(x)
     names(x) <- tolower(names(x))
+    names(x) <- gsub("[^[:alnum:]]|[[:punct:]]", "_",names(x))
     return(x)}), 
         
   envir = .GlobalEnv)
 
 
 head(kiambu)
-names(kiambu)
-
-rename <- function(df) {
-  sapply(names(df), tolower)
-}
-rename(kiambu)
+ require(dplyr)
+compare <- anti_join(kiambu, bungoma) # same as 
+compare_1 <- setdiff(kiambu, bungoma)
+compare_2 <- compare_df(kiambu, bungoma, varia)
 
 # rm(list = ls())
 
