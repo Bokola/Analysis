@@ -2,7 +2,9 @@
 title: "principles_of_ML"
 author: "bokola"
 date: "`r format(Sys.time(), '%b %d, %Y')`"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}

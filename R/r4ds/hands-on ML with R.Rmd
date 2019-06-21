@@ -3,15 +3,15 @@ title: "Hands-on Machine Learning with R"
 author: "Basil"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
   html_document:
     highlight: tango
     number_sections: yes
     theme: united
     toc: yes
     toc_depth: 3
-  word_document:
-    toc: yes
-    toc_depth: '3'
 ---
 
 ```{r setup, include=FALSE}
@@ -115,7 +115,7 @@ Unsupervised learning is usually done as part of exploratory data analysis.
   
   
   
-```{r}
+```{r, message=F, warning=F, results='hide'}
 # access AmesHousing data
 
 ames <- AmesHousing::make_ames()
@@ -139,11 +139,12 @@ dim(attrition)
 # response variable
 head(attrition$Attrition)
 
-# load training data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz
-train <- data.table::fread("C:/Users/basil mlis/analysis/R/data/train.csv", data.table = FALSE)
+h2o.init(nthreads = -1) # This means nthreads = num available cores
+train_file <- "https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/train.csv.gz"
+test_file <- "https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz"
 
-# load test data https://h2o-public-test-data.s3.amazonaws.com/bigdata/laptop/mnist/test.csv.gz
-test <- data.table::fread("C:/Users/basil mlis/analysis/R/data/test.csv", data.table = FALSE)
+train <- h2o.importFile(train_file)
+test <- h2o.importFile(test_file)
 
 # initial dimension
 dim(train)
@@ -481,7 +482,7 @@ GLMs such as ODLS and logistic regressions are simple and fundamental approaches
 This sections explores the application of `glmnet` and `h2o` packages in implementing regularized regression approaches (*penalized models* / *shrinkage methods*). The objective function of regularized regression methods  add a penalty parameter (P) to an OLS regression - minimize {${SSE + P}$}. This penality parameter constrains the size of the coefficients such that the only way the coefficients can increase is if we experience a comparable decrease in the sum of squared errors (SSE).
 
 ## **Types of penalties**
-### **Ridge
+### **Ridge**
 Controls the coefficients by adding   ${\lambda}{\sum^p_{j=1}{\beta^2_j}}$ to the objective function. This penalty parameter is also referred to as "$L_2$" as it signifies a second order penalty being used on the coefficients. 
         minimize {$SSE + {\lambda}{\sum^p_{j=1}{\beta^2_j}}$}.
 This penalty parameter can  take a number of values, controlled by the tuning parameter $\lambda$. When $\lambda=0$ the objective function equals the normal OLS regression objective function. As $\lambda$ tends to positive infinity, the penality becomes large and forces coefficients to near zero. A ridge model retains all variables-useful when you want to retain all features in your model yet reduce the noise from less influential features and minimize multicollinearity. It does not perform feature selection.
