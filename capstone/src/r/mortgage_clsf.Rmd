@@ -1,0 +1,252 @@
+---
+title: "Mortgage Classification"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+# **Background**
+The objective is Predicting Mortgage Approvals From Government Data, taking into consideration of **demographics, location, property type, lender**, and other factors are related to whether a mortgage application was accepted or denied,applying relevant skills to build a model for predicting **acceptance** of loan application across the United States. There are 23 variables (21 possible features and 1 binary label(`accepted`)) and 1 arbitrary identifier(`row_id). 
+
+```{r packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+rm(list = ls(all = T))
+#setwd("C:\\Users\\bokola\\Google Drive\\Data")
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("plyr", "tidyverse", "repr", "magrittr","kknn", "gridExtra", "GGally", "hexbin", "gridExtra")
+ipk(list.of.pkg)
+options(repr.plot.width = 4, repr.plot.height = 3.5)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+hom.dir = ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+project.path = path.expand(file.path(hom.dir
+                                     ,"Analysis"
+                                     ,"capstone")) %>% gsub("\\\\", "/", .)
+
+data.path = path.expand(file.path(project.path
+                                  ,"Data"))
+scripts.path = path.expand(file.path(project.path
+                                     ,"src"
+                                     ,"r"))
+report.path = path.expand(file.path(project.path
+                                    ,"cache"
+                                    ,"doc"))
+if(!file.exists(project.path)){
+  if(dir.create(project.path, recursive = T))
+    stop("The project directory \"",
+         project.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         project.path,
+         "\"could not be created!")
+}
+if(!file.exists(data.path)){
+  if(dir.create(data.path, recursive = T))
+    stop("The project directory \"",
+         data.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         data.path,
+         "\"could not be created!")
+}
+if(!file.exists(report.path)){
+  if(dir.create(report.path, recursive = T))
+    stop("The project directory \"",
+         report.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         report.path,
+         "\"could not be created!")
+}
+if(!file.exists(scripts.path)){
+  if(dir.create(scripts.path, recursive = T))
+    stop("The project directory \"",
+         scripts.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         scripts.path,
+         "\"could not be created!")
+}
+```
+
+Data import
+
+```{r Data, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+train_labels = read.csv(path.expand(file.path(data.path, "train_labels.csv")), header = T)
+train_values = read.csv(path.expand(file.path(data.path, "train_values.csv")), header = T)
+test_values = read.csv(path.expand(file.path(data.path, "test_values.csv")), header = T) 
+train = merge(train_labels, train_values)
+
+# dim(train) 
+# head(train)
+
+#Transformation
+cols = c('msa_md', 'state_code','county_code','lender','loan_type','property_type', 'loan_purpose', 'occupancy','preapproval','applicant_ethnicity','applicant_race', 'applicant_sex')
+train[,cols] = lapply(train[,cols], as.character)
+test_values[,cols] = lapply(train[,cols], as.character)
+#1. loan type
+loan_type= c('1' = 'Conventional', '2' = 'FHA-insured ', '3' = 'VA-guaranteed', "4" = 'FSA/RHS')
+property_type = c("1" = "One to four-family", "2" = "Manufactured housing", "3" = "Multifamily")
+loan_purpose = c("1" = "Home purchase", "2" = "Home improvement", "3" = "Refinancing")
+occupancy = c("1" = "Owner-occupied", "2" = "Not owner-occupied", "3" = "Not applicable")
+preapproval = c("1" = "requested", "2" = "not requeste", "3" = "not applicable")
+applicant_ethnicity = c("1" = "Hispanic or Latino", "2" = "Not Hispanic or Latino", "3" = "no information", "4" = "not applicable")#, "5" = "no co-applicant"
+applicant_race = c("1" = "American Indian/Alaska Native", "2" = "Asian", "3" = "Black/African American", "4" =  "Native Hawaiian", "5" = "White", "6" = "no information", "7" = "not applicable")#, "8" = "no co-applicant"
+applicant_sex = c("1" = "Male", "2" = "Female", "3" = "no information", "4" = "not applicable")
+
+# out = rep('i', length.out = nrow(train))
+# i=1
+# for (x in train[,'loan_type']) {
+#   out[i] = loan_type[[x]]
+#   i=i+1
+# }
+# train[,"loan_type"] = out
+
+for(var in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+  train[,var]=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+  #test_values[,var]=sapply(test_values[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+}
+a = list(train, test_values)
+
+# v = function(y){
+#   for(v in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+#   #train[,var]=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+#   y[,v]=sapply(y[,v],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+#   }
+# }
+
+for(v in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+  #train[,var]=sapply(train[,var],function(x) get(v)[[x]],simplify = T,USE.NAMES = F)
+  test_values[,v]=sapply(test_values[,v],function(x) get(v)[[x]],simplify = T,USE.NAMES = F)
+}
+#train[,cols] = lapply(train[,cols], as.factor)
+#test_values[,cols] = lapply(train[,cols], as.factor)
+
+#,"loan_purpose", "occupancy", "preapproval","applicant_ethnicity","applicant_race", "applicant_sex"
+#ss=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+
+# for(col in names(train)) {
+#   if(is.character(train[, col])) {
+#     count <- sum(ifelse(train[, col] == '-1'|is.na(train[,col]), 1, 0))
+#     cat(paste(col, as.character(count), '\n'))
+#   }
+# }
+
+```
+Summary statistics
+```{r summaries, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+train %>% summarise(min = min(loan_amount, na.rm = T), max = max(loan_amount, na.rm = T), median = median(loan_amount, na.rm = T), mean = mean(loan_amount, na.rm = T), sd = sd(loan_amount, na.rm = T))
+train %>% aggregate(accepted ~ applicant_ethnicity, ., mean)
+train %>% aggregate(accepted ~ applicant_sex, ., mean)
+r = train %>% subset(., state_code == "48" & county_code != "-1") %>%  aggregate(accepted ~ county_code, ., mean)
+range(r$accepted)
+train %>% subset(., state_code %in% c("2","4")) %>% aggregate(accepted ~ state_code+loan_type, ., mean) %>% arrange(loan_type, accepted)
+
+plot_hist <- function(df, col = 'loan_amount', bins = 4){
+  #options(repr.plot.width = 4, repr.plot.height = 3.5)
+  #bw <- (max(df[, col]) - min(df[, col])) / (bins+1)
+  p <- ggplot(df, aes_string(col)) +
+    #geom_histogram(binwidth = bw) + scale_x_continuous(breaks = seq(0,1200, 200))#, aes(y = ..density..),alpha = 0.5) #+
+  geom_histogram()+ scale_x_log10(breaks = seq(0,1200, 100))#(breaks = seq(0,1200, 200))
+    #geom_density(aes(y = ..density..), color = 'blue') +
+    #geom_rug()
+  print(p)
+}
+plot_hist(train)
+df = subset(train, loan_amount <=1200)
+df = df %>% 
+  mutate
+(p = ggplot(subset(train, state_code == "45"), aes(x = applicant_income,y = loan_amount)) + geom_point() + geom_smooth())
+  
+```
+# **Data Preparation and Visualization**
+Data preparation is an important step. We first **Scale** the numeric values of the features to ensure they have a similar range of values to avoid features with larger numeric values dominating model training. `Zscore` normalization is used. We then recode categorical variable to factors. We then  visualize the separation of values between different levels of the label - `accepted(0,1)`
+1. **Class separation by numeric variables**
+We explore the distinction of the distribution of values between the two levels of the label.
+1. Boxplot
+
+```{r Data transform, warning=FALSE, echo=FALSE, message=FALSE}
+ numeric_vars<-sapply(names(train),function(x) ifelse(is.numeric(train[,x]) & x !="row_id",x,NA))
+ numeric_vars<-na.omit(numeric_vars)
+
+ cat_vars<-sapply(names(train),function(x) ifelse(is.character(train[,x]),x,NA))
+ cat_vars<-na.omit(cat_vars)
+numeric_vars = function(x) {
+  x = sapply(names(x), function(x) ifelse(is.numeric(train[,x]) & x !="row_id" & x != "accepted",x,NA))
+  x = na.omit(x)
+  
+} 
+
+cat_vars = function(x) {
+  x = sapply(names(x), function(x) ifelse(is.factor(train[,x]),x,NA))
+  x = na.omit(x)
+  
+} 
+
+#train[, numeric_vars(train)] = sapply(train[, numeric_vars(train)], scale)
+#test_values[, numeric_vars(test_values)] = sapply(test_values[, numeric_vars(test_values)], scale)
+#ss=apply(train[, sapply(train, is.numeric)],2, scale)
+train$accepted = as.factor(train$accepted)
+plot_box <- function(df, cols, col_x = 'accepted'){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols){
+    p <- ggplot(df, aes_string(col_x, col)) + 
+        geom_boxplot() +
+        ggtitle(paste('Box plot of', col, '\n vs.', col_x))
+    print(p)
+     
+  }
+}
+
+num_vars = c("loan_amount", "applicant_income", "population", "minority_population_pct", "ffiecmedian_family_income", "tract_to_msa_md_income_pct", "number_of_owner.occupied_units", "number_of_1_to_4_family_units")
+plot_box(train, num_vars)
+```
+From the plots, three variables - loan_amount, minority_population_pct and tract_to_msa_md_income_pct show clear separation of values between the two levels. Next we explore this separation by categorical variables.
+2. Bar graphs
+```{r Data transform, warning=FALSE, echo=FALSE, message=FALSE}
+plot_bars = function(df, catcols){
+  options(repr.plot.width = 6, repr.plot.height = 5)
+  temp0 = df[df$accepted == 0,]
+  temp1 = df[df$accepted == 1,]
+  for(col in cat_cols){
+    p1 = ggplot(temp0, aes_string(col)) + 
+      geom_bar() + 
+      ggtitle(paste('Bar plot of \n', col, '\n for rejected loan applications')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    p2 = ggplot(temp1, aes_string(col)) + 
+      geom_bar() + 
+      ggtitle(paste('Bar plot of \n', col, '\n for approved loan applications')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    grid.arrange(p1, p2, nrow = 1)
+  }
+}
+cat_cols = c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")
+plot_bars(train, cat_cols)
+```
+We observe the following:
+1.	Some features such as property_type, loan_purpose, applicant_ethnicity, applicant_race have an almost significant different distribution of categories between the label categories.
+2.	Others features such as preapproval, applicant_sex, occupancy show small differences, but these differences are unlikely to be significant.
+
+Next we do feature engineering in readiness for modelling.
+
+
+
+
