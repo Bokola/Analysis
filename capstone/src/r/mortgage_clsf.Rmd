@@ -15,7 +15,12 @@ output:
 ---
 
 # **Background**
-The objective is Predicting Mortgage Approvals From Government Data, taking into consideration of **demographics, location, property type, lender**, and other factors are related to whether a mortgage application was accepted or denied,applying relevant skills to build a model for predicting **acceptance** of loan application across the United States. There are 23 variables (21 possible features and 1 binary label(`accepted`)) and 1 arbitrary identifier(`row_id). 
+## **Objective of the Model**
+
+The objective is Predicting Mortgage Approvals From Government Data, taking into consideration the **demographics, location, property type, lender**, and other factors to predict whether a mortgage application was accepted or denied. It is a classification problem - A classifier is a machine learning model that separates the **label** into categories or **classes**. In other words, classification models are **supervised** machine learning models which predict a categorical label. We apply relevant skills to classify the label **`acceptance`** - whether a mortgage application was accepted or declined using data obtained across the United States. 
+
+## **Description of Data**
+There are 23 variables (21 possible features and 1 binary label(`accepted`) and 1 arbitrary identifier(`row_id`). Both training and test sets span 500000 records
 
 ```{r packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 rm(list = ls(all = T))
@@ -87,7 +92,8 @@ if(!file.exists(scripts.path)){
 }
 ```
 
-Data import
+
+
 
 ```{r Data, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 train_labels = read.csv(path.expand(file.path(data.path, "train_labels.csv")), header = T)
@@ -151,7 +157,8 @@ for(v in c("loan_type","property_type","loan_purpose","occupancy", "preapproval"
 # }
 
 ```
-Summary statistics
+
+
 ```{r summaries, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 train %>% summarise(min = min(loan_amount, na.rm = T), max = max(loan_amount, na.rm = T), median = median(loan_amount, na.rm = T), mean = mean(loan_amount, na.rm = T), sd = sd(loan_amount, na.rm = T))
 train %>% aggregate(accepted ~ applicant_ethnicity, ., mean)
@@ -160,30 +167,37 @@ r = train %>% subset(., state_code == "48" & county_code != "-1") %>%  aggregate
 range(r$accepted)
 train %>% subset(., state_code %in% c("2","4")) %>% aggregate(accepted ~ state_code+loan_type, ., mean) %>% arrange(loan_type, accepted)
 
-plot_hist <- function(df, col = 'loan_amount', bins = 4){
-  #options(repr.plot.width = 4, repr.plot.height = 3.5)
-  #bw <- (max(df[, col]) - min(df[, col])) / (bins+1)
-  p <- ggplot(df, aes_string(col)) +
-    #geom_histogram(binwidth = bw) + scale_x_continuous(breaks = seq(0,1200, 200))#, aes(y = ..density..),alpha = 0.5) #+
-  geom_histogram()+ scale_x_log10(breaks = seq(0,1200, 100))#(breaks = seq(0,1200, 200))
-    #geom_density(aes(y = ..density..), color = 'blue') +
-    #geom_rug()
-  print(p)
-}
-plot_hist(train)
-df = subset(train, loan_amount <=1200)
-df = df %>% 
-  mutate
-(p = ggplot(subset(train, state_code == "45"), aes(x = applicant_income,y = loan_amount)) + geom_point() + geom_smooth())
+# plot_hist <- function(df, col = 'loan_amount', bins = 4){
+#   #options(repr.plot.width = 4, repr.plot.height = 3.5)
+#   #bw <- (max(df[, col]) - min(df[, col])) / (bins+1)
+#   p <- ggplot(df, aes_string(col)) +
+#     #geom_histogram(binwidth = bw) + scale_x_continuous(breaks = seq(0,1200, 200))#, aes(y = ..density..),alpha = 0.5) #+
+#   geom_histogram()+ scale_x_log10(breaks = seq(0,1200, 100))#(breaks = seq(0,1200, 200))
+#     #geom_density(aes(y = ..density..), color = 'blue') +
+#     #geom_rug()
+#   print(p)
+# }
+# plot_hist(train)
+# df = subset(train, loan_amount <=1200)
+# df = df %>% 
+#   mutate
+# (p = ggplot(subset(train, state_code == "45"), aes(x = applicant_income,y = loan_amount)) + geom_point() + geom_smooth())
   
 ```
-# **Data Preparation and Visualization**
-Data preparation is an important step. We first **Scale** the numeric values of the features to ensure they have a similar range of values to avoid features with larger numeric values dominating model training. `Zscore` normalization is used. We then recode categorical variable to factors. We then  visualize the separation of values between different levels of the label - `accepted(0,1)`
-1. **Class separation by numeric variables**
-We explore the distinction of the distribution of values between the two levels of the label.
-1. Boxplot
 
-```{r Data transform, warning=FALSE, echo=FALSE, message=FALSE}
+# **Data Recoding and Visualization**
+
+Variable recoding and visualization are key steps that ensure every variable is of the desired class/type. Visualizaation is key to understand the distribution and separation of values by the two levels of a binary label.
+
+## **Data Recoding**
+
+Our data has a number of categorical featuers (`msa_md`, `state_code`,`county_code`,`lender`,`loan_type`,`property_type`, `loan_purpose`, `occupancy`,`preapproval`,`applicant_ethnicity`,`applicant_race`, `applicant_sex`) but which are read in as numeric. We begin by recoding such variables into the desired character class and explicitly supplying the categories in both train and test sets. We then  visualize the separation of values between different levels of the label - `accepted(0,1)`.
+
+1. **Class separation by numeric variables**
+
+We explore the distinction of the distribution of values between the two levels of the label through boxplots.
+
+```{r Data viz-numerics, warning=FALSE, echo=FALSE, message=FALSE}
  numeric_vars<-sapply(names(train),function(x) ifelse(is.numeric(train[,x]) & x !="row_id",x,NA))
  numeric_vars<-na.omit(numeric_vars)
 
@@ -195,11 +209,11 @@ numeric_vars = function(x) {
   
 } 
 
-cat_vars = function(x) {
-  x = sapply(names(x), function(x) ifelse(is.factor(train[,x]),x,NA))
-  x = na.omit(x)
-  
-} 
+# cat_vars = function(x) {
+#   x = sapply(names(x), function(x) ifelse(is.factor(train[,x]),x,NA))
+#   x = na.omit(x)
+#   
+# } 
 
 #train[, numeric_vars(train)] = sapply(train[, numeric_vars(train)], scale)
 #test_values[, numeric_vars(test_values)] = sapply(test_values[, numeric_vars(test_values)], scale)
@@ -219,9 +233,15 @@ plot_box <- function(df, cols, col_x = 'accepted'){
 num_vars = c("loan_amount", "applicant_income", "population", "minority_population_pct", "ffiecmedian_family_income", "tract_to_msa_md_income_pct", "number_of_owner.occupied_units", "number_of_1_to_4_family_units")
 plot_box(train, num_vars)
 ```
+
 From the plots, three variables - loan_amount, minority_population_pct and tract_to_msa_md_income_pct show clear separation of values between the two levels. Next we explore this separation by categorical variables.
-2. Bar graphs
-```{r Data transform, warning=FALSE, echo=FALSE, message=FALSE}
+
+1. **Class separation by categorical variables**
+
+We explore the distinction of the distribution of values between the two levels of the label through bar plots.
+
+
+```{r Data viz, warning=FALSE, echo=FALSE, message=FALSE}
 plot_bars = function(df, catcols){
   options(repr.plot.width = 6, repr.plot.height = 5)
   temp0 = df[df$accepted == 0,]
@@ -241,11 +261,49 @@ plot_bars = function(df, catcols){
 cat_cols = c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")
 plot_bars(train, cat_cols)
 ```
+
 We observe the following:
 1.	Some features such as property_type, loan_purpose, applicant_ethnicity, applicant_race have an almost significant different distribution of categories between the label categories.
 2.	Others features such as preapproval, applicant_sex, occupancy show small differences, but these differences are unlikely to be significant.
 
 Next we do feature engineering in readiness for modelling.
+
+
+# **Feature Engineering**
+
+Data preparation is an important step. We first **Scale** the numeric values of the features to ensure they have a similar range of values to avoid features with larger numeric values dominating model training. `Zscore` normalization is used. We then recode categorical variable to factors. 
+
+```{r feature engineering, warning=FALSE, echo=FALSE, message=FALSE}
+ numeric_vars<-sapply(names(train),function(x) ifelse(is.numeric(train[,x]) & x !="row_id",x,NA))
+ numeric_vars<-na.omit(numeric_vars)
+
+ cat_vars<-sapply(names(train),function(x) ifelse(is.character(train[,x]),x,NA))
+ cat_vars<-na.omit(cat_vars)
+numeric_vars = function(x) {
+  x = sapply(names(x), function(x) ifelse(is.numeric(train[,x]) & x !="row_id" & x != "accepted",x,NA))
+  x = na.omit(x)
+  
+} 
+
+char_vars = function(x) {
+  x = sapply(names(x), function(x) ifelse(is.character(train[,x]),x,NA))
+  x = na.omit(x)
+  
+} 
+
+train[, numeric_vars(train)] = sapply(train[, numeric_vars(train)], scale)
+test_values[, numeric_vars(test_values)] = sapply(test_values[, numeric_vars(test_values)], scale)
+
+test_values[, char_vars(test_values)] = lapply(test_values[, char_vars(test_values)], as.factor)
+train[, char_vars(train)] = lapply(train[, char_vars(train)], as.factor)
+
+
+#ss=apply(train[, sapply(train, is.numeric)],2, scale)
+
+```
+
+
+
 
 
 
