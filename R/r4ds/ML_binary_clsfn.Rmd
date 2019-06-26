@@ -1,8 +1,11 @@
 ---
 title: "ML implementation in R"
 author: "Basil"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: '`r format(Sys.time(), '%d %B, %Y')`'
 output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
   pdf_document:
     toc: yes
     toc_depth: '3'
@@ -32,7 +35,7 @@ list.of.pkgs <- c("AmesHousing", "caret", "data.table", "dplyr", "ggplot2", "gbm
 ipk(list.of.pkgs)
 
 # package and session infoR
-sessionInfo()
+#sessionInfo()
 ```
 # **Implementation: Binary Classification**
 We use the employee attrition data to illustrate various regularization concepts for a binary classification problem, where the goal is to predict whether or not an employee attrits ("Yes" vs. "No").
