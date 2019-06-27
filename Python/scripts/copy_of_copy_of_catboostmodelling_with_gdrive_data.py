@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1E3Gk2JQlWFoB6BrFlmLMRbeaT85YHD4J
 """
 
-!pip install catboost
+#!pip install catboost
 
 #Import required libraries and modules
 import pandas as pd
@@ -41,6 +41,7 @@ train_values.head(n=2)
 
 #Make rows Strings
 train_values["row_id"]=train_values["row_id"].astype("object")
+train_labels["row_id"]=train_labels["row_id"].astype("object")
 test_values["row_id"]=test_values["row_id"].astype("object")
 
 train_values["co_applicant"]=train_values["co_applicant"].astype("int64")
@@ -151,10 +152,12 @@ def key_metrics(labels, probs, threshold):
 
 probabilities = model_cat.predict_proba(xtest)
 key_metrics(ytest, probabilities, 0.5)
-
+a = key_metrics(ytest, probabilities, 0.5)
+a
 pred_df  = pd.DataFrame({'row_id':test_values.row_id ,'accepted': pred})
 pred_df['accepted'] = pred_df.accepted.astype('int64')
 
 
 pred_df.to_csv('predicted.csv', index=False)
 #files.download('predicted.csv')
+
