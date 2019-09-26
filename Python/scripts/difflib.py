@@ -20,17 +20,17 @@ Classes
 3. class difflib.HtmlDiff()
 
 - creates HTML table(or a complete HTML file containing the table) of a side by side, line by line comparison of text with inter-line and intra-line change highlights utilizing constructors below:
-    
+
     a. _init_(tabsize=8, wrapcolumn=None, linejunk=None, charjunk=IS_CHARACTER_JUNK)
-    
+
     - tabsize an optional argument specifying tab stop spacing defaulting at 8
     - wrapcolumn an optional keyword to specify column number where lines are broken and wrapped, defaults to `None`
-    - linejunk and charjunk are optional keyword arguments passed into ndiff() (used by Htmldiff to generate side by side HTML differences). 
+    - linejunk and charjunk are optional keyword arguments passed into ndiff() (used by Htmldiff to generate side by side HTML differences).
 The following methods are public:
 
 make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5, *, charset='utf-8')
  - compares fromlines and tolines(list of stings) and returns a string which is a complete HTML file containing a table showing line by line differences with inter-line and intra-line changes highlighted.
- 
+
  - fromdesc and todesc are optional keyword arguments to specify from/to file column header strings (both default an empty string)
 - context and numlines are both optional keyword arguments. Set context to True when contextual differences are to be shown, else the default is False to show the full files
 
@@ -40,7 +40,7 @@ make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5,
 
 4. difflib.context_diff(a, b, fromfile= ", tofile=", fromfiledate=", tofiledate=", n=3, lineterm = '\n')
 
-    comparea a and b (lists of strings); return a delta (a generator            
+    comparea a and b (lists of strings); return a delta (a generator
     generating the delta lines) in context diff format.
     Context diffs are a compact way of showing just the lines that
     have changed plus a few lines of context.
@@ -50,9 +50,9 @@ make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5,
 
 5. difflib.get_close_matches(word, possibilities, n=3, cutoff=0.6)
 
-    Return a list of the best "good enough" matches. word is a  
+    Return a list of the best "good enough" matches. word is a
     sequnce for which close matches are desired (typically as
-    string)    
+    string)
     and possibilities a list of sequences against which to match
     word (typically a list of strings).
     Optional argument n(default 3, must be greater than 0) is the
@@ -60,18 +60,18 @@ make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5,
     Optional argument cutoff(default 0.6) is a float in the range
     [0,1].Possibilities that do not score at least that similar
     to word are ignored
-    
+
 6. difflib.ndiff(a, b, linejunk=None, charjunk=IS_CHARACTER_JUNK)
 
-    Compare a and b (lists of strings);Optional parameters linejunk     
+    Compare a and b (lists of strings);Optional parameters linejunk
     and charjunk are filtering functions.
-    
+
 7.difflib.restore(sequence, which)
     Return one of the two sequences that generated a delta
 
 8. difflib.unified_diff(a, b, fromfile=", tofile=", fromfiledate=", tofiledate=", n=3, lineterm='\n')
 
-    Compare a and b (lists of strings); return a delta (as  
+    Compare a and b (lists of strings); return a delta (as
     generator generating the delta lines) in a unified format; as
     way of just showing the lines that have changed plus a few
     lines of context. The changes are shown in an inline style
@@ -82,15 +82,15 @@ make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5,
 9. difflib_diff_bytes(dfunc, a, b, fromfile=b", fofile=b", fromfiledate=b", tofiledate=b",n=3, linetermb='\n' )
 
     compares a and b (lists of bytes objects) using dfunc, yield a
-    sequence of delta lines (also bytes) in the format returned by  
+    sequence of delta lines (also bytes) in the format returned by
     dfunc. dfunc must be callable, either `unified_diff()` or
     `context_diff()`
-    
+
 10. difflib.IS_LINE_JUNK(line)
 
     Return true for ignorable lines (blank lines or lines with a
     single) `#`, otherwise it's not ignorable.
-    
+
 11. difflib.IS_CHARACTER_JUNK(ch)
 
     Returns true for ignorable characters. The character ch is
@@ -100,7 +100,7 @@ SequenceMatcher Objects
 
 1.class difflib_SequenceMatcher(isjunk=None, a=", b=", autojunk=True)
 
-    isjunk must be `None`(the default) or a one-argument function -     
+    isjunk must be `None`(the default) or a one-argument function -
     takes a sequence element and returns true iff thw element is
     'junk' and needs ignoring. Passing `None` is same as passing
     'lambda x: 0`; i.e. no elements are ignored. For example pass
@@ -115,9 +115,9 @@ SequenceMatcher Objects
 3. set_seq2(b) - set 2nd seq to be compared, 1st seq not changed
 4. find_longest_match(alo,ahi,blo,bhi) - find longest matching block in a[alo:ahi] and b[blo:bhi]
 
-    
 
-  """  
+
+  """
 
 
 
@@ -149,10 +149,10 @@ for (file1, file2) in combinations(full_filenames, 2):
     with open(file1) as f1, open(file2) as f2:
          fileone = f1.readlines()
          filetwo = f2.readlines()
-         """ 
-         1. context_diff(a,b, fromfile=", tofile=", fromfiledaate=",        
+         """
+         1. context_diff(a,b, fromfile=", tofile=", fromfiledaate=",
          tofiledate=")
- 
+
         """
          sys.stdout.writelines(context_diff(fileone, filetwo,   fromfile='before.py', tofile='after.py'))
 
@@ -161,7 +161,6 @@ for (file1, file2) in combinations(full_filenames, 2):
 """
 get_close_matches('appel', ['ape', 'apple', 'peach', 'puppy'])
 import keyword
-?keyword.kwlist
 get_close_matches('wheel', keyword.kwlist)
 get_close_matches('pineapple', keyword.kwlist)
 get_close_matches('accept', keyword.kwlist)
@@ -173,8 +172,8 @@ get_close_matches('accept', keyword.kwlist)
 from difflib import ndiff
 diff = ndiff('one\ntwo\nthree\n'.splitlines(keepends = True), 'ore\nthre\nemu\n'.splitlines(keepends =True))
 print(''.join(diff), end = "")
-from difflib import restore 
-diff = list(diff)   
+from difflib import restore
+diff = list(diff)
 print(''.join(restore(diff, 1)), end = "")
 print(''.join(restore(diff, 2)), end = "")
 
