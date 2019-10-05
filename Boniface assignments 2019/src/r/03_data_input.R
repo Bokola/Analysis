@@ -37,6 +37,9 @@ monthly_db_htn = read.csv(file.path(data_dir, 'monthly_db_htn.csv'), stringsAsFa
 daily_db_htn_register = read.csv(file.path(data_dir, 'Daily Register.csv'), stringsAsFactors = F) %>%
   janitor::clean_names()
 
+tables_data = read.csv(file.path(data_dir, 'tables_data.csv'), stringsAsFactors = F) %>%
+  janitor::clean_names()
+
 cat('Data input complete ...! \n\n')
 
 

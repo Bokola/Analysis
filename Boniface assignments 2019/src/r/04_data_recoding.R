@@ -360,4 +360,138 @@ write.csv(median, file = file.path(data_dir, "daily median.csv"), row.names = F)
 write.csv(monthly_db_htn, file = file.path(data_dir, "monthly_db_htn_formatted.csv"), row.names = F)
 write.csv(daily_db_htn_register, file = file.path(data_dir, "daily_db_htn_register_for.csv"), row.names = F)
 
+# age counts
+age = tables_data %>%
+  select(., sub_county, starts_with('age')) %>% 
+ mutate(total = rowSums(select(., starts_with('age'))))
+total_age = age %>% select(., ends_with('years')) %>% rowSums(.) %>%sum(.)
+age_2 = age %>%
+  mutate(., age_0_5 = paste(age_0_5_years, "(", round(age_0_5_years/sum(age_0_5_years)*100),"%",")")) %>%
+  mutate(., age_6_18 = paste(age_6_18_years, "(", round(age_6_18_years/sum(age_6_18_years)*100),"%",")")) %>%
+  mutate(., age_19_35 = paste(age_19_35_years, "(", round(age_19_35_years/sum(age_19_35_years)*100),"%",")")) %>%
+  mutate(., age_36_60 = paste(age_36_60_years, "(", round(age_36_60_years/sum(age_36_60_years)*100),"%",")")) %>%
+  mutate(., age_over_60 = paste(age_over_60_years, "(", round(age_over_60_years/sum(age_over_60_years)*100),"%",")")) %>%
+  mutate(., age_0_5_total = paste(sum(age_0_5_years), "(", round(sum(age_0_5_years)/total_age*100, 2),"%",")")) %>%
+  mutate(., age_6_18_total = paste(sum(age_6_18_years), "(", round(sum(age_6_18_years)/total_age*100, 2),"%",")")) %>%
+  mutate(., age_19_35_total = paste(sum(age_19_35_years), "(", round(sum(age_19_35_years)/total_age*100, 2),"%",")")) %>%
+  mutate(., age_36_60_total = paste(sum(age_36_60_years), "(", round(sum(age_36_60_years)/total_age*100, 2),"%",")")) %>%
+  mutate(., age_over_60_total = paste(sum(age_over_60_years), "(", round(sum(age_over_60_years)/total_age*100, 2),"%",")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_age*100,2), "%",")"))
+
+gender = tables_data %>%
+  select(., sub_county, starts_with('gender')) %>%
+  #janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total = rowSums(select(., starts_with('gender'))))
+
+total_gender = sum(gender$gender_male, gender$gender_female)
+gender = gender %>%
+  mutate(., male = paste(gender_male, "(", round(gender_male/sum(gender_male)*100), "%", ")")) %>%
+  mutate(., female = paste(gender_female, "(", round(gender_female/sum(gender_female)*100), "%", ")")) %>%
+  mutate(., male_total = paste(sum(gender_male), "(", round(sum(gender_male)/total_gender*100,2), "%", ")")) %>%
+  mutate(., female_total = paste(sum(gender_female), "(", round(sum(gender_female)/total_gender*100,2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_gender*100,2), "%",")"))
+
+diabetes = tables_data %>%
+  select(., sub_county, starts_with('diabetes_')) %>%
+  mutate(., total = rowSums(select(., starts_with('diabetes_'))))
+  
+
+total_diabetes = sum(diabetes$diabetes_male, diabetes$diabetes_female)
+
+diabetes = diabetes %>%
+  mutate(., male = paste(diabetes_male, "(", round(diabetes_male/sum(diabetes_male)*100), "%", ")")) %>%
+  mutate(., female = paste(diabetes_female, "(", round(diabetes_female/sum(diabetes_female)*100), "%", ")")) %>%
+  mutate(., male_total = paste(sum(diabetes_male), "(", round(sum(diabetes_male)/total_diabetes*100,2), "%", ")")) %>%
+  mutate(., female_total = paste(sum(diabetes_female), "(", round(sum(diabetes_female)/total_diabetes*100,2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_diabetes*100,2), "%",")"))
+
+htn = tables_data %>%
+  select(., sub_county, starts_with('htn_')) %>%
+  mutate(., total = rowSums(select(., starts_with('htn_'))))
+  
+
+total_htn = sum(htn$htn_male, htn$htn_female)
+
+htn = htn %>%
+  mutate(., male = paste(htn_male, "(", round(htn_male/sum(htn_male)*100), "%", ")")) %>%
+  mutate(., female = paste(htn_female, "(", round(htn_female/sum(htn_female)*100), "%", ")")) %>%
+  mutate(., male_total = paste(sum(htn_male), "(", round(sum(htn_male)/total_htn*100,2), "%", ")")) %>%
+  mutate(., female_total = paste(sum(htn_female), "(", round(sum(htn_female)/total_htn*100,2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_htn*100,2), "%",")"))
+
+#bmi
+bmi = tables_data %>%
+  select(., sub_county, starts_with('bmi')) %>% 
+  mutate(total = rowSums(select(., starts_with('bmi'))))
+total_bmi = bmi %>% select(., starts_with('bmi')) %>% rowSums(.) %>%sum(.)
+bmi_2 = bmi %>%
+  mutate(., bmi_less_18 = paste(bmi_less18, "(", round(bmi_less18/sum(bmi_less18)*100),"%",")")) %>%
+  mutate(., bmi_18_24 = paste(bmi_18_5_to24_9, "(", round(bmi_18_5_to24_9/sum(bmi_18_5_to24_9)*100),"%",")")) %>%
+  mutate(., bmi_25_29 = paste(bmi_25to29_9, "(", round(bmi_25to29_9/sum(bmi_25to29_9)*100),"%",")")) %>%
+  mutate(., bmi_over_30 = paste(bmi_over30, "(", round(bmi_over30/sum(bmi_over30)*100),"%",")")) %>%
+  mutate(., bmi_less_18_total = paste(sum(bmi_less18), "(", round(sum(bmi_less18)/total_bmi*100),"%",")")) %>%
+  mutate(., bmi_18_24_total = paste(sum(bmi_18_5_to24_9), "(", round(sum(bmi_18_5_to24_9)/total_bmi*100),"%",")")) %>%
+  mutate(., bmi_25_29_total = paste(sum(bmi_25to29_9), "(", round(sum(bmi_25to29_9)/total_bmi*100),"%",")")) %>%
+  mutate(., bmi_over_30_total = paste(sum(bmi_over30), "(", round(sum(bmi_over30)/total_bmi*100),"%",")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_bmi*100,2), "%",")"))
+
+#Bp
+bp = tables_data %>%
+  select(., sub_county, starts_with('bp_')) %>%
+  mutate(., total = rowSums(select(., starts_with('bp_'))))
+  
+
+total_bp = sum(bp$bp_male, bp$bp_female)
+
+bp = bp %>%
+  mutate(., male = paste(bp_male, "(", round(bp_male/sum(bp_male)*100), "%", ")")) %>%
+  mutate(., female = paste(bp_female, "(", round(bp_female/sum(bp_female)*100), "%", ")")) %>%
+  mutate(., male_total = paste(sum(bp_male), "(", round(sum(bp_male)/total_bp*100,2), "%", ")")) %>%
+  mutate(., female_total = paste(sum(bp_female), "(", round(sum(bp_female)/total_bp*100,2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_bp*100,2), "%",")"))
+
+#newly diagnosed
+
+newly_diag = tables_data %>%
+  select(., sub_county, starts_with('newly_dia')) %>%
+  mutate(., total = rowSums(select(., starts_with('newly_diag'))))
+
+total_newly_diag = sum(newly_diag$newly_diag_diabetes, newly_diag$newly_diag_htn)
+
+newly_diag = newly_diag %>%
+  mutate(., diabetes = paste(newly_diag_diabetes, "(", round(newly_diag_diabetes/sum(newly_diag_diabetes)*100), "%", ")")) %>%
+  mutate(., htn = paste(newly_diag_htn, "(", round(newly_diag_htn/sum(newly_diag_htn)*100), "%", ")")) %>%
+  mutate(., diabetes_total = paste(sum(newly_diag_diabetes), "(", round(sum(newly_diag_diabetes)/total_newly_diag*100, 2), "%", ")")) %>%
+  mutate(., htn_total = paste(sum(newly_diag_htn), "(", round(sum(newly_diag_htn)/total_newly_diag*100, 2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_newly_diag*100,2), "%",")"))
+
+#visit
+
+visit = tables_data %>%
+  select(., sub_county, first, revisit) %>%
+  mutate(., total = rowSums(.[2:3]))
+total_visits = sum(visit$first, visit$revisit)
+
+visit = visit %>%
+  mutate(first_visit = paste(first, "(", round(first/sum(first)*100), "%", ")")) %>%
+  mutate(revisit_visit = paste(revisit, "(", round(revisit/sum(revisit)*100), "%", ")")) %>%
+  mutate(., total_first = paste(sum(first), "(", round(sum(first)/total_visits*100, 2), "%", ")")) %>%
+  mutate(., total_revisit = paste(sum(revisit), "(", round(sum(revisit)/total_visits*100, 2), "%", ")")) %>%
+  janitor::adorn_totals(., na.rm = T) %>%
+  mutate(., total2 = paste(total, "(", round(total/total_visits*100,2), "%",")"))
+
+write.csv(visit, file = file.path(cache_dir, 'visits.csv'), row.names = F)
+write.csv(newly_diag, file = file.path(cache_dir, 'newly_diag.csv'), row.names = F)
+write.csv(bp, file = file.path(cache_dir, 'bp.csv'), row.names = F)
+write.csv(bmi_2, file = file.path(cache_dir, 'bmi.csv'), row.names = F)
+write.csv(htn, file = file.path(cache_dir, 'htn.csv'), row.names = F)
+write.csv(diabetes, file = file.path(cache_dir, 'diabetes.csv'), row.names = F)
+write.csv(gender, file = file.path(cache_dir, 'gender.csv'), row.names = F)
 cat("Data recoding complete ...!\n\n")
