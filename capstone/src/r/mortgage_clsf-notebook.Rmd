@@ -4,7 +4,7 @@ author: "bokola"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   md_document:
-    variant: markdown_github
+    #variant: markdown_github
   word_document:
     toc: yes
     toc_depth: '3'
@@ -51,7 +51,7 @@ options(repr.plot.width = 4, repr.plot.height = 3.5)
 ```
 
 
-```{r setup, include=TRUE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(reticulate)
 use_virtualenv("r-reticulate")
@@ -114,7 +114,7 @@ if(!file.exists(scripts.path)){
 
 
 
-```{r Data, warning=FALSE,results='hide', echo=TRUE, message=FALSE}
+```{r Data, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 train_labels = read.csv("https://www.dropbox.com/s/qvq3hg3mnlowxql/train_labels.csv?raw=1", header = T)
 train_values = read.csv("https://www.dropbox.com/s/3l8eyc51iupjglf/train_values.csv?raw=1", header = T)
 test_values = read.csv("https://www.dropbox.com/s/2heyrfbq3cxvsdb/test_values.csv?raw=1", header = T) 
@@ -199,6 +199,24 @@ There are a number of variables in the train and test sets with missing values: 
 population - 22465, minority_population_pct - 22466, ffiecmedian_family_income - 22440, tract_to_msa_md_income_pct - 22514, number_of_owner.occupied_units - 22565, number_of_1_to_4_family_units - 22530. The missing entries were recoded to -999 for numeric variables.
 
 
+
+```{r NAs, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+p = train %>% 
+  is.na() %>%
+  reshape2::melt() %>%
+  ggplot(aes(Var2, Var1, fill=value)) + 
+    geom_raster() + 
+    coord_flip() +
+    scale_y_continuous(NULL, expand = c(0, 0)) +
+    scale_fill_grey(name = "", labels = c("Present", "Missing")) +
+    xlab("Observation") +
+    theme(axis.text.y  = element_text(size = 4))
+# vis_miss(train, cluster = TRUE)
+
+```
+
+
+
 ```{r summaries, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 train %>% summarise(min = min(loan_amount, na.rm = T), max = max(loan_amount, na.rm = T), median = median(loan_amount, na.rm = T), mean = mean(loan_amount, na.rm = T), sd = sd(loan_amount, na.rm = T))
 train %>% aggregate(accepted ~ applicant_ethnicity, ., mean)
@@ -239,7 +257,7 @@ Our data has a number of categorical featuers (`msa_md`, `state_code`,`county_co
 
 We explore the distinction of the distribution of values between the two levels of the label through boxplots.
 
-```{r Data viz-numerics, warning=FALSE, echo=TRUE, message=FALSE}
+```{r Data viz-numerics, warning=FALSE, echo=FALSE, message=FALSE}
  num_vars<-sapply(names(train),function(x) ifelse(is.numeric(train[,x]) & x !="row_id",x,NA))
  num_vars<-na.omit(num_vars)
 
@@ -278,7 +296,7 @@ From the plots, three variables - loan_amount, minority_population_pct and tract
 We explore the distinction of the distribution of values between the two levels of the label through bar plots.
 
 
-```{r Data viz, warning=FALSE, echo=TRUE, message=FALSE}
+```{r Data viz, warning=FALSE, echo=FALSE, message=FALSE}
 plot_bars = function(df, catcols){
   options(repr.plot.width = 6, repr.plot.height = 5)
   temp0 = df[df$accepted == 0,]
@@ -326,7 +344,7 @@ with best test of .72 and best iteration at 159
 
 
 
-```{python, warning=FALSE, echo=TRUE, message=FALSE, results = 'hide'}
+```{python, warning=FALSE, echo=FALSE, message=FALSE, results = 'hide'}
 import pandas as pd
 import numpy as np
 from catboost import CatBoostClassifier as catclass
