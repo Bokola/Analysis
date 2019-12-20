@@ -1,0 +1,1746 @@
+---
+title: "Geospatial Health with R-INLA and Shiny"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  word_document:
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  md_document: null
+  pdf_document:
+    latex_engine: lualatex
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+always_allow_html: yes
+---
+
+#Chapter 2 Spatial data and R packages for mapping
+
+Here I explore the possibility of creating maps for health data with R. 
+Packages in use include `sf`, `ggplot2`, `viridis`, `RColorBrewer`, `geoR`, `rgdal`, `leaflet`, `mapview`, `DT`, `tmap`, and `tidyverse`
+
+```{r packages, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+options(scipen = 999) # off scintific notation
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  if('d3treeR' %in% list.of.pkgs){
+    remotes::install_github("d3treeR/d3treeR")
+  }
+  if(!'patchwork' %in% .packages(all.available = TRUE)){
+    devtools::install_github("thomasp85/patchwork")
+  }
+  if(!'ReporteRsjars' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRsjars')
+  }
+  if(!'ReporteRs' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRs')
+  }
+  
+  if(!'INLA' %in% .packages(all.available = TRUE)){
+    install.packages("INLA", repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
+  }
+  
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs = c('sf', 'viridis', 'geoR', 'cholera', 'rgdal', "leaflet", "mapview","DT", "tmap", "ggplot2", "tidyverse",
+                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny")
+ipk(list.of.pkgs)
+```
+##Types of spatial data
+
+A spatial process in $d=2$ dimensions is denoted as
+                   $\{Z(s):s∈D⊂R^d\}$
+
+
+Here, $\mathbf{Z}$ denotes the attributes we observe, e.g. thenumber of sudden infant deaths or the level of rainfall, and $\mathbf{s}$ refers to the location of the observation. There are three basic types of spatial data through characteristics of the domain $D$, i.e., areal data, geostatistical data and point patterns.
+
+###Areal data
+
+In areal (or lattice) data the domain $D$ is fixed (of regular or irregular shape) and partitioned into a finite number of areal units with well-defined boundaries. Examples of arael data are attributes collected by ZIP code, census tract, or remotely sensed data reported by pixels.
+
+
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+nc = sf::st_read(system.file("shape/nc.shp", package = "sf"),
+             quiet = T
+             )
+ggplot(data = nc, aes(fill = SID74)) +
+  geom_sf() + scale_fill_viridis() + theme_bw()
+
+```
+
+FIGURE 2.1: Sudden infant deaths in North Carolina in 1974
+
+###Geostatistical data
+
+In geostatistical data the domain $D$ is a continuous fixed set. By continuous we mean that $s$ varies continuously over $D$ and therefore $\mathbf{Z(s)}$ can be observed everywhere within D. By fixed we mean that the points in D are non-stochastic. It is important to note that the continuity only refers to the domain, and the attributes $Z$ can be continuous or discrete. Examples include air pollution or rainfalll values measured at several monitoring stations.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+
+ggplot(data.frame(cbind(geoR::parana$coords, Rainfall = geoR::parana$data))) +
+  geom_point(aes(east, north, color = Rainfall), size = 2) +
+  coord_fixed(ratio = 1) +
+  scale_color_gradient(low = "blue", high = "orange") +
+  geom_path(data = data.frame(parana$border), aes(east, north)) +
+  theme_bw()
+
+```
+FIGURE 2.2: Average rainfall measured at 143 recording stations in Paraná state, Brazil
+
+###Point patterns
+
+Unlike geostatistical and lattice data, the domain $D$ in point patterns is random. Its index set gives the locations of random events that are the spatial point pattern. $\mathbf{Z(s)}$ may be equal to $1 \forall \mathbf{s} \in D$, indicating occurrence of the event, or random, giving some additional information. An example of point pattern is the geographical coordinates of individuals with a given disease living in a city.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+
+rng = cholera::mapRange()
+plot(cholera::fatalities[, c("x", "y")],
+     pch = 15, col = "black",
+     cex = 0.5, xlim = rng$x, ylim = rng$y, asp=1,
+     frame.plot = FALSE, axes = FALSE, xlab = "", ylab = ""
+     )
+addRoads()
+```
+FIGURE 2.3: John Snow’s map of the 1854 London cholera outbreak. 
+
+## Coordinate reference systems (CRS)
+
+A CRS permits us to know the origin and unit of measurement of the cordinates:
+1. Unprojected or geographic reference systems use longitude and latitude for referencing a location on the earth's 3-dimensional ellipsoid surface.
+2. Projected CRS use easting and northing Cartesian coordinate for referencing a location on a 2-dimensional representation of the earth.
+
+### Setting Coordinate Reference Systems in R
+In R, CRS are specified using proj4 strings that specify attributes susch as the projection, the ellipsoid and the datum. For example, the WGS84 longitude/latitude projection is specified as
+
+```{r}
+
+"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+```
+
+The proj4 string of the UTM zone 29 is given by
+
+```{r}
+"+proj=utm+zone=29 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+```
+and the UTM zone 29 in the south is defined as 
+
+```{r}
+"+proj=utm +zone=29 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +south"
+```
+Most common CRS can also be specified by providing the EPSG (European Petroleum Survey Group) code. For example, the EPSG code of the WGS84 projection is 4326. All the available CRS in R can be seen by typing `View(rgdal::make_EPSG())`. This returns a data frame with the EPSG code, notes, and the proj4 attributes for each of the projections. Details of a particular EPSG code, say 4326, can be seen by typing `CRS("+init=epsg:4326")` which returns `+init=epsg:4326 +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0`. We can find the codes of other commonly used projections on http://www.spatialreference.org
+
+Setting a projection may be necessary when the data do not have information about the CRS, done by assigning `CRS(projection)` to the data, where `projection` is the string of the projection arguments.
+
+Also, we may wish to transform data `d` to data with a different projection. To do that, we can use the `spTransform()` function of the **rgdal** package or the `st_transform()` function of the **sf** package. An example on how to create a spatial dataset with coordinates given by longitude/latitude, and transform it to a dataset with coordinates in UTM zone 35 in the south using rgdal is given below.
+
+```{r}
+library(rgdal)
+d = data.frame(long = rnorm(100,0,1), lat = rnorm(100, 0,1))
+coordinates(d) <- c("long", "lat")
+
+#assign CRS WGS84 longitude/latitude
+
+proj4string(d) = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+
+#reproject data from longitude/latitude to UTM zone 35 south
+d_new <- spTransform(d, CRS("+proj=utm +zone=35 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +south"))
+
+#add columns UTMx and UTMy
+d_new$UTMx = coordinates(d_new)[, 1]
+d_new$UTMy = coordinates(d_new)[, 2]
+```
+
+## Shapefiles
+
+Geographic data can be represented using a data storage format called shapefile that stores the location, shape, and attributes of geographic features such as points, lines and polygons. A shapefile has three mandatory files with extensions `.shp`, `.shx`, and `.dbf`:
+* `.shp`: contains the geometry data,
+* `.shx`: is a positional index of the geometry data that allows to seek forward and backwards the `.shp` file,
+* `.dbf`: stores the attributes for each shape.
+
+Other files that can form the shapefile are the following
+
+* `.prj`: plain text file describing the projection,
+* `.sbn` and `.sbx`: spatial index of the geometry data,
+* `shp.xml`: geospatial metadata in XML format.
+
+In R, we can read shapefiles using the `readOGR()` function of the **rgdal** package, `st_read()` of the the **sf** package.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+nameshp = system.file("shape/nc.shp", package = "sf")
+
+library(rgdal)
+
+map = readOGR(nameshp, verbose = F)
+class(map)
+
+head(map@data)
+plot(map)
+
+# sf package
+map_2 = st_read(nameshp, quiet = T)
+class(map_2)
+head(map_2)
+plot(map_2)
+```
+
+## Making maps with R
+Explores **ggplot2**, **leaflet**, **mapview** and **tmap**
+
+### ggplot2
+
+We can create maps using the `geom_sf()` function and providing a simple feature (`sf`) object. If the data available is spatial object of class `SpatialPolygonsDataFrame`, we can easily convert it to a simple feature object of class `sf` with the `st_as_sf()` function of the **sf** package.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+
+map = st_as_sf(map)
+ggplot(map) + 
+  geom_sf(aes(fill = SID74)) + theme_bw()
+
+#viridis scale
+
+library(viridis)
+ggplot(map) + geom_sf(aes(fill = SID74)) +
+  scale_fill_viridis() + theme_bw()
+
+```
+
+### Leaflet
+Leaflet is an open-source javascript lib for interactive maps. The R package **leaflet** makes it easy to integrate and control leaflet maps in R. We can create a map using leaflet by calling the `leaflet()` function, and then adding layers to the map using layer functions. For example, we can use `addTiles()` to add a background map, `addPolygons()` to add polygons, and `addLegend()` to add a legend.
+First we transform `map` whose projection is given by EPSG code 4267 to projection with EPSG code 4326 which is the projection required by leaflet. We use the `st_transform()` function of the **sf** package.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+
+st_crs(map)
+map = st_transform(map, 4326)
+```
+
+The we create a color palette using `colorNumeric()` and plot the map using `leaflet()`, `addTiles()`, and `addPolygons()` functions specifying the color of the polygons' border (`color`) and the polygons (`fillColor`), the opacity (`fillOpacity`), and the legend.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+library(leaflet)
+
+pal = colorNumeric("YlOrRd", domain = map$SID74)
+leaflet(map) %>%
+  addTiles() %>%
+  addPolygons %>%
+  addLegend(pal = pal, values = ~SID74, opacity = 1)
+```
+
+To save the map created to an HTML file, we can use the `saveWidget()` function of the htmlwidgets package (Vaidyanathan et al. 2018). If we wish to save an image of the map, we first save it as an HTML file with `saveWidget()` and then capture a static version of the HTML using the `webshot()` function of the webshot package.
+
+### mapview
+
+The **mapview** package allows to very quickly create interactive visualizations to investigate both the spatial geometries and the variables in the data. For example we can create a map showing `SID74` by just using the `mapview()` function with arguments the `map` object and the variable we want to show (`zcol = "SID74"`). This map is interactive and by clicking in each of the counties we can see popups with the information of the other variables in the data.
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+library(mapview)
+
+mapview(map, zcol = "SID74")
+```
+
+**mapview** is very convenient to very quickly inspect spatial data, but maps created  can also be customized by adding elements such as legends and background maps. Additionally, we can create visualizations that show multiple layers and incorporate synchronization. For example, we can create a map with background map `"cartoDB.DarkMatter"` and color from the palette `"YlOrRD"` of the **RColorBrewer** package:
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+library(RColorBrewer)
+pal = colorRampPalette(brewer.pal(9, "YlOrRd"))
+mapview(map,
+        zcol = "SID74",
+        map.types = "CartoDB.DarkMatter",
+        col.regions = pal)
+```
+
+We can also use the `sync()` function to produce a lattice-like view of multiple synchronized maps created with **mapview** or **leaflet**. For example, we can create maps of sudden infant deaths in `1974` and `1979` with synchronized zoom and pan by first creating maps of the variables SID74 and SID79 with `mapview()`, and then passing those maps as arguments of the `sync()` function:
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+m74 = mapview(map, zcol = "SID74")
+m79 = mapview(map, zcol = "SID79")
+sync(m74, m79)
+```
+
+### tmap
+
+The **tmap** package is used to generatw thematic maps with great flexibility. Maps are created by using the `tm_shape()` function and adding layers with a `tm_*()` function. Moreover, we can create static or interactive maps by setting `tmap_mode("plot")` and `tmap_mode("view")`, respectively. For example, an interactive map of `SID74` can be created as follows:
+
+```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+library(tmap)
+tmap_mode("view")
+tm_shape(map) + tm_polygons("SID74")
+
+```
+This package also allows to create visualizations with multiple shapes and layers, and specify different styles. To save maps created with **tmap**, we can use the `tmap_save()` function where we need to specify the name of the HTML file (`view` mode) or image (`plot` mode). Additional information about **tmap** can be seen in the package [link vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html)
+
+
+# Chapter 2 Bayesian inference and INLA
+
+## Bayesian inference
+
+Bayesian hierarchical models are often used to model spatio-temporal data. These models allow complete flexibility in how estimates borrow strength across space and time, and improve estimation and prediction of the underlying model features. In Bayesian approach, a probability distribution, 
+$\pi(\boldsymbol{y}|\boldsymbol{\theta})$, called **likelihood**, is specified for the observed data $\boldsymbol{y} = (y_1, \ldots, y_n)$ given a vector of unknown parameters $\boldsymbol{\theta}$. Then, a prior distribution $\pi(\boldsymbol{\theta}|\boldsymbol{\eta})$ is assigned to $\boldsymbol{\theta}$ where $\boldsymbol{\eta}$ is a vector of hyperparameters. The prior distribution for $\boldsymbol{\theta}$ represents knowledge about $\boldsymbol{\theta}$ before obtaining the data $\boldsymbol{y}$. If $\boldsymbol(\eta)$ is not known, a fully Bayesian approach would specify a hyperprior distribution for $\boldsymbol{\eta}$. Alternatively, an emperical Bayes approach might be used by which an estimate of $\boldsymbol{\eta}$ is used as if $\boldsymbol{\eta}$ were known.
+Assuming that $\boldsymbol{\eta}$ is known, inference on $\boldsymbol{\theta}$ is based on the posterior distribution of $\boldsymbol{\theta}$ which is defined by the Bayes' Theorem as <br>
+
+$\pi(\boldsymbol{\theta}|\boldsymbol{y}) = \frac{\pi(\boldsymbol{y}, \boldsymbol{\theta)}}{\pi(\boldsymbol{y})} = \frac{\pi(\boldsymbol{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta})}{\int \pi(\boldsymbol{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta}) d\boldsymbol{\theta}}$. <br>
+The denominator $\pi(\boldsymbol{y}) = \int\pi(\boldsymbol{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})d\boldsymbol{\theta}$ defines the marginal likelihood of the data $\boldsymbol{y}$. This is free of $\boldsymbol{\theta}$ and may be set to a scaling constant which does not impact the shape of the posterior distribution. Thus the posterior distribution is often expressed as <br>
+
+
+$\pi(\boldsymbol{\theta}|\boldsymbol{y}) \propto \pi(\boldsymbol{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta})$. <br>
+
+
+Bayesian methods allow to incorporate prior beliefs into the model, and provide a way of formalizing the process of learning from the data to update the prior information. In contrast to frequentist methods, Bayesian methods provide credible intervals on parameters and probability values on hypotheses that are in line with common sense interpretations. Moreover, Bayesian methods may handle complex models that are difficult to fit using classical methods such as repeated measures, missing data, and multivariate data. <br>
+
+One principal difficulty in applying Bayesian methods is the calculation of the posterior $\pi(\boldsymbol{\theta}|\boldsymbol{y})$ which usually involves high-dimensional integration that is generally not not tractable in a closed form. Thus, even when the likelihood and the prior distribution have closed-form expressions, the posterior distribution may not. Markov chain Monte Carlo (MCMC) methods have been traditionally used for solving this problem, and user-friendly software such as `WinBUGS`, `JAGS` and `Stan` have facilitated the use of Bayesian inference with MCMC in many scientific fields. MCMC methods work by generating a sample of values $\{ \boldsymbol{\theta}^{(g)},\ g = 1, \ldots, G \}$ from a convergent Markov chain whose stationary distribution is the posterior $\pi(\boldsymbol{\theta}|\boldsymbol{y})$. From these samples, emperical summaries of the $\boldsymbol{\theta}^{(g)}$ values may be used to summarize the posterior distribution of the parameters of interest. For example, we might use the sample mean to estimate the posterior mean <br>
+
+$\widehat{E(\theta_i | \boldsymbol{y} )} = \frac{1}{G} \sum_{i=1}^G \theta_i^{(g)}$,
+and the sample variance to estimate the variance
+$\widehat{Var(\theta_i | \boldsymbol{y} )} = \frac{1}{G-1} \sum_{i=1}^G (\theta_i^{(g)} - \widehat{E(\theta_i | \boldsymbol{y} )})^2$.<br>
+
+MCMC methods require the use of diagnostics to decide when the sampling chains have reached the stationary distribution, that is, the posterior distribution. One easy way to see if the chain has converged is to examine the traceplot which is a plot of the parameter value at each iteration against the iteration number, and see how well the chain is mixing or moving around the parameter space. Sample autocorrelations are also useful since they can inform whether the algorithm will be slow to explore the entire posterior distribution and this will impede convergence. The Geweke diagnostic takes the first and last parts of the chain and compares the means of both parts to see if the two parts are from the same distribution. It is also common to assess convergence by running a small number of parallel chains initialized at different starting locations. Traceplots are then examined to see if there is a point after which all chains seem to overlap. Diagnostics can also be used to assess whether the variation within and between the chains coincide.
+
+MCMC methods have made a great impact on statistical practice by making Bayesian inference possible for complex models. However, they are sampling methods that are extremely computationally demanding and present a wide range of problems in terms of convergence. Integrated nested Laplace approximation (INLA) is a computational less-intensive alternative to MCMC designed to perform approximate Bayesian inference in latent Gaussian models (Rue, Martino, and Chopin [2019](https://paula-moraga.github.io/book-geospatial/sec-bayesianinference.html#ref-rueetal09)). These models include a very wide and flexible class of models ranging from generalized linear mixed models to spatial and spatio-temporal models. INLA uses a combination of analytical approximations and numerical algorithms for sparse matrices to approximate the posterior distributions with closed-form expressions. This allows faster inference and avoids problems of sample convergence and mixing which permit to fit large datasets and explore alternative models. Examples of big health data applications using INLA are Shaddick, Thomas, and Green  ([2018](https://paula-moraga.github.io/book-geospatial/sec-bayesianinference.html#ref-shaddicketal18)) which produces global estimates of fine particulate matter ambient pollution, Moraga et al. ([2015](https://paula-moraga.github.io/book-geospatial/sec-bayesianinference.html#ref-moragaetal15)) which predicts lymphatic filariasis prevalence in sub-Saharan Africa, and Osgood-Zimmerman et al. ([2018](https://paula-moraga.github.io/book-geospatial/sec-bayesianinference.html#ref-osgood-zimmermanetal18)) which maps child growth failure in Africa. INLA can be easily applied thanks to the R package **R-INLA** (Rue et al. [2018](https://paula-moraga.github.io/book-geospatial/sec-bayesianinference.html#ref-R-INLA)). The INLA website http://www.r-inla.org includes documentation, examples, and other resources about INLA and the **R-INLA** package. Below we provide an introduction to INLA, and Chapter 4 provides an introduction to the **R-INLA** package as well as examples on how to use it. 
+
+
+## Integrated nested Laplace approximation
+
+Integrated nested Laplace approximation (INLA) allows to perform approximate Bayesian inference in latent Gaussian models such as generalized linear mixed models and spatial and spatio-temporal models. Specifically, models are of the form <br>
+
+$y_i|\boldsymbol{x}, \boldsymbol{\theta} \sim \pi(y_i|x_i, \boldsymbol{\theta}),\ i=1,\ldots,n$,
+
+$\boldsymbol{x}|\boldsymbol{\theta} \sim N(\boldsymbol{\mu(\theta)}, \boldsymbol{Q(\theta)}^{-1}),$,
+
+$\boldsymbol{\theta} \sim \pi(\boldsymbol{\theta})$, <br>
+
+where $\boldsymbol{y}$ are the observed data, $\boldsymbol{x}$ represent a Gaussian field, and $\boldsymbol{\theta}$ are the hyperparameters. $\boldsymbol{\mu(\boldsymbol{\theta})}$ is the mean and $\boldsymbol{Q(\boldsymbol{\theta})}$ is the precision matrix (i.e., the inverse of the covariance matrix) of the latent Gaussian field $\boldsymbol{x}$. Here $\boldsymbol{y}$ and $\boldsymbol{x}$ can be high-dimensional. However, to produce fast inferences, the dimensions of the hyperparameter vector $\boldsymbol{\theta}$ should be small because approximations are computed using numerical integration over the hyperparameter space.<br>
+
+Observations ${y_i}$ are, in many situations, assumed to belong to an exponential family with mean $\mu_i = g^{-1}(\eta_i)$. The linear predictor $\eta_i$ accounts for effects of various covariates in as additive way <br>
+$\eta_i = \alpha + \sum_{k=1}^{n_{\beta}} \beta_k z_{ki} + \sum_{j=1}^{n_f} f^{(j)}(u_{ji})$. <br> Here, $\alpha$ is the intercept, $\{ \beta_k \}$'s quantify the linear effects of covariates $\{ z_{ki}\}$ on the response, and $\{ f^{(j)}(\cdot)\}$'s are a set of random effects defined in terms of some covariates $\{ \mu_{ji}\}$. This formulation permits to accomodate a wide range of models thanks to the very different forms taht the $\{ f^{(j)}\}$ functions can take including spatial and spatio-temporal models. <br> 
+
+INLA uses a combination of analytical approximations and numerical integration to obtain approximated posterior distributions of the parameters. These posteriors can then be post-processed to compute quantities of interest like posterior expectations and quantiles. Let <br>
+
+$\boldsymbol{x}=(\alpha,\{\beta_k\},\{f^{(j)}\})|\boldsymbol{\theta}\sim N(\boldsymbol{\mu(\theta)},Q(\boldsymbol{\theta})^{-1})$ denote the vector of the latent Gaussian variables, and let $\boldsymbol{\theta}$ denote the vector of hyperparameters which are not necessarily Gaussian. INLA computes accurate and fast approximations to the posterior marginals of the components of the latent Gaussian variables <br>
+$\pi(x_i|\boldsymbol{y}),\ i=1,\ldots,n$, <br>
+as well as the posterior marginals for the hyperparameters of the Gaussian latent model <br>
+$\pi(\theta_j|\boldsymbol{y}), \ j=1, \ldots, \dim(\boldsymbol{\theta})$. <br>
+
+The posterior marginals of each element ${x_i}$ of the latent field ${x}$ are given by <br>
+$\pi(x_i|\boldsymbol{y}) = \int\pi(x_i|\boldsymbol{\theta},\boldsymbol{y})\pi(\boldsymbol{\theta|\boldsymbol{y}})d\boldsymbol{\theta}$, <br>
+and the posterior marginals for the hyperparameters can be written as <br>
+$\pi(\theta_j|\boldsymbol{y})=\int \pi(\boldsymbol{\theta}|\boldsymbol{y})d\boldsymbol{\theta}_{-j}$.<br>
+
+The nested formulation is used to approximate $\pi(x_i|\boldsymbol{y})$ by combining analytical approximations to the full conditions $\pi(x_i|\boldsymbol{\theta, \boldsymbol{y}})$ and $\pi(\boldsymbol{\theta|\boldsymbol{y}})$ and numerical integration routines to integrate out $\boldsymbol{\theta}$. Similarly, $\pi(\theta_j|\boldsymbol{y})$ is approximated by approximating $\pi(\boldsymbol{\theta|\boldsymbol{y}})$ and integrating out $\boldsymbol{\theta_{-j}}$. Specifically, the posterior density of the hyperparameters is approximated using a Gaussian approximation for the posterior of the latent field,<br>
+$\tilde \pi_G(\boldsymbol{x}|\boldsymbol{\theta},\boldsymbol{y})$, evaluated at the posterior mode, <br>
+$\boldsymbol{x}^*(\boldsymbol{\theta}) = \mbox{arg max }_{\boldsymbol{x}} \pi_G(\boldsymbol{x}|\boldsymbol{\theta},\boldsymbol{y})$, <br>
+
+$\tilde \pi(\boldsymbol{\theta}|\boldsymbol{y}) \propto \left.\frac{\pi(\boldsymbol{x},\boldsymbol{\theta},\boldsymbol{y})}{\tilde \pi_G(\boldsymbol{x}|\boldsymbol{\theta},\boldsymbol{y})}\right|_{\boldsymbol{x}=\boldsymbol{x}^*(\boldsymbol{\theta})}$.<br>
+
+Then, INLA constructs the following nested approximations:<br>
+
+$\tilde \pi(x_i|\boldsymbol{y})$=$\int \tilde \pi(x_i|\boldsymbol{\theta},\boldsymbol{y})\tilde \pi(\boldsymbol{\theta}|\boldsymbol{y})d\boldsymbol{\theta},\tilde \pi(\theta_j|y)$=$\int \tilde \pi(\boldsymbol{\theta}|\boldsymbol{y})d\boldsymbol{\theta}_{-j}$ <br>
+
+Finally, these approximations can be integrated numerically with respect to $\boldsymbol{\theta}$ <br>
+
+$\tilde \pi(x_i|\boldsymbol{y})=\sum_k \tilde \pi(x_i|\boldsymbol{\theta_k},\boldsymbol{y})\tilde \pi(\boldsymbol{\theta_k}|\boldsymbol{y})\times \Delta_k$,<br>
+
+$\tilde \pi(\theta_j|\boldsymbol{y})=\sum_l \tilde \pi(\boldsymbol{\theta^*_l}|\boldsymbol{y})\times \Delta^*_l$,<br>
+
+where $\Delta_k(\Delta^*_l)$  denotes the are weight corresponding to $\boldsymbol{\theta_k(\boldsymbol{\theta^*_l})}$ <br>
+The approximations for the posterior marginals for the ${x_i}$’s conditioned on selected values of $\boldsymbol{\theta_k}, \tilde \pi(x_i|\boldsymbol{\theta_k},\boldsymbol{y})$, can be obtained using a Gaussian, a Laplace, or a simplified Laplace approximation. The simplest and fastest solution is to use a Gaussian approximation derived from $\tilde \pi_G(\boldsymbol{x}|\boldsymbol{\theta},\boldsymbol{y})$. However, in some situations this approximation produces errors in the location and fails to capture skewness behavior. The Laplace approximation is preferable to the Gaussian approximation, but it is relatively costly. The simplified Laplace approximation (which is the default option in the **R-INLA** package) has smaller cost and satisfactorily remedies location and skewness inaccuracies of the Gaussian approximation.
+
+
+
+# **Chapter 4 The R-INLA package**
+
+To fit a model using INLA we need to take two steps:
+1. We write the linear predictor of the model as aformula object in R.
+2. We run the model calling the `inla()` function where we specify the formula, the family, the data and other options.
+The execution of inla() returns an object that contains the information of the fitted model including several summaries and the posterior marginals of the parameters, the linear predictors, and the fitted values. These posteriors can then be post processed using a set of functions provided by **R-INLA**. The package also provides estimates of different criteria to assess and compare Bayesian models. These include the model deviance information criterion (DIC), the Watanabe-Akaike information criterion (WAIC), the marginal likelihood, and the conditional predictive ordinates (CPO).
+
+
+## **Linear Predictor**
+Random effects are specified using the `f()` function. The first argument of `f()` is an index vector that specifies the element of the random effect that applies to each observation, and the second argument is the name of the `model` (e.g., `"iid"`, `"ari"`). For example, if we have the model <br>
+$Y_i \sim N(\eta_i, \sigma^2),\ i = 1,\ldots,n$,
+$\eta_i = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + u_i$,<br>
+
+where $Y_i$ is the response var, $\eta_i$ is the linear predictor, $x_1$, $x_2$ are two explanatory vars, and $u_i \sim N(0,\sigma_u^2)$, the formula is written as <br>
+
+```{r}
+y ~ x1 + x2 + f(i, model = "iid")
+
+```
+
+By default, the formula has an intercept. If we wanted to explicitly include $\beta_0$ in the formula, we would need to remove the intercept (adding `0`) and include it as a covariate term (adding `b0`).
+
+```{r}
+y ~ 0 + b0 + x1 + x2 + f(i, model = "iid")
+```
+
+## **Priors specification**
+
+The names of the priors available in **R-INLA** can be seen by typing `names(inla.models()$prior)`, and a list with the options of each of the priors can be seen with `inla.models()$prior`. The documentation regarding a specific prior can be seen with `inla.doc("priorname")`.<br>
+
+By default, the intercept of the model is assigned a  Gaussian prior with mean and precision equal to 0. The rest of the fixed effects are assigned Gaussian priors with mean equal to 0 and precision equal to 0.001. These values can be seen with <br>
+`inla.set.control.fixed.default()[c("mean.intercept", "prec.intercept", "mean", "prec")]`. The values of these priors can be changed in the `control.fixed` argument of `inla()` by assigning a list with the mean and precision of the Gaussian distributions. Specifically, the list contains `mean.intercept` and `prec.intercept` which represent the prior mean and precision for the intercept, and `mean` and `prec` which represent the prior mean and precision for all fixed effects except the intercept.<br>
+
+
+
+`prior.fixed <- list(mean.intercept = <>, prec.intercept = <>,
+                    mean = <>, prec = <>)
+res <- inla(formula,
+  data = d,
+  control.fixed = prior.fixed
+)`<br>
+
+
+The priors of the hyperparameters $\boldsymbol{\theta}$ are assigned in the argument `hyper` of `f()`.
+
+`formula <- y ~ 1 + f(<>, model = <>, hyper = prior.f)`
+
+The priors of the parameters of the likelihood are assigned in the parameter `control.family` of `inla()`.<br>
+
+`res = inla(formula, 
+data = d,
+control.fixed = prior.fixed,
+control.family = list(..., hyper = prior.1))`<br>
+
+`hyper` accepts a named list with names equal to each ofthe hyperparameters, and values equal to a list with the specification of the priors.Specifically, the list contains the following values:<br><br>
+
+* `initial`: initial value of the hyperparameter (good initial values can make the inference process faster),
+* `prior`: name of the prior distribution (e.g., `"iid"`, `"bym2"`),
+* `param`: vector with the values of the parameters of the prior distribution
+* `fixed`: Boolean var indicating whether the hyperparameter is a fixed value.<br>
+
+`prior.prec <- list(initial = <>, prior = <>,
+                   param = <>, fixed = <>)
+prior <- list(prec = prior.prec)` <br>
+
+**R-INLA** also provides a useful framework for building priors called Penalized Complexity or PC priors. PC priors are defined on individual model components that can be regarded as a flexible extension of a simple, interpretable, base model. PC models penalize deviations from the base model; thus they control flexibility, reduce over-fitting, and improve predictive performance. PC priors have a single parameter which controls the amount of flexibility allowed in a model. These priors are specified by setting $(U, \alpha)$ so that <br>
+
+
+$P(T(\xi) > U) = \alpha,$ <br>
+
+where $T(\xi)$ is an interpretable transformation of the flexibility parameter $\xi$, $U$ is an upper bound that specifies a tail event, and $\alpha$ is the probability of this event.
+
+## **Example**
+
+### **Data**
+
+We use the data `Surg` which contains the number of operations and the number of deaths in 12 hospitals performing cardiac surgery on babies. `Surg` is a data frame with three columns, namely, `hospital` denoting the hospital, `n` denoting the number of operations carried out in each hospital in a one-year period, and `r` denoting the number of deaths within 30 days of surgery in each hospital.
+
+```{r}
+Surg
+```
+
+### **Model**
+
+We specify a model to obtain the mortality rate in each of the hosps. We assume a Binomial likelihood for the number of deaths in each hosp, $Y_i$ with mortality rate $p_i$ <br>
+$Y_i \sim Binormial(n_i, p_i), i = 1, \ldots, 12.$.<br>
+We also assume that the mortality rates across hosps are similar in some way, and specify a random effects model for the true mortality rates $p_i$<br>
+$logit(p_i) = \alpha + u_i, u_i \sim N(0, \sigma^2)$.<br>
+
+By default, a non-informative prior is specified for α which is the population logit mortality rate<br>
+$\alpha \sim N(0,1/\tau), \tau = 0$.<br>
+
+In **R-INLA**, the default prior for the precision of the random effects $u_i$ is $1/\sigma^2 \sim Gamma(1,5 \times 10^-5)$. We can change this prior by setting a Penalized Complexity (PC) prior on the standard deviation $\sigma$. For example, we can specify that the probability of $\sigma$ being greater than 1 is small equal to 0.01: $P(\sigma > 1) = 0.01$. In **R-INLA**, this prior is specified as <br>
+
+```{r}
+prior_prec = list(prec = list(prior = "pc.prec",
+                              param = c(1, 0.01)))
+```
+
+and the model is translated in R code using the following formula:<br>
+
+```{r}
+formula = r ~ f(hospital, model = "iid", hyper = prior_prec)
+#inla.doc("iid")
+```
+information about the model called `"iid"` can be found by typing `inla.doc("iid")`, and documentation about the PC prior `"pc.prec"` can be seen with `"inla.doc("pc.prec")`. <br>
+Then, we call `inla()` specifying the formula, data, family and the number of trials. We add `control.predictor = list(compute = TRUE)` to compute the posterior marginals of the parameters, and `control.compute = list(dic = TRUE)` to indicate that the DIC should be computed.
+
+```{r}
+res = inla(formula,
+           data = Surg,
+           family = "binomial", Ntrials = n,
+           control.predictor = list(compute = TRUE),
+           control.compute = list(dic = TRUE))
+```
+
+### **Results**
+
+When `inla()` is executed, we obtain an object of class `inla` that contains the information of the fitted model including summaries and posterior marginal densities of the fixed effects, random effects, hyperparameters, linear predictors, and fitted values. A summary of the returned object `res` can be seen with `summary(res)` <br>
+
+```{r}
+summary(res)
+```
+
+We can plot the results with `plot(res)` or `plot(res, plot.prior = TRUE)` if we wish to plot prior and posterior distributions in the same plots. When executing `inla()`, we set `control.compute = list(dic  = TRUE)`; therefore, the result contains the DIC of the model. The DIC is based on a trade-off between the fit of the data to the model and the complexity of the model with smaller values of DIC indicating a better model.<br>
+
+```{r}
+res$dic$dic
+```
+
+Summaries of the fixed effects can be obtained by typing `res$summary.fixed`. This returns a data frame with the mean, standard deviation, 2.5, 50 and 97.5 percentiles, and mode of the posterior. The column `kld` represents the symmetric Kullback-Leibler divergence that describes the difference between the Gaussian and the simplified or full Laplace approximations for each posterior.<br>
+
+```{r}
+res$summary.fixed
+```
+
+We can also obtain the summaries of the random effects and the hyperparameters by typing `res$summary.random` (which is a list) and `res$summary.hyperpar` (which is a data frame), respectively.<br>
+
+```{r}
+res$summary.random
+```
+
+```{r}
+res$summary.hyperpar
+```
+
+When executing `inla()`, if in `control.predictor` we set `compute = TRUE` the returned object also includes the following objects:<br>
+
+* `summary.linear.predictor`: a df with mean, sd, and quantiles of the linear predictors,
+* `summary.fitted.values`: df with the mean, standard deviation, and quantiles of the fitted values obtained by transforming the linear predictors by the inverse of the link function,
+* `marginals.linear.predictor`: list with the posterior marginals of the linear predictors,
+* `marginals.fitted.values`: list with the posterior marginals of the fitted values obtained by transforming the linear predictors by the inverse of the link function.<br>
+Note that if an observation is `NA`, the link function used is the identity. If we wish `summary.fitted.values` and `marginals.fitted.values` to contain the fitted values in the transformed scale, we need to set the appropriate `link` in `control.predictor`. Alternatively, we can manually transform the marginal in the `inla` object using the `inla.tmarginal()` function.<br>
+
+The predicted mortality rates in our example can be obtained with `res$summary.fitted.values`
+
+```{r}
+res$summary.fitted.values
+```
+
+The column `mean` shows that hospitals 2, 8 and 11 are the ones with the highest posterior means of the mortality rates. Columns `0.025quant` and `0.975quant` contain the lower and upper limits of 95% credible intervals of the mortality rates and provide measures of uncertainty.<br>
+
+We can also obtain a list with the posterior marginals of the fixed effects by typing `res$marginals.fixed`, and lists with the posterior marginals of the random effects and the hyperparameters by typing `marginals.random` and `marginals.hyperpar`, respectively. Marginals are named lists that contain matrices with 2 columns. Column `x` represents the value of the parameter, and column `y` is the density. **R-INLA** incorporates several functions to manipulate the posterior marginals. For example, `inla.emarginal()` and `inla.qmarginal()` calculate the expectation and quantiles, respectively, of the posterior marginals. `inla.smarginal()` can be used to obtain a spline smoothing, `inla.tmarginal()` can be used to transform the marginals, and `inla.zmarginal()` provides summary statistics.<br>
+
+In our example, the first element of the posterior marginals of the fixed effects, res$marginals.fixed[[1]], contains the posterior elements of the intercept $\alpha$
+. We can apply inla.smarginal() to obtain a spline smoothing of the marginal density and then plot it using the ggplot() function of the ggplot2 packag
+
+```{r figs, fig.width=4,fig.height=3.5,fig.cap="Posterior distribution of parameter $\\alpha$"}
+library(ggplot2)
+alpha = res$marginals.fixed[[1]]
+ggplot(data.frame(inla.smarginal(alpha)), aes(x, y)) +
+  geom_line() +
+  theme_bw()
+
+```
+The quantile and the distribution functions are given by `inla.qmarginal()` and `inla.pmarginal()`, respectively. We can obtain the quantile 0.05 of $\alpha$, and plot the probability that $\alpha$ is lower than this quantile as follows:<br><br>
+
+```{r}
+quant = inla.qmarginal(0.05, alpha)
+quant
+```
+
+```{r}
+inla.pmarginal(quant, alpha)
+```
+
+A plot of the probability of $\alpha$ being lower than the 0.05 quantile can be created as follows: <br><br>
+
+```{r, fig.cap= " Probability of parameter $\\alpha$ being lower than the 0.05 quantile"}
+
+ggplot(data.frame(inla.smarginal(alpha)), aes(x, y)) +
+  geom_line() +
+  geom_area(data = subset(data.frame(inla.smarginal(alpha)), x < quant), fill = "black")
+```
+
+
+The function `inla.dmarginal()` computes the density at particular values. For example, the density at value -2,5 can be computed as follows: <br>
+
+```{r}
+inla.dmarginal(-2.5, alpha)
+
+```
+
+```{r, fig.cap="Posterior distribution of parameter $\\alpha$ at value -2.5"}
+ggplot(data.frame(inla.smarginal(alpha)), aes(x, y)) +
+  geom_line() +
+  geom_vline(xintercept = -2.5, linetype = "dashed") +
+  theme_bw()
+
+```
+
+If we wish to obtain a transformation of the marginal, we can use `inla.tmarginal()`. For example, if we wish to obtain the variance of the random effect $u_i$, we can get the marginal of the precision $\tau$ and then apply the inverse function.<br>
+
+```{r}
+marg.variance = inla.tmarginal(function(x) 1/x,
+                               res$marginals.hyperpar$"Precision for hospital")
+```
+
+A plot of the posterior of the variance of the random effect $u_i$ is shown below:<br>
+
+```{r, fig.cap="Posterior distribution of the variance of the random effect $u_i$"}
+
+ggplot(data.frame(inla.smarginal(marg.variance)), aes(x, y)) +
+  geom_line() +
+  theme_bw()
+
+```
+
+Now, if we wish to obtain the mean posterior of the variance, we can use `inla.emarginal()`. <br>
+
+```{r}
+m = inla.emarginal(function(x) x, marg.variance)
+m
+
+```
+
+The sd can be calculated using the expression $Var[X] = E[X^2]- E[X]^2$ <br>
+
+```{r}
+mm = inla.emarginal(function(x) x^2, marg.variance)
+sqrt(mm - m^2)
+```
+
+Quantiles are calculated using the `inla.qmarginal()` function.<br>
+
+```{r}
+inla.qmarginal(c(0.025, 0.5, 0.975), marg.variance)
+
+```
+
+We can also use `inla.zmargina()` to obtain summary statistics of the margina. <br>
+
+```{r}
+inla.zmarginal(marg.variance)
+```
+
+In this example, we wish to assess the performance of the hospitals by examining the mortality rates. `res$marginals.fitted.values` is a list that contains the posterior mortality rates of each of the hospitals. We can plot these posteriors by constructing a data frame marginals from the list `res$marginals.fitted.values`, and adding a column `hospital` denoting the hospital.<br>
+
+```{r}
+list_marginals = res$marginals.fitted.values
+
+marginals = data.frame(do.call(rbind, list_marginals))
+marginals$hospital = rep(names(list_marginals),
+                         times = sapply(list_marginals, nrow))
+```
+
+Then, we can plot `marginals` with `ggplot()` using `facet_wrap()` to make one plot per hospital. Figure 4.5 shows that hospitals 2, 8 and 11 have the highest mortality rates and, therefore, have poorer performance than the rest.<br>
+
+```{r, fig.cap="Posterior distributions of mortality rates of each hospital"}
+ggplot(marginals, aes(x = x, y = y)) +
+  geom_line() +
+  facet_wrap(~ hospital) +
+  labs(x = "", y = "Density") +
+  geom_vline(xintercept = 0.1, col = "grey") +
+  theme_bw()
+```
+We can also compute the probabilities that mortality rates are greater than a given threshold value. These probabilities are called exceedance probabilities and are expressed as $P(p_i > c)$, where $p_i$ represents the mortality rate of hospital $i$ and $c$ is the threshold value. For example, we can calculate the probability that the mortality rate of hospital 1, $p_1$, is higher than c using $P(p1>c)=1−P(p1≤c)$. In **R-INLA**, $P(p1≤c)$ can be calculated with the `inla.pmarginal()` function passing as arguments the marginal distribution of p1 and the threshold value c. The marginals of the mortality rates are in the list `res$marginals.fitted.values`, and the marginal corresponding to the first hospital is `res$marginals.fitted.values[[1]]`. We can choose $c$ equal to 0.1 and calculate $P(p1>0.1)$ as follows:<br>
+
+```{r}
+marg = res$marginals.fitted.values[[1]]
+1 - inla.pmarginal(q = 0.1, marginal = marg)
+```
+
+We can calculate the probabilites that mortality rates are greater than 0.1 for all hospitals using the `sapply()` function passing as arguments the list with all the marginals (`res$marginals.fitted.values`), and the function to calculate the exceedance probabilities (`1- inla.pmarginal()`). `sapply()` returns a vector of the same length as the list `res$marginals.fitted.values` with values equal to the result of applying the function `1- inla.pmarginal()` to each of the elements of the list of marginals
+
+```{r}
+options(scipen = 999) # off scintific notation
+sapply(res$marginals.fitted.values, FUN = function(marg){1- inla.pmarginal(q = 0.1, marginal = marg)})
+```
+
+These exceedance probabilities indicate that the probability that mortality rate exceeds 0.1 is highest for hospital 8 (probability equal to 0.83), and lowest for hospital 4 (probability equal to $4.36 \times 10^{-6}$.<br><br>
+
+Finally, it is also possible to generate samples from an approximated posterior of a fitted model using the `inla.posterior.sample()` function passing as arguments the number of samples to be generated, and the result of an `inla()` call that needs to have been created using the option `control.compute = list(config = TRUE)`<br>
+
+## **Control variables to compute approximations**
+
+The `inla()` function has an argument called `control.inla` that permits to specify a list of variables to obtain more accurate approximations or reduce the computational time. The approximations of the posterior marginals are computed using numerical integration. Different strategies can be considered to choose the integration points $\{ \boldsymbol{\theta_k} \}$ by specifying the argument `int.strategy`. One possibility is to use a grid around the mode of $\tilde \pi(\boldsymbol{\theta}|\boldsymbol{y})$. This is the most costly option and can be obtained with the command `control.inla = list(int.strategy = "grid")`. The complete composite design is less costly when the dimension of the hyperparameters is relatively large and it is specified as `control.inla = list(int.strategy = "ccd")`. An alternative strategy is to use only one integration point equal to the posterior mode of the hyperparameters. This corresponds to an empirical Bayes approach and can be obtained with the command `control.inla = list(int.strategy = "eb")`. The default option is `control.inla = list(int.strategy = "auto")` which corresponds to "grid" if $|\boldsymbol{\theta}| \leq 2$
+
+, and `"ccd"` otherwise. Moreover, the `inla.hyperpar()` function can be used with the result object of an `inla()` call to improve the estimates of the posterior marginals of the hyperparameters using the grid integration strategy.
+
+The argument `strategy` is used to specify the method to obtain the approximations for the posterior marginals for $x_i$'s
+’s conditioned on selected values of  $\boldsymbol{\theta_k},\tilde \pi(x_i|\boldsymbol{\theta_k},\boldsymbol{y}))$. The possible options are `strategy = "gaussian"`, `strategy = "laplace"`, `strategy = "simplified.laplace"`, and` strategy = "adaptative"`. The `"adaptative"` option chooses between the `"gaussian"` and the "simplified.laplace" options. The default option is `"simplified.laplace"` and this represents a compromise between accuracy and computational cost.
+
+
+# **Chapter 5 Areal Data**
+
+Areal or lattice data occurs when a fixed domain is partitioned into a finite number of subregions at which outcomes are aggregated.  A simple measure of disease risk in areas is the standardized incidence ratio (SIR) which is defined as the ratio of the observed to the expected counts. However, in many situations small areas may present extreme SIRs due to low population sizes or small samples. In these situations, SIRs may be misleading and insufficiently reliable for reporting, and it is preferred to estimate disease risk by using Bayesian hierarchical models that enable to borrow information from neighboring areas and incorporate covariates information resulting in the smoothing or shrinking of extreme values.<br>
+
+A popular spatial model is the Besag-York-Mollie (BYM) model which takes into account that data may be spatially correlated and observations in neighbouring areas may be more similar than observations in areas that are farther away. BYM model includes a spatial random effect that smoothes the data according to a neighbourhood structure, and unstructured exchangeable component that models uncorrelated noise. In spatio-temporal settings where disease counts are observed over time, spatio-temporal models that account not only for spatial structure but also for temporal correlations and spatio-temporal interactions are used. <br><br>
+
+In this chapter we explore how to compute neighborhood matrices, expected counts, and SIRs. We then fit spatial and spatio-temporal disease risk models using the **R-INLA** package using lung cancer data from **SpatialEpi** package and show results with maps done with **ggplot2** package. At the end of the chapter, areal data issues are discussed including the Misaligned Data Problem (MIDP) which occurs when spatial data are analyzed at a scale different from that at which they were originally collected, and the Modifiable Areal Unit Problem (MAUP) and the ecological fallacy whereby conclusions may change if one aggregates the same underlying data to a new level of spatial aggregation.<br><br>
+
+## **Spatial neighborhood matrices**
+
+Spatial neighborhood or proximity matrix is useful in the exploration of areal data. The $(i,j)$th element of a spatial neighborhood matrix $W$, denoted by $w_{i,j}$, spatially connects area $i$ and $j$ in some fashion, $i,j \in \{1, \ldots n\}$. $W$ defines a neighborhood structure over the entire study region, and its elements can be viewed as weights. More weights is associated with $j$'s closer to $i$ than those farther away from $i$. The simplest neighborhood definition is provided by the binary matrix where $w_{ij}=1$ if regions $i$ and $j$ share some common boundary, perhaps a vertex, and $w_{ij}=0$ otherwise. Customarily, $w_{ii}$ is set to 0 for $i=1,\ldots,n$. Note that this choice of neighborhood definition results in a symmetric spatial neighborhood matrix.<br>
+
+In the code below, we compute the neighbours of several counties in the Pennsylvania, USA, using a neighborhood definition based on counties with common boundaries. <br>
+
+```{r, fig.cap="Map of Pennsylvania counties."}
+library(SpatialEpi)
+map = pennLC$spatial.polygon
+plot(map)
+class(map)
+
+```
+
+We obtain neighbors of each county using `poly2nb()` function of the **spdep** package. This function returns a neighbors list `nb` based on counties with contiguous boundaries. Each element of the list `nb` represents one county and contains the indices of its neighbors e.g., `nb[[2]]` contains the neighbors of county 2.<br>
+
+```{r}
+library(spdep)
+nb = poly2nb(map)
+head(nb)
+```
+
+We can show the neighbors of specific counties of Pennsylvania using a map. For example, we can show the neighbors of counties 2, 44 and 58. First, we create a `SpatialPolygonsDataFrame` object with the map of Pennsylvania, and data that contains a variable called `county` with the county names, and a dummy variable called `neigh` that indicates the neighbors of counties 2, 44 and 58. `neigh` is equal to 1 for counties that are neighbors of counties 2, 44 and 58, and 0 otherwise.<br>
+```{r}
+d = data.frame(county = names(map), neigh = rep(0, length(map)))
+rownames(d) = names(map)
+map = SpatialPolygonsDataFrame(map, d, match.ID = TRUE)
+map$neigh[nb[[2]]] <- 1
+map$neigh[nb[[44]]] <- 1
+map$neigh[nb[[58]]] <- 1
+```
+Then we add variables called `long` and `lat` with the coordinates of each county, and a variable `ID` with the id of the counties.<br>
+
+```{r}
+
+coord = coordinates(map)
+map$long = coord[, 1]
+map$lat = coord[, 2]
+map$ID = 1:dim(map@data)[1]
+```
+We create the map with the `ggplot()` function of **ggplot2**. First, we convert the map which is a spatial object of class `SpatialPolygonsDataFrame` to a simple feature object of class `sf` with the `st_as_sf()` function of the **sf** package <br>
+
+```{r}
+library(sf)
+mapsf = st_as_sf(map)
+```
+We then plot the variable `neigh`, and adding labels with the area ids<br>
+
+```{r, fig.cap="Neighbors of areas 2, 44 and 58 of Pennsylvania"}
+library(ggplot2)
+ggplot(mapsf) + geom_sf(aes(fill = as.factor(neigh))) +
+  geom_text(aes(long, lat, label = ID), color = "white") +
+  theme_bw() + guides(fill = F)
+```
+
+Many other possibilities of spatial neighborhood definitions can be considered. For instance, we may expand the idea of neighborhood to include areas that are close but not necessarily adjacent. Thus we could use $w_{i,j} = 1$ $\forall$ $i,j$ within a specified distance, or, for a given $i, w_{ij} = 1$ if $j$ is one of the $m$ nearest neighbbors of $i$. The weight $w_{ij}$ can also be defined as the inverse distance between areas. Alternatively we may want to adjust for the total number of neighbors in each area and use a standardized matrix with entries $w_{std,i,j} = \frac{w_{ij}}{\sum_{j=1}^n w_{ij}}$. Note that this matrix is not symmetric in most situations where the areas are irregularly shaped.<br>
+
+## **Standardized incidence ratio (SIR)**
+SIR is a measure of disease risk estimate in an area. For each area $i, i = 1 \ldots, n$, the SIR is defined as the ratio of observed counts to the expected counts <br>
+$\mbox{SIR}_i=Y_i/E_i$ <br>
+
+The expected counts $E_i$ represent the total number of cases that one would expect if the population of area i behaved the way the standard (or regional) population behaves. $E_i$ can be calculated using indirect standardization as <br>
+
+$E_i = \sum_{j=1}^m r^{(s)}_j n^{(i)}_j,$ <br>
+ Where $r_j^{(s)}$ is the rate (number of cases divided by population) in stratum $j$ in the standard population, and $n_j^{(i)}$ is the population in stratum $j$ of area $i$.  In applications where strata information is not available, we can easily compute the expected counts as <br>
+ 
+ $E_i= r^{(s)} n^{(i)},$ <br>
+ 
+ where $r^{(s)}$ is the rate in the standard population (total number of cases divided by total population in all areas), and $n^{(i)}$ is the population of area $i$. $\mbox{SIR}_i$ indicates whether area $i$ has higher $(\mbox{SIR}_i > 1)$, equal $(\mbox{SIR}_i = 1)$ or lower $(\mbox{SIR}_i < 1)$ risk than expected from the standard population. When applied to mortality data, the ratio is known as the standardized mortality ratio (SMR).<br>
+
+We calculate SIRs of lung cancer in Pennsylvania in 2002 using the `pennLC$data` from **SpatialEpi** package<br>
+
+```{r}
+d = pennLC$data %>%
+  group_by(county) %>% summarize(Y = sum(cases))
+head(d)
+
+# using aggregate of spatial objects
+
+d = aggregate(
+  x = pennLC$data$cases,
+  by = list(county = pennLC$data$county),
+  FUN = sum
+)
+names(d) = c("county", "Y")
+
+```
+
+We can also calculate the expected number of cases in each county using indirect standardization. The expected counts in each county represent the total number of disease cases one would expect if the population in the county behaved the way the population of Pennsylvania behaves. We can do this by using the expected() function of SpatialEpi. This function has three arguments, namely, <br>
+
+* `population`: vector of population counts for each strata for each year,
+* `cases`: vector with the number of cases for each strata in each area,
+* `n.strata`: number of strata.<br>
+
+Vectors `population` and `cases` need to be sorted by area first and then, within each area, the counts for all strata need to be listed in the same order. All strata need to be included in the vectors, including strata with 0 cases. Here, in order to obtain the expected counts, we first sort the data using the `order()` function where we specify the order as county, race, gender and, finally, age.<br>
+
+
+```{r}
+pennLC$data <- pennLC$data[order(
+  pennLC$data$county,
+  pennLC$data$race,
+  pennLC$data$gender,
+  pennLC$data$age
+), ]
+```
+
+We then obtain expected counts `$E$` in each county by calling the `expected()` function where we set `population` equal to `pennLC$data$population` and `cases` equal to `pennLC$data$cases`. There are 2 races, 2 genders and 4 age groups for each county, so number of strata is set to 2x2x4 = 16.<br>
+
+```{r}
+ E = expected(
+   population = pennLC$data$population,
+   cases = pennLC$data$cases,
+   n.strata = 16
+ )
+```
+Next we add `E` to data frame `d` which contains the counties ids and the observed counts `Y` making sure the `E` elements correspond to the counties in `d$county` in the same order. To do that, we use `match()` to calculate the vector of the positions that natch `d$county` in `unique(pennLC$data$county)` which are the corresponding counties of `E`. Then we rearrange `E` using that vector.<br>
+
+```{r}
+d$E <- E[match(d$county, unique(pennLC$data$county))]
+head(d)
+```
+
+Finally, we compute SIR values asthe ratio of the observed to the expected counts, and add it to the data frame `d`.<br>
+
+```{r}
+d$SIR = d$Y/d$E
+head(d)
+```
+
+To map the lung cancer SIRs in Pennsylvania, we merge `d` and `map`<br>
+
+```{r}
+map = merge(map, d)
+```
+Then we create an `sf` object `mapsf` using `st_as_sf()` function<br>
+
+```{r}
+mapsf = st_as_sf(map)
+```
+Finally we plot the map<br>
+
+```{r,fig.cap="SIR of lung cancer in Pennsylvania "}
+ggplot(mapsf) + geom_sf(aes(fill = SIR)) + 
+  scale_fill_gradient2(
+    midpoint = 1, low = "blue", mid = "white", high = "red"
+  ) +
+  theme_bw()
+```
+
+## **Spatial small area disease risk estimation**
+
+Although SIRs can be useful in some settings, in regions with small populations or rare diseases the expected counts may be very low and SIRs may be misleading and insufficiently reliable for reporting. Therefore, it is preferred to estimate disease risk by using models that enable to borrow information from neighboring areas, and incorporate covariates information resulting in the smoothing or shrinking of extreme values based on small sample sizes.<br>
+
+Observed counts $Y_i$ in area $i$, are modeled using a Poisson distribution with mean $E_i\theta_i$ where $E_i$ is the expected counts and $\theta_i$ is the relative risk in area $i$. The logarithm of the relative risk $\theta_i$ is expressed as the sum of an intercept that models the overall disease risk level, and random effects to account for extra-Poisson variability. The relative risk $\theta_i$ quantifies whether area $i$ has higher $(\theta > 1)$ or lower $(\theta < 1)$ risk than the average risk in the standard population. For example, if $θ_i=2$, this means that the risk of area $i$
+
+is two times the average risk in the standard population.
+
+The general model for spatial data is expressed as follows:<br>
+
+$Y_i \sim P_o(E_i\theta_i), i = 1, \ldots,n,$<br>
+$log(\theta_i) = \alpha + u_i + v_i.$<br>
+
+Here $\alpha$ represents the overall risk in the region of study, $u_i$ is a random effect specific to area $i$ to model spatial dependence between the relative risk, and $v_i$ is an unstructured exchangeable component that models uncorrelated noise, $v_i \sim N(0, \sigma^2_v)$.  It is also common to include covariates to quantify risk factors and other random effects to deal with other sources of variability. For example, $log(θ_i)$ can be expressed as<br>
+
+$log(\theta_i) = d_i\beta + u_i+ v_i,$<br>
+
+where $d_i = (1, d_{i1}, \ldots, d_{ip})$ is the vector of the intercept and $p$ covariates corresponding to area $i$, and $\beta = (\beta_0, \beta_1, \ldots, \beta_p)'$ is the vector of coefficients.  In this setting, for a one-unit increase in covariate $d_j$, $j = 1,\ldots,p$, the relative risk increases by a factor of $exp(\beta_j)$, holding all other covariates constant.<br>
+
+A popular spatial model in disease mapping applications is the Besag-York-Mollié (BYM) model. In this model, the spatial random effect $u_i$ is assigned a Conditional Autogressive (CAR) distribution which smoothes the data according to a certain neighborhood structure that specifies that two areas are neighbors if they share a common boundary. Specifically<br>
+
+$u_i| \boldsymbol{u_{-i}} \sim N\left(\bar u_{\delta_i}, \frac{\sigma^2_u}{n_{\delta_i}}\right),$<br>
+
+where $\bar u_{\delta_i} = n_{\delta_i}^{-1} \sum_{j\in\delta_i} u_j,$, $\delta_i$ and $n_{\delta_i}$ represent, respectively, the set of neighbors and the number of neighbors of area $i$. The unstructered component $v_i$ is modeled as an $iid \sim N(0, \sigma^2)$<br>
+
+In **R-INLA**, the formula of the BYM model is specified as follows:<br>
+
+```{r}
+formula = Y ~ 
+  f(idareau, model = "besag", graph = g, scale.model = TRUE) +
+  f(idareav, model = "iid")
+```
+
+The formula includes the response in the left-hand side, and the fixed and random effects in the right-hand side. By default, the formula includes an intercept. Random effects are set usinf `f()` with parameters equal to the name of the index variable, the model and other options. The BYM formula includes a spatially structured component with index variable with name `idareau` and equal to `c(1,2, ..., I)`, and model `"besag"` with a CAR distribution and with neighborhood structure given by the graph `g`. The option `scale.model = TRUE` is used to make the precision parameter of models with different CAR priors comparable. The formula also includes an unstructured component  with indev variable with name `idereav` and equal to `c(1,2,...,I)`, and model `"iid"`. This is an independent and identically distributed zero-mean normally distributed random effect. Note that both the variables `idareau` and `idareav` are vectors with the indices of the areas. These two variables are identical; however, they still need to be specified as two different objects since **R-INLA** does not allow to include two effects with `f()` that use the same index variable. The BYM model can also be specified with the model `"bym"` which defines both the spatially structured and unstructured components $u_i$ and $v_i$.<br>
+
+Simpson et al. proposed a new paramatrization of the BYM model called BYM2 which makes parameters interpretable and facilitates the assignment of meaningful Penalized Complexity (PC) priors. The BYM2 model uses a scaled spatially structured component $\boldsymbol{u_*}$ and an unstructured component $\boldsymbol{v_*}$ <br>
+
+$\boldsymbol{b} = \frac{1}{\sqrt{\tau_b}}(\sqrt{1-\phi}\boldsymbol{v_*} + \sqrt{\phi}\boldsymbol{u_*}).$
+
+Here, the precision parameter $\tau_b > 0$ controls the marginal variance contribution of the weighted sum of $\boldsymbol{u_*}$ and $\boldsymbol{v_*}$. The mixing parameter $0 \leqslant \phi \leqslant 1$ measures the proportion of of the marginal variance explained by the structured effect $\boldsymbol{u_*}$. Thus, the BYM2 model is equal to an only spatial model when $\phi = 1$, and an only unstructured spatial noise when $\phi = 0$. In **R-INLA** we specify the BYM2 model as follows:<br>
+
+```{r}
+formula = Y ~ f(idarea, model = "bym2", graph = g)
+```
+
+where `idarea` is the index variable that denotes the areas `c(1, 2, ..., I)`, and `g` is the graph with the neighborhood structure. PC priors penalize the model complexity in terms of deviation from the flexible model to the base model which has a constant relative risk over all areas. To define the prior for the marginal precision $\tau_b$ we use the probability statement $P((\frac{1}{\sqrt{\tau_b}}) > U) = \alpha.$. A prior for $\phi$ is defined using $P(\phi < U) = \alpha$. <br>
+
+### **Spatial modeling of lung cancer in Pennsylvania**
+
+First we define the formula that includes the response variable `Y` on the left and the random effect `"bym2"` on the right. Note that we do not need to include an intercept as it is included by default. In the random effect, we specify the index variable idarea with the indices of the random effect. This variable is equal to `c(1, 2, ..., I)` where I is the number of counties (67). The number of counties can be obtained with the number of rows of the data (`nrow(map@data)`).
+
+```{r}
+
+map$idarea = 1:nrow(map@data)
+```
+W define a PC prior for the marginal precision $\tau_b$ by using $P((1 / \sqrt{\tau_b}) > U) = \alpha$. If we consider a marginal standard deviation of approximately 0.5 as a reasonable upper bound, we can use the rule of thumb described by Simpson et al. and set $U= 0.5/0.31$ and $\alpha = 0.01$. The prior for $\tau_b$ is then expressed as $P((1/\sqrt{\tau_b}) > (0.5/0.31)) = 0.01$. We define the prior for the mixing parameter $\phi$ as $P(\phi < 0.5) = 2/3$. This is a conservative choice that assumes that the unstructured random effect accounts for more of the variability than the spatially structured effect.<br>
+
+```{r}
+prior = list(
+  prec = list(
+    prior = "pc.prec",
+    param = c(0.5/0.31, 0.01)
+  ),
+  phi = list(
+    prior = "pc",
+    param = c(0.5, 2/3)
+  )
+)
+```
+We also need to compute an object `g` with the neighborhood matrix that will be used in the spatially structured effect. To compute g we calculate a neighbors list nb with `poly2nb()`. Then, we use `nb2INLA()` to convert the list nb into a file with the representation of the neighborhood matrix as required by **R-INLA**. Then we read the file using the `inla.read.graph()` function of **R-INLA**, and store it in the object `g`.<br>
+
+```{r}
+library(spdep)
+library(INLA)
+
+nb = poly2nb(map)
+head(nb)
+```
+```{r}
+nb2INLA("map.adj", nb)
+g = inla.read.graph(filename = "map.adj")
+```
+
+The formula is specified as follows:<br>
+
+```{r}
+formula = Y ~ f(idarea, model = "bym2", graph = g, hyper = prior)
+```
+
+We call `inla()` function to fit the model. The arguments of this function are the formula, the family (`"poisson"`), the data, and the expexted counts (`E`). We also set `control.predictor` equal to `list(compute = TRUE)` to compute the posteriors of the predictions.<br>
+
+```{r}
+res = inla(formula,
+           family = "poisson",
+           data = map@data,
+           E = E,
+           control.predictor = list(compute = TRUE)
+           )
+```
+The object `res` contains the results of the model. 
+
+```{r}
+summary(res)
+```
+
+Object `res$summary.fitted.values` contains summaries of the relative risks including the mean posterior and the lower and upper limits of 95% credible intervals of the relative risks. Specifically, column `mean` is the mean posterior and `0.025quant `and `0.975quant` are the 2.5 and 97.5 percentiles, respectively<br>
+
+```{r}
+head(res$summary.fitted.values)
+```
+
+To make maps of these variables, we first add the columns mean, 0.025quant and 0.975quantto the map. We assign mean to the relative risk, and 0.025quant and 0.975quant to the lower and upper limits of 95% credible intervals of the relative risks.<br>
+
+```{r}
+map$RR <- res$summary.fitted.values[, "mean"]
+map$LL <- res$summary.fitted.values[, "0.025quant"]
+map$UL <- res$summary.fitted.values[, "0.975quant"]
+
+summary(map@data[, c("RR", "LL", "UL")])
+```
+We then plot maps. We use the same scale for the three maps by adding an argument `limits` in `scale_fill_gradient2()` with the minimum and maximum values for the scale.<br>
+```{r}
+mapsf = st_as_sf(map)
+gRR = ggplot(mapsf) + geom_sf(aes(fill = RR)) +
+  scale_fill_gradient2(
+    midpoint = 1, low = "blue", mid = "white", high = "red",
+    limits = c(0.7, 1.5)
+  ) +
+  theme_bw()
+
+mapsf = st_as_sf(map)
+gLL = ggplot(mapsf) + geom_sf(aes(fill = LL)) +
+  scale_fill_gradient2(
+    midpoint = 1, low = "blue", mid = "white", high = "red",
+    limits = c(0.7, 1.5)
+  ) +
+  theme_bw()
+
+mapsf = st_as_sf(map)
+gUL = ggplot(mapsf) + geom_sf(aes(fill = UL)) +
+  scale_fill_gradient2(
+    midpoint = 1, low = "blue", mid = "white", high = "red",
+    limits = c(0.7, 1.5)
+  ) +
+  theme_bw()
+```
+
+We can plot the maps side-by-side on a grid by using the `plot_grid()` function of the **cowplot** package<br>
+
+```{r}
+library(cowplot)
+plot_grid(gRR, gLL, gUL, ncol = 1)
+```
+
+A data frame with the summary of BYM2 random effects is in `res$summary.random$idarea`. This has the number of rows equal to 2 times the number of area (`2*67`) where the first $\boldsymbol{67}$ rows correspond to $\boldsymbol{b} = \frac{1}{\sqrt{\tau_b}}(\sqrt{1-\phi}\boldsymbol{v_*} + \sqrt{\phi}\boldsymbol{u_*})$, and the last $\boldsymbol{67}$ correspond to $\boldsymbol{u_*}$.<br>
+
+```{r}
+head(res$summary.random$idarea)
+```
+
+To make a map of the posterior mean of the BYM2 random effect $\boldsymbol{b}$, we need to use `res$summary.random$idarea[1:67, "mean"]`<br>
+
+```{r, fig.cap= " Posterior mean of the BYM2 random effect"}
+mapsf$re = res$summary.random$idarea[1:67, "mean"]
+
+ggplot(mapsf) + geom_sf(aes(fill = re)) +
+  scale_fill_gradient2(
+    midpoint = 0, low = "blue", mid = "white", high = "red"
+  ) +
+  theme_bw()
+```
+
+## **Spatio-temporal small area disease risk estimation**
+
+In spatio-temporal settings where disease counts are observed over time, we can use spatio-temporal models that account for not only spatial structure but also for temporal correlations and spatio-temporal interactions. Specifically, counts $\boldsymbol{Y_{ij}}$ observed in area $i$ and time $j$ are modeled as<br>
+
+$Y_{ij} \sim P_o(E_{ij}\theta_{ij}), i = 1,\ldots,J$<br>
+where $\theta_{ij}$ is the relative risk and $E_{ij}$ is the expected number of cases in area $i$ and time $j$. Then, $log(\theta_{ij})$ is expressed as a sum of several components including spatial and temporal structures to take into account that neighboring areas and consecutive times may have more similar risk.  In addition, spatio-temporal interactions may also be included to take into account that different areas may have different time trends, but these may be more similar in neighboring areas.<br>
+
+For example, Bernardinelli et al. proposes a spacio-temporal model with parametric time trends that expresses the logarithm of the relative risk as <br>
+
+$log(\theta_{ij}) = \alpha + u_i + v_i + (\beta + \delta_i) \times t_j.$ <br>
+Here, $\alpha$ denotes the intercept, $u_i + v_i$ is an area random effect, $\beta$ is a global linear trend effect, and $\delta_i$ is an interaction between space and time representing the difference between the global trend $\beta$ and the area specific trend. $u_i$ and $\delta_i$ are modeled with a CAR distribution, and $v_i$ are $iid \sim N(0, \sigma^2)$ variables. This model allows each area to have its own time trend with spatial intercept given by $\alpha + u_i + v_i$ and slope given by $\beta + \delta_i$. The effect $\delta_i$ is called differential trend of the $i$th area, and denotes the amount by which the time trend of area $i$ differs from the overall time trend $\beta$. For example, a positive (negative) $\delta_i$ indicates area $i$ has a time trend with slope more (less) steep than the global time trend $\beta$
+
+In **R-INLA**, the spatio-temporal formula can be written as<br>
+
+```{r}
+formula = Y ~ f(idarea, model = "bym", graph = g) +
+  f(idarea1, idtime, model = "iid") + idtime
+```
+In the formula, `idarea` and `idarea1` are indices for the area equal to `c(1, 2, ..., I)`, `idtime` are indices for the times equal to `c(1, 2, ..., J)`. The formula includes an intercept by default. `f(idarea, model = "bym", graph = g)` corresponds to the area random effect $u_i+v_i$, `f(idarea1, idtime, model = "iid")` is the differential time trend $\delta_i \times t_j$, and `idtime` denotes the global trend $\beta \times t_j$.<br>
+
+The model proposed by Bernardinelli et al. assumes a linear time trend in each area. Alternative models that do not require linearity and assume a non-parametric model for the time trend have also been proposed.  For example, Knorr-Held
+specify models that include spatial and temporal random effects, as well as an interaction between space and time as follows:<br>
+
+$\log(\theta_{ij})=\alpha + u_i + v_i + \gamma_j + \phi_j + \delta_{ij},$ <br>
+
+Here $\alpha$ is the intercept, and $u_i + v_i$ is a spatial random effect defined as before, that is, $u_i$ follows a CAR distribution and $v_i$ is $iid \sim N(0, \sigma^2)$ and $v_i$ variable. $\gamma_j + \phi_j$ is a temporal random effect. $\gamma_j$ can follow a random walk in time of first order (RW1) <br>
+
+$\gamma_j | \gamma_{j-1} \sim ∼ N(\gamma_{j-1}, \sigma_\gamma^2),$ <br>
+
+or a random walk of second order <br>
+
+$\gamma_j | \gamma_{j-1}, \gamma_{j-2} \sim ∼ N(2\gamma_{j-1}-\gamma_{j-2}, \sigma_\gamma^2).$ <br>
+
+$\phi_j$ is unstructured temporal effect that can be modeled with as $\phi_j \sim N(0, \sigma^2_\phi)$. $\delta_{ij}$ is an interaction between space and time that can be specified in different by combining the structures of the random effects which are interacting. Knorr-Held proposes four types of interactions, namely, interaction between the effects $(u_i, \gamma_j), (u_i, \phi_j), (v_i, \gamma_j), (v_i, \theta_j).$<br>
+
+A model with interaction term $\delta_{ij}$ defined as the interaction between $v_i$(i.i.d) and $\phi_j$(i.i.d) assumes no spatial or temporal structure on $\delta_{ij}$. Therefore, the interaction term $\delta_{ij}$ can be modeled as $\delta_{ij} \sim N(0, \sigma^2_\delta)$. The formula corresponding to this model can be specified as <br>
+
+```{r}
+
+formula <- Y ~ f(idarea, model = "bym", graph = g) +
+  f(idtime, model = "rw2") +
+  f(idtime1, model = "iid") +
+  f(idareatime, model = "iid")
+```
+
+Here, `idarea` is the vector with the indices of the areas equal to` c(1, 2, ..., I)`, `idtime` and `idtime1` are the indices of the times equal to `c(1, 2, ..., J)`, and `idareatime` is the vector for the interaction equal `to c(1, 2, ..., M)`, where` M` is the number of observations.
+
+Below we show how to specify the interaction term $\delta_{ij}$
+for each of the types of interactions. We use `idarea` to denote the indices of the areas, and `idtime` to denote the indices of the times. Note that different indices need to be used for each `f()` and we would need to duplicate indices if they were used in other terms of the formula. As seen before, an interaction term with interacting effects $v_i$ (i.i.d.) and $\phi_j$ (i.i.d.) assumes no spatial or temporal structure and is specified as <br>
+
+```{r, results= "hide"}
+f(idareatime, model = "iid")
+```
+An effect that assumes interaction between $u_i$(CAR) and $\phi_j$(i.i.d) is specified as <br>
+
+```{r, results="hide"}
+
+f(idtime,
+  model = "iid",
+  group = "idarea", control.group = list(model = "besag", graph = g)
+)
+```
+
+This specifies a CAR distribution for the areas `(group = idarea)` for each time independently from all the other times. When the interaction is between $v_i$ (i.i.d.) and $\gamma_j$(RW2) the effect is specified asv<br>
+
+```{r, results= "hide"}
+f(idarea,
+  model = "iid",
+  group = "idtime", control.group = list(model = "rw2")
+)
+
+```
+
+This assumes a random walk of order 2 across time (`group = idtime`) for each area independently from all the other areas. When the effects interacting are $u_i$ (CAR) and $\gamma_j$ (RW2), we use <br>
+
+```{r, results= "hide"}
+
+f(idarea,
+  model = "besag", graph = g,
+  group = "idtime", control.group = list(model = "rw2")
+)
+```
+
+This assumes a random walk of order 2 across time (`group = idtime`) for each area that depends on the neighboring areas. In Chapters 6 and 7 we will see how to fit and interpret spatial and spatio-temporal areal models in different settings.<br>
+
+
+## **Issues with areal data**
+
+Spatial analyses of aggregated data are subject to the Misaligned Data Problem (MIDP) which occurs when the spatial data are analyzed at a scale different from that at which they were originally collected. In some cases, the purpose might be merely to obtain the spatial distribution of one variable at a new level of spatial aggregation. For example, we may wish to make predictions at county level using data that were initially recorded at the postal code level. In other cases, we might wish to relate one variable to other variables that are available at different spatial scales. An example of this scenario is where we want to determine whether the risk of an adverse outcome provided at counties is related to exposure to an environmental pollutant measured at a network of stations, adjusting for population at risk and other demographic information which are available at postal codes.<br>
+
+The Modifiable Areal Unit Problem (MAUP) is a problem whereby conclusions may change if one aggregates the same underlying data to a new level of spatial aggregation. The MAUP consists of two interrelated effects. The first effect is the scale or aggregation effect. It concerns the different inferences obtained when the same data is grouped into increasingly larger areas. The second effect is the grouping or zoning effect. This effect considers the variability in results due to alternative formations of the areas leading to differences in area shape at the same or similar scales. <br>
+
+Ecological studies are characterized by being based on aggregated data. Such studies contain the potential for ecological fallacy which occurs when estimated associations obtained from analysis of variables measured at the aggregated level lead to conclusions different from analysis based on the same variables measured at the individual level. The ecological inference problem can be viewed as a special case of the MAUP. The resulting bias, called ecological bias, is comprised of two effects analogous to the aggregation and zoning effects in the MAUP. These are the aggregation bias due to the grouping of individuals, and the specification bias due to the differential distribution of confounding variables created by grouping 
+
+
+# **Chapter 6 Spatial modeling of areal data. Lip cancer in Scotland**
+
+In this chapter we estimate the risk of lip cancer in males in Scotland, UK, using **R-INLA** package. We use data on the number of observed and expected lip cancer cases, and the proportion of population engaged in agriculture, fishing, or forestry (AFF) for each of the Scotland counties. Data is provided by **SpatialEpi** package. <br>
+
+## **Data and map**
+
+```{r}
+library(SpatialEpi)
+data(scotland)
+class(scotland)
+names(scotland)
+```
+
+`scotland` is alist object with the following elements: <br>
+
+* `geo`: data frame with names and centroid coordinates (eastings/northings) of each of the counties, <br>
+* `data`: data frame with names, number of observed and expected lip cancer cases, and AAF values of each of the counties,<br>
+* `spatial.polygon`: `SpatialPolygons` object with the map of Scotland,<br>
+* `polygon`: polygon map of Scotland.
+
+```{r}
+head(scotland$data)
+```
+
+The map of Scotland counties is given by the `SpatialPolygons` object called `scotland$spatial.polygon` <br>
+
+```{r}
+map = scotland$spatial.polygon
+plot(map)
+```
+
+`map` does not contain information about the Coordinate Reference System (CRS), so we specify a CRS by assigning the corresponding proj4 string to the map. The map is in the projection OSGB 1936/British National Grid which has EPSG code 27700. The proj4 string of this projection can be seen in https://spatialreference.org/ref/epsg/27700/proj4/ or can be obtained with R as follows: <br>
+
+```{r}
+codes = rgdal::make_EPSG()
+codes[which(codes$code == "27700"),]
+```
+We assign this proj4 string to `map` and set `+units=km` since this is the unit of the map projection <br>
+
+```{r}
+proj4string(map) <- "+proj=tmerc +lat_0=49 +lon_0=-2
++k=0.9996012717 +x_0=400000 +y_0=-100000 +datum=OSGB36
++units=km +no_defs"
+```
+
+We wish to use the **leaflet** package to create maps. **leaflet** expects data to be specified in latitude and longitude using WGS84, so we transform map to this projection as follows:<br>
+
+```{r}
+
+map = spTransform(map,
+                  CRS("+proj=longlat +datum=WGS84 +no_defs"))
+```
+
+## **Data Preparation**
+
+In order to analyze the data, we create a data frame called `d` with columns containing the counties ids, the observed and expected number of lip cancer cases, the AFF values, and the SIRs. Specifically, `d` contains the following columns:
+
+* `county`: id of each county,
+* `Y`: observed number of lip cancer cases in each county,
+* `E`: expected number of lip cancer cases in each county,
+* `AFF`: proportion of population engaged in agriculture, fishing, or forestry,
+* `SIR`: SIR of each county.
+
+We create the data frame d by selecting the columns of `scotland$data` that denote the counties, the number of observed cases, the number of expected cases, and the variable AFF. Then we set the column names of the data frame to `c("county", "Y", "E", "AFF")`.<br>
+
+```{r}
+d = scotland$data[, c("county.names", "cases", "expected", "AFF")]
+names(d) = c("county", "Y", "E", "AFF")
+d$SIR = d$Y / d$E
+head(d)
+```
+### **Adding data to map**
+
+The map of Scotland counties is given by the `SpatialPolygons` object called `map`. We can use the `sapply()` function to see that the polygons ID slot values correspond to the county names.<br>
+
+```{r}
+sapply(slot(map, "polygons"), function(x){slot(x, "ID")})
+```
+Using the `SpatialPolygons` object `map` and the data frame `d`, we can create a `SpatialPolygonsDataFrame` that we will use to make maps of the variables in `d`. We create the `SpatialPolygonsDataFrame` by first setting the row names of `d` equal to `d$county`. Then we merge the `SpatialPolygons` object `map` and the data frame `d` matching the `SpatialPolygons` polygons ID slot values with the data frame row names (`match.ID = TRUE`). We call `map` the `SpatialPolygonsDataFrame` obtained which contains the Scotland counties and the data of data frame `d`.<br>
+
+```{r}
+library(sp)
+rownames(d) = d$county
+map = SpatialPolygonsDataFrame(map, d, match.ID = TRUE)
+head(map@data)
+```
+## **Mapping SIRs with leaflet**
+
+We create a map with the SIRs by first calling `leaflet()` and adding the default OpenStreetMap map tiles to the map with `addTiles()`. Then we add the Scotland counties with `addPolygons()` where we specify the areas boundaries color (`color`) and the stroke width (`weight`). We fill the areas with the colors given by the color palette function generated with `colorNumeric()`, and set `fillOpacity` to a value less than 1 to be able to see the background map. We use colorNumeric() to create a color palette function that maps data values to colors according to a given palette. We create the function using the parameters `palette` with color function that values will be mapped to, and `domain` with the possible values that can be mapped. Finally, we add the legend by specifying the color palette function (`pal`) and the values used to generate colors from the palette function (`values`). We set `opacity` to the same value as the opacity in the map, and specify a title and a position for the legend<br>
+
+```{r, fig.cap= "Interactive map of lip cancer SIR in Scotland counties created with leaflet"}
+library(leaflet)
+l = leaflet(map) %>% addTiles()
+
+pal = colorNumeric(palette = "YlOrRd", domain = map$SIR)
+
+l %>%
+  addPolygons(
+    color = "grey", weight = 1,
+    fillColor = ~ pal(SIR), fillOpacity = 0.5
+  ) %>%
+  addLegend(
+    pal = pal, values = ~SIR, opacity = 0.5,
+    title = "SIR", position = "bottomright"
+  )
+```
+
+We can enable highlighting of values by adding `highlight0ptions`, `label` and `labelOptions`to `addPolygons()`. We choose to highlight the areas using bigger stroke width (`highlight0ptions(weight = 4)`). We use html syntax to create the labels using `sprintf()` function which returns a character vector containing a formatted combination of text and variable values and then applying `htmltools::HTML()` which marks the text as HTML.
+
+```{r, fig.cap="Interactive map of lip cancer SIR in Scotland counties created with leaflet after adding labels"}
+
+labels = sprintf("<strong %s </strong> <br/>
+                 observerd: %s <br/> Expected: %s <br/>
+                 AFF: %s <br/> SIR: %s",
+                 map$county, map$Y, round(map$E, 2), map$AFF, round(map$SIR, 2)
+) %>%
+  lapply(htmltools::HTML)
+
+l %>% addPolygons(
+  color = "grey", weight = 1,
+  fillColor = ~ pal(SIR), fillOpacity = 0.5,
+  highlightOptions = highlightOptions(weight = 4),
+  label = labels,
+  labelOptions = labelOptions(
+    style = list(
+      "font-weight" = "normal",
+      padding = "3px 8px"
+    ),
+    textsize = "15px", direction = "auto"
+  )
+) %>%
+  addLegend(
+    pal = pal, values = ~SIR, opacity = 0.5,
+    title = "SIR", position = "bottomright"
+  )
+```
+
+## **Modelling**
+
+In this section we specify the model for the data and detail modelling process<br>
+
+We specify a model assuming that the observed counts, $Y_i$, are conditionally independently Poisson distributed:<br>
+
+$Y_i \sim Poisson(E_i\theta_i), i = 1, \ldots,n$<br>
+
+where $E_i$ is the expected cound and $\theta_i$ is the relative risk in area $i$. The logarithm of $theta_i$ is expresssed as <br>
+
+$log(\theta_i) = \beta_0 + \beta_1 \times AFF_i + u_i + v_i,$<br>
+where $\beta_0$ is the intercept that represents the overall risk, $\beta_1$ is the coefficient of the AFF covariate, $u_i$ is a spatial structured component modeled with a CAR, $u_i|\boldsymbol{u_{-i}} \sim N\left(\bar u_{\delta_i}, \frac{\sigma^2_u}{n_{\delta_i}}\right)$, and $v_i$ is an unstructured spatial effect defined as $v_i \sim N(0, \sigma^2)$. The relative risk $\theta_i$ quantifies whether area $i$ has hihger ($\theta_i > 1$) or lower ($\theta_i < 1$) risk than the average risk in the standard population. <br>
+
+### **Neighborhood Matrix**
+
+We create the neighborhood matrix needed to define the spatial random effect using the `poly2nb()` and the `nb2INLA()` functions of the **spdep** package. First, we use `poly2nb()` to create a neighbors list based on areas with contiguous boundaries. Each element of the list `nb` represents one area and contains the indices of its neighbors. For example, `nb[[2]]` contains the neighbors of area 2. <br>
+
+```{r}
+library(spdep)
+library(INLA)
+nb = poly2nb(map)
+head(nb)
+```
+Then, we use `nb2INLA()` to convert this list into a file with the representation of the neighborhood matrix as required by **R-INLA**. Then we read the file using the `inla.read.graph()` function of R-INLA, and store it in the object `g` which we will later use to specify the spatial random effect.
+
+```{r}
+nb2INLA("map.adj", nb)
+g = inla.read.graph(filename = "map.adj")
+```
+### **Inference Using INLA**
+
+The model contains two random effects: $u_i$ that models spatial residual variation, and $v_i$ for modelling unstructured noise. We need to include two vectors in the data that denote the indices of these random effects. We then fit the model<br>
+
+```{r}
+idareau = 1:nrow(map@data)
+idareav = 1:nrow(map@data)
+
+formula = Y ~ AFF + 
+  f(idareau, model = "besag", graph = g, scale.model = TRUE) +
+  f(idareav, model = "iid")
+res = inla(formula,
+           family = "poisson", data = map@data,
+           E = E, control.predictor = list(compute = TRUE))
+summary(res)
+```
+
+### **Results**
+
+We observe the intercept $\hat \beta_0$= -0.305 with a 95% credible interval equal to (-0.5386, -0.0684), and the coefficient of AFF is $\hat \beta_1$= 4.330 with a 95% credible interval equal to (1.7435, 6.7702). This indicates that AFF increases lip cancer risk. We can plot the posterior distribution of the AFF coefficient by first calculating a smoothing of the marginal distribution of the coefficient with `inla.smarginal()`<br>
+
+```{r, fig.cap= "Posterior distribution of the coefficient of covariate AFF"}
+marginal = inla.smarginal(res$marginals.fixed$AFF) %>%
+  as.data.frame()
+ggplot(marginal, aes(x = x, y = y)) + geom_line() +
+  labs(x = expression(beta[1]), y = "Density") +
+  geom_vline(xintercept = 0, col = "black") + theme_bw()
+```
+
+## **Mapping relative risk**
+
+The estimates of the relative risk of lip cancer and their uncertainty for each of the counties are given by the mean posterior and the 95% credible intervals contained in the object `res$summary.fitted.values`. We add these to map data for plotting <br>
+
+```{r}
+head(res$summary.fitted.values)
+map$RR = res$summary.fitted.values[, "mean"]
+map$LL = res$summary.fitted.values[, "0.025quant"]
+map$UL = res$summary.fitted.values[, "0.975quant"]
+
+```
+
+```{r}
+pal = colorNumeric(palette = "YlOrRd", domain = map$RR)
+
+labels = sprintf("<strong> %s </strong> <br/>
+                 Observed: %s <br/> Expected: %s <br/>
+                 AFF: %s <br/> SIR: %s <br/> RR: %s (%s, %s)",
+                  map$county, map$Y, round(map$E, 2),
+  map$AFF, round(map$SIR, 2), round(map$RR, 2),
+  round(map$LL, 2), round(map$UL, 2)
+) %>% lapply(htmltools::HTML)
+
+lRR = leaflet(map) %>%
+  addTiles() %>%
+  addPolygons(
+    color = "grey", weight = 1, fillColor = ~pal(RR),
+    fillOpacity = 0.5,
+    highlightOptions = highlightOptions(weight = 4),
+    label = labels,
+    labelOptions = labelOptions(
+      style = list(
+        "font-weight" = "normal",
+        padding = "3px 8px"
+      ),
+      textsize = "15px", direction = "auto"
+    )
+    
+  ) %>%
+  addLegend(
+    pal = pal, values = ~RR, opacity = 0.5, title = "RR",
+    position = "bottomright"
+  )
+lRR
+```
+
+## **Exceedance probabilities**
+
+We can also calculate the probabilities of relative risk estimates being greater than a given threshold value. These probabilities are called exceedance probabilities and are useful to assess unusual elevation of disease risk. The probability that the relative risk of area $i$ is higher than a value c can be written as $P(\theta_i) > c)$. This probability can be calculated by substracting $P(\theta_i \leqslant c)$ to 1 as <br>
+$P(\theta_i >c) = 1 - P(\theta_i \leqslant c)$ <br>
+calculated in **R-INLA** as `1-inla.pmarginal(q=c, marginal = marg)` where `marg` is the marginal distribution of the predictions, and `c` is the threshold value. 
+
+The marginals of the relative risks are in the list `res$marginals.fitted.values`, and the marginal corresponding to the first county is `res$marginals.fitted.values[[1]]`. In our example, we can calculate the probability that the relative risk of the first county exceeds 2, $P(\theta_i > 2)$ as follows: <br>
+
+```{r, fig.cap= "Interactive map of exceedance probabilities in Scotland counties created with leaflet."}
+marg = res$marginals.fitted.values[[1]]
+1 - inla.pmarginal(q=2, marginal = marg)
+
+# for all counties
+
+exc = sapply(res$marginals.fitted.values,
+              FUN = function(marg){1 - inla.pmarginal(q=2, marginal = marg)})
+
+map$exc = exc
+
+pal <- colorNumeric(palette = "YlOrRd", domain = map$exc)
+
+labels <- sprintf("<strong> %s </strong> <br/>
+  Observed: %s <br/> Expected: %s <br/>
+  AFF: %s <br/> SIR: %s <br/> RR: %s (%s, %s) <br/> P(RR>2): %s",
+  map$county, map$Y, round(map$E, 2),
+  map$AFF, round(map$SIR, 2), round(map$RR, 2),
+  round(map$LL, 2), round(map$UL, 2), round(map$exc, 2)
+) %>% lapply(htmltools::HTML)
+
+lexc <- leaflet(map) %>%
+  addTiles() %>%
+  addPolygons(
+    color = "grey", weight = 1, fillColor = ~ pal(exc),
+    fillOpacity = 0.5,
+    highlightOptions = highlightOptions(weight = 4),
+    label = labels,
+    labelOptions = labelOptions(
+      style =
+        list(
+          "font-weight" = "normal",
+          padding = "3px 8px"
+        ),
+      textsize = "15px", direction = "auto"
+    )
+  ) %>%
+  addLegend(
+    pal = pal, values = ~exc, opacity = 0.5, title = "P(RR>2)",
+    position = "bottomright"
+  )
+lexc
+
+
+```
+
+This map provides evidence of excess risk within individual areas. In areas with probabilities close to 1, it is very likely that the relative risk exceeds 2, and areas with probabilities close to 0 correspond to areas where it is very unlikely that the relative risk exceeds 2. Areas with probabilities around 0.5 have the highest uncertainty, and correspond to areas where the relative risk is below or above 2 with equal probability. We observe that the counties in the north of Scotland are the counties where it is most likely that relative risk exceeds 2.<br>
+
+# **Chapter 8 Geostatistical data**
+
+Geostatistical data are measurements about a spatially continuous phenomenon that have been collected at particular sites, an example data being measurements of disease risk measured using surveys at specific villages. Suppose $Z(s_1),\ldots,Z(s_n)$ are observations of a spatial variable $Z$ at locations $s_1, \ldots, s_n$, in many situations, geostatistical data are assumed to be a partial realization of a random process <br>
+$\{Z(\boldsymbol{s}): \boldsymbol{s} \in D \subset \mathbb{R}^2\},$ <br>
+where $D$ is a fixed subset of $\mathbb{R}^2$ and the spatial index $\boldsymbol{s}$ varies continuosly throughout $D$. Many times the process $Z(.)$ can only be observed at a finite set of locations for practical reasons. Based upon this partial realization, we seek to infer the characteristics of the spatial process that gives rise to the data observed such as the mean and variability of the process. These characteristics are useful for the prediction of the process at unobserved locations and the construction of a spatially continuous surface of the variable of study. <br>
+
+A Gaussian random field (GRF) $\{Z(\boldsymbol{s}): \boldsymbol{s} \in D \subset \mathbb{R}^2\}$ is a collection of random variables where the observations occur in a continuous domain, and where every finite collection of random variables has a multivariate normal distribution. A random process $Z(.)$ is said to be strictly stationary if it is invariant to shifts, that is, if for any set of locations $s_i, i = 1, \ldots, n$, and any $h \in \mathbb{R}^2$ the distribution of $\{Z(s_1),\ldots,Z(s_n)\}$ is the same as $\{Z(s_1 + h),\ldots,Z(s_n + h)\}$. A less restrictive condition is given by the second-order stationarity (or weakly stationarity). Under this condition, the process has constant mean <br>
+$E[ Z(\boldsymbol{s})] = \mu, \forall \boldsymbol{s} \in D$, <br>
+and the covariance depends only on the difference of locations <br>
+$Cov( Z(\boldsymbol{s}), Z(\boldsymbol{s}+\boldsymbol{h})) = C(\boldsymbol{h}), \forall \boldsymbol{s} \in D, \forall \boldsymbol{h} \in \mathbb{R}^2.$ <br>
+
+In addition, if the covariances are functions only of the distances between locations and not of the directions, the process is called isotropic. If not, it is anisotropic. A process is said to be intrinsically stationary if in addition to the constant mean assumption it satisfies <br>
+
+$Var[Z(\boldsymbol{s_i}) - Z(\boldsymbol{s_j})] = 2\gamma(\boldsymbol{s_i} - \boldsymbol{s_j}), \forall  \boldsymbol{s_i}, \boldsymbol{s_j}.$ <br>
+
+The function $2\gamma(.)$ is known as the vriogram and $\gamma(.)$ is the semivariogram. Under the assumptionn of intrinsic stationarity, the constant-mean assumption implies <br>
+$2\gamma(h) = Var
+
+
+# **Chapter 12 Building a dashboard to visualize spatial data with flexdashboard**
+
+### **Layout** 
+
+Dashboard components are shown according to layout that needs to be specified. Dashboards are divided into colums and rows. We can create layouts with multiple columns by using `------------` for each column. Dashboard components are included by using `###`. The width of the columns is specified with the `{data-width}` attribute.<br>
+
+
+## **A dashboard to visualize global air pollution**
+
+Here we show how to build a dashboard to show fine particulate air pollution levels $(PM_{2.5})$ in each of the world countries in 2016<br>
+
+### **Data**
+We obtain the world map using the **rnaturalearth** package using the `nc_countries()` function to obtain a `SpatialPolygonsDataFrame` object called `map` with the world country polygons. `map` has a variable called `name` with the country names, and a variable called `iso3c` with the ISO standard country codes of 3 letters. We rename these variables with names `NAME` and `ISO3`, and they will be used later to join the map with the data. <br>
+
+```{r, fig.cap= "World map obtained from the rnaturalearth package"}
+map = rnaturalearth::ne_countries()
+names(map)[names(map) == "iso_a3"] <- "ISO3"
+names(map)[names(map) == "name"] <- "NAME"
+plot(map)
+```
+
+We obtain $PM_{2.5}$ concentration levels using the **wbstats** package. This package permits access to global indicators published by World Bank. If we are interested in obtaining air pollution indicators, we can use the `wbsearch()` function setting `pattern = "pollution"`. This function searches all the indicators that match the specified pattern and returns a data frame with their IDs and names. We assign the search result to the object `indicators` <br>
+
+```{r}
+
+indicators = wbstats::wbsearch(pattern = "pollution")
+```
+We decide to plot the indicator `PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)` which has code `EN.ATM.PM25.MC.M3` in 2016. To download these data, we use the `wb()` function providing the indicator code and the start and end dates.<br>
+
+```{r}
+d = wbstats::wb(
+  indicator = "EN.ATM.PM25.MC.M3",
+  startdate = 2016, enddate = 2016
+)
+head(d)
+```
+
+The returned data frame `d` has a variable called `value` with the $PM_{2.5}$ values and a variable called iso3c with the ISO standard country codes of 3 letters. In map, we create a variable called `PM2.5` with the $PM_{2.5}$ values retrieved (`d$value`) <br>
+
+```{r}
+map$PM2.5 = d[match(map$ISO3, d$iso3c), "value"]
+```
+
+#### **Table using DT**
+
+```{r}
+# DT::datatable(map@data[, c("ISO3", "NAME", "PM2.5")],
+#   rownames = FALSE, options = list(pageLength = 10)
+# )
+map@data %>%
+  select(., c("ISO3", "NAME", "PM2.5")) %>%
+  arrange(., desc(PM2.5)) %>%
+  DT::datatable(., rownames = F, options =list(pageLength = 10) 
+    
+  )
+```
+
+### **Map using leaflet**
+
+```{r, fig.cap= "Leaflet map with the $PM_{2.5}$ values"}
+pal = colorBin(
+  palette = "viridis", domain = map$PM2.5,
+  bins = seq(0, max(map$PM2.5, na.rm = T) + 10, by = 10)
+)
+
+map$labels = paste0(
+  "<strong> Country: </strong>",
+  map$NAME, "<br/>",
+  "<strong> PM2.5: </strong>",
+  map$PM2.5, "<br/>"
+  
+) %>%
+  lapply(htmltools::HTML)
+
+leaflet(map) %>%
+  addTiles() %>%
+  setView(lng = 0, lat = 30, zoom = 2) %>%
+  addPolygons(
+    fillColor = ~pal(PM2.5),
+    color = "white",
+    fillOpacity = 0.7,
+    label = ~labels,
+    highlightOptions = highlightOptions(
+      color = "black",
+      bringToFront = TRUE,
+    )
+  ) %>%
+  leaflet::addLegend(
+    pal = pal, values = ~PM2.5,
+    opacity = 0.7, title = "PM2.5"
+  )
+```
+
+### **Histogram using ggplot2**
+
+```{r, fig.cap="Histogram of the $PM_{2.5}$ values.", warning=FALSE}
+ggplot(data = map@data, aes(x = PM2.5)) + geom_histogram() +
+  theme_minimal_hgrid(12, rel_small = 1) # font size 12 pt throughout
+
+```
+
+### **R code to obtain the data and create the visualizations**
+
+```{r}
+library(rnaturalearth)
+library(wbstats)
+library(leaflet)
+library(DT)
+library(ggplot2)
+
+map <- ne_countries()
+names(map)[names(map) == "iso_a3"] <- "ISO3"
+names(map)[names(map) == "name"] <- "NAME"
+
+d <- wb(
+  indicator = "EN.ATM.PM25.MC.M3",
+  startdate = 2016, enddate = 2016
+)
+
+map$PM2.5 <- d[match(map$ISO3, d$iso3), "value"]
+```
+  
+  
+Column {data-width=600}
+-------------------------------------
+
+### Map
+
+
+```{r}
+pal <- colorBin(
+  palette = "viridis", domain = map$PM2.5,
+  bins = seq(0, max(map$PM2.5, na.rm = TRUE) + 10, by = 10)
+)
+
+map$labels <- paste0(
+  "<strong> Country: </strong> ",
+  map$NAME, "<br/> ",
+  "<strong> PM2.5: </strong> ",
+  map$PM2.5, "<br/> "
+) %>%
+  lapply(htmltools::HTML)
+
+leaflet(map) %>%
+  addTiles() %>%
+  setView(lng = 0, lat = 30, zoom = 2) %>%
+  addPolygons(
+    fillColor = ~ pal(PM2.5),
+    color = "white",
+    fillOpacity = 0.7,
+    label = ~labels,
+    highlight = highlightOptions(
+      color = "black",
+      bringToFront = TRUE
+    )
+  ) %>%
+  leaflet::addLegend(
+    pal = pal, values = ~PM2.5,
+    opacity = 0.7, title = "PM2.5"
+  )
+```
+   
+
+Column {data-width=400}
+-------------------------------------
+
+### Table
+
+
+```{r}
+map@data %>%
+  select(., c("ISO3", "NAME", "PM2.5")) %>%
+  arrange(., desc(PM2.5)) %>%
+  DT::datatable(., rownames = F, options =list(pageLength = 10) 
+    
+  )
+```   
+
+### Histogram
+
+
+```{r}
+ggplot(data = map@data, aes(x = PM2.5)) + geom_histogram() +
+  theme_minimal_hgrid(12, rel_small = 1) # font size 12 pt throughout
+```
+
+# **Introduction to shiny**
+
+**Shiny** is a web framework for R that enables to build interactive web applications. Shiny apps are useful tools for communicating informations as interactive data explorations rather than static documents. A shiny app comprises of a user interface `ui` which controls the layout and the appearance of the app and a `server()` function which contains the instructions to build the objects displayed in the user interface. Shiny apps permit user interaction by means of a functionality called reactivity. In this way, elements in the app are updated whenever users modify some options. This permits a better exploration of the data and greatly facilitates communication with other researchers and stakeholders. To create Shiny apps, there is no web development experience required, although greater flexibility and customization can be achieved by using HTML, CSS or JavaScript.<br>
+
+More on shiny: http://shiny.rstudio.com/tutorial/
+
+## **Structure of a Shiny app**
+
+A shiny app can be built by creating a directory (called, for example, `appdir`) that contains an R file (called, for example, `app.R`) with three components:<br>
+
+* a user interface object (`ui`) which controls the layout and appearance of the app
+* a `server()` function which contains the instructions to build the objects displayed in the user interface, and
+* a call to the `shinyApp()` function that creates the app from `ui / server` pair. <br>
+
+```{r}
+library(shiny)
+
+#define user interface object
+
+ui = fluidPage()
+
+# define server function
+
+server = function(input, output){}
+
+# call to shinyApp() which returns a shiny app object
+#from an explicit UI/server pair
+
+shinyApp(ui = ui, server = server)
+
+```
+
+Note that the directory can also contain other files such as data or R scripts that are needed by the app. Then we can launch the app by typing `runApp("appdir_path")` where `appdir_path` is the path of the directory that contains the `app.R` file. <br>
+
+## **Inputs**
+
+Include: `Buttons`, `Single checkbox`, `Checkbox group`, `Date input`, `Date range`, `File input`, `Help text`, `Numeric input`, `Radio buttons`, `Select buttons`, `Select box`, `Sliders`, `Text input` <br>
+
+To add an input to a shiny app, we need to place an input function `*Input()` in the `ui`. Some examples of `*Input()` functions are <br>
+
+* `textInput()` which creates a field to enter text
+* `dateRangeInput()` which creates a pair of calendars for selecting a date range, and
+* `fileInput()` which creates a control to upload a file <br>
+
+An `*Input()` function has a parameter called `inputId` with the id of the input, a parameter called `label` with the text that appears in the app next to the input, and other parameters that vary from input to input depending on its purpose. For example, a numeric input where we can enter numbers can be created by writing `numericInput(inputId = "n", label = "Enter a number", value = 25)`. This input has id `n`, label “Enter a number” and default value equal to 25. The value of a specific input can be accessed by writing `input$` and the id of the input. For example, the value of the numeric input with id `n` can be accessed with `input$n`. We can build an output in the `server()` function using `input$n`. Each time the user enters a number in this input, the `input$n` value changes and the outputs that use it update. <br>
+
+## **Outputs**
+
+Include plots, tables, texts, images and HTML widgets. HTML widgets are objects for interactive web data visualizations created with JavaScript libraries. Examples of HTML widgets are interactive web maps created with the **leaflet** package and interactive tables created with the **DT** package. HTML widgets are embedded in Shiny by using the **htmlwidgets** package. <br>
+
+Shiny provides several output functions `*Output()` that turn R objects into outputs in the user interface, e.g., <br>
+
+* `textOutput()` creates text,
+* `tableOutput()` creates a dataframe, matrix or other table-like structure
+* `imageOutput()` creates image. <br>
+
+The `*Output()` functions require an argument called `OutputId` that denotes the id of the reactive elements that is used when the output object is built in `server()`. <br>
+
+## **Inputs, outputs and reactivity**
+
+Inputs are objects we can interact with by modifying their values such as texts, numbers or dates. Outputs are objects we want to show in the app and can be plots, tables or HTML widgets. Shiny apps use a functionality called reactivity to support interactivity. In this way, we can modify the values of the inputs, and automatically the outputs that use these inputs will change. The structure of a Shiny app that includes inputs and outputs, and supports reactivity is shown below. <br>
+
+```
+ui = fluidPage(
+  *Input(inputId = myinput, label = mylabel, ...)
+  
+  *Output(outputId = myoutput, ...)
+  
+)
+
+server = function(input, output){
+output$myoutput = render({
+
+# code to build the output.
+    # If it uses an input value (input$myinput),
+    # the output will be rebuilt whenever
+    # the input value changes
+})
+}
+```
+
+## **HTML content**
+
+We can add HTML content with the `shiny::tags` object. `tags` is a list of functions that build specific HTML content. The names of the tag functions can be seen with `names(tags)`. Some examples of tag functions, their HTML equivalents, and the output they create are the following:
+<br>
+
+* `h1()`: `<h1>` first level header,
+* `h2()`: `<h2>` second level header,
+* `strong()`: `<strong>` bold text,
+* `em()`: `<em>` italicized text,
+* `a()`: `<a>` link to a webpage,
+* `img()`: `<img>` image,
+* `br()`: `<br>` line break,
+* `hr()`: `<hr>` horizontal line,
+* `div`: `<div> `division of text with a uniform style <br>
+
+We can use any of these tag functions by subsetting the `tags` list. For example, to create a first level header we can write `tags$h1("Header 1")`, to create a link to a webpage we can write `tags$a(href = "www.webpage.com", "Click here")`, and to create a section in an HTML document we can use `tags$div()` <br>
+
+# **Chapter 14 Interactive dashboards with flexdashboard and Shiny**
+
+**flexdashboard** makes it possible to build dashboards for communicating large amounts of information visually and quickly. Sometimes we may want to build interactive dashboards that enable users to alter options and immediately view updated outputs. We can add this functionality in dashboards by combining **flexdashboard** and shiny. This is done by adding `runtime:shiny` to the YAML matter of the rmarkdown doc, and then adding inputs that the user can modify (e.g., sliders, checkboxes), and outputs (e.g., maps, tables, plots) and reactive expressions that dynamically drive the components with the dashboard. Further details about how to use Shiny with **flexdashboard** can be seen in the **flexdashboard** [website](https://rmarkdown.rstudio.com/flexdashboard/shiny.html)
+
+
+## **An interactive dashboard to visualize global air pollution**
+
+We create an interactive dashboard with **flexdashboard** and shiny by modifying the dashboard previously created.
+We begin by adding `runtime:shiny` to the YAML matter <br>
+
+`---
+title: "Air pollution, PM2.5 mean annual exposure
+  (micrograms per cubic meter), 2016.
+  Source: World Bank https://data.worldbank.org"
+output: flexdashboard::flex_dashboard
+runtime: shiny
+
+---`
+
+<br>
+Then we add a column on the left-hand side of the dashboard where we add the slider to filter the countries that are shown in the visualizations. In this column we add the `.{sidebar}` attribute to indicate that the column appears on the left and has a special background color. The default width of a `{.sidebar}` column is 250 pixels. Here we modify the width of this column and the other two columns of the dashboard as follows. We use `{.sidebar data-width=200}` for the sidebar column, `{data-width=500}` for the column that contains the map, and `{data-width=300}` for the column that contains the table and the histogram. <br>
+
+Then we add the slider using the `sliderInput()` function with `inputId` as `"rangevalues"` and `label` as `"PM2.5 values:"`. Finally, we set `value = c(minvalue, maxvalue)` so initially the slider values are in the range `minvalue` to `maxvalue` <br>
+
+`
+Column {.sidebar data-width=200}
+-----------------------------------
+
+```{r}
+minvalue = floor(min(map$PM2.5, na.rm = TRUE))
+maxvalue = ceiling(max(map$PM2.5, na.rm = TRUE))
+
+sliderInput("rangevalues", label = "PM2.5 values:",
+            min = minvalue, max = maxvalue,
+            value = c(minvalue, maxvalue))
+```
+`
+
+We then filter the countries that are within the min, max range by calculating a vector `rowsinrangeslider` with the indices of the rows of the `map` that are in the range slider <br>
+
+```{r}
+mapFiltered = reactive({
+  rowsinrangeslider = which(map$PM2.5 >= input$rangevalues[1] & map$PM2.5 <= input$rangevalues[2])
+  
+  map[rowsinrangeslider, ]})
+```
+
+After that, we create the visualizations using `mapFiltered()` instead of `map`, and using `render*()` functions to be able to access the `mapFiltered()` object calculated in the reactive expression. We enclose the map `with renderLeaflet({})`, the table with `renderDT({})`, and the histogram with `renderPlot({})` so they are interactive. <br>
+
+We condition the app to return null if range selected does not contain any row of countries <br>
+
+`
+
+if(nrow(mapFiltered()) == 0){
+  return(NULL)
+}
+`
+
+
+
+
