@@ -1,0 +1,192 @@
+---
+title: "text mining with R"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Libraries
+
+```{r, message=FALSE, warning=FALSE, results='hide'}
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = T))]
+  if(length(new.pkg)) install.packages(new.pkg, dep = T)
+  sapply(pkg, require, character.only = T)
+}
+
+list.of.pkgs = c("tidyverse", "tidytext", "janeaustenr", "cowplot")
+ipk(list.of.pkgs)
+```
+
+Text is stored as strings<br>
+*Corpus* - raw strings annonated with additional metadata and details<br>
+*Document-term matrix* - a sparse matrix describing a collecton (i.e, a corpus) of documents with one row for each document and one column for each term. The value in the matrix is just word count <br>
+
+**The unnest_tokens Function**<br>
+
+```{r, message=FALSE, warning=FALSE}
+
+text = c("Because I could not stop for Death -",
+"He kindly stopped for me -",
+"The Carriage held but just Ourselves -",
+"and Immortality")
+
+text_df = data_frame(line = 1:4, text = text)
+text_df
+text_df %>%
+  unnest_tokens(word, text)
+```
+
+**Tidying the Works of Jane Austen**<br>
+
+```{r, warning=FALSE, message=FALSE}
+
+original_books = austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]",
+                                                 ignore_case = TRUE)))) %>%
+  ungroup()
+
+original_books
+```
+
+To work with this as a tidy dataset, we need to restructure it in the *one-token-per-row* format, which is done by the `unnnest_tokens()` function.<br>
+
+```{r}
+tidy_books = original_books %>%
+  unnest_tokens(word, text)
+tidy_books
+
+```
+
+This function uses the **tokenizers** package to separate each line of text in the original data frame into frames. The default tokenizing is for words, but other options include characters, n-grams, sentences, lines, paragraphs, or separation around a regex pattern. Next is to get rid of stop words such as 'the, and,of,e.t.c' <br> 
+
+```{r}
+data("stop_words")
+
+tidy_books = tidy_books %>%
+  anti_join(stop_words)
+```
+
+The **stop_words** dataset in the tidytext package contains stop words from three lexicons. We can use them all together, as we have here, or filter() to only use one set of stop words if that is more appropriate for a certain analysis.
+We can also use dplyr’s `count()` to find the most common words in all the books as a whole. <br>
+
+```{r}
+tidy_books %>%
+  count(word, sort = T) %>%
+  filter(n > 600) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) + 
+  geom_col() + 
+  xlab(NULL) + coord_flip() +
+  theme_minimal_vgrid(10, rel_small = 1)
+  
+```
+
+**Word Frequencies**
+
+What are the most common words in these novels of the Brontë sisters? <br>
+
+```{r, warning=FALSE, message=FALSE}
+library(gutenbergr)
+
+hgwells = gutenberg_download(c(35, 36, 5230, 159))
+tidy_hgwells = hgwells %>% unnest_tokens(word, text) %>%
+  anti_join(stop_words) 
+
+tidy_hgwells %>%
+  count(word, sort = T)
+
+```
+
+```{r}
+
+bronte <- gutenberg_download(c(1260, 768, 969, 9182, 767))
+tidy_bronte <- bronte %>%
+unnest_tokens(word, text) %>%
+anti_join(stop_words)
+
+tidy_bronte %>%
+count(word, sort = TRUE)
+```
+
+
+Interesting that “time,” “eyes,” and “hand” are in the top 10 for both H.G. Wells and the Brontë sisters. Now, let’s calculate the frequency for each word in the works of Jane Austen, the Brontë sisters, and H.G. Wells by binding the data frames together<br>
+
+```{r, message=FALSE, warning=FALSE}
+
+frequency <- bind_rows(mutate(tidy_bronte, author = "Brontë Sisters"),
+    mutate(tidy_hgwells, author = "H.G. Wells"),
+    mutate(tidy_books, author = "Jane Austen")) %>%
+    mutate(word = str_extract(word, "[a-z']+")) %>%
+    count(author, word) %>%
+    group_by(author) %>%
+    mutate(proportion = n / sum(n)) %>%
+    select(-n) %>%
+    spread(author, proportion) %>%
+    gather(author, proportion, `Brontë Sisters`:`H.G. Wells`)
+```
+A plot <br>
+
+```{r, message=FALSE, warning=FALSE, fig.cap="Comparing the word frequencies of Jane Austen, the Brontë sisters, and H.G.Wells"}
+library(scales)
+
+ggplot(frequency, aes(x = proportion, y = `Jane Austen`, color = 
+                        abs(`Jane Austen` - proportion))) +
+  geom_abline(color = "gray40",lty = 2) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
+  geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+  scale_x_log10(labels = percent_format()) +
+  scale_y_log10(labels = percent_format()) +
+  scale_color_gradient(limits = c(0, 0.001),
+                       low = "darkslategray4", high = "gray75") +
+  
+  theme_minimal_vgrid(10, rel_small = 1) +
+  facet_wrap(~author, ncol = 2) +
+  theme(legend.position = "none") +
+  labs(y = "Jane Austen", x = NULL) 
+  
+```
+
+Words that are close to the line in these plots have similar frequencies in both sets of texts. <br>
+Let's see how correlated these word frequencies are <br>
+
+```{r}
+cor.test(data = frequency[frequency$author == "Brontë Sisters",],
+         ~ proportion + `Jane Austen`)
+```
+
+```{r}
+cor.test(data = frequency[frequency$author == "H.G. Wells",],
+~ proportion + `Jane Austen`)
+```
+Just as we saw in the plots, the word frequencies are more correlated between the Austen and Brontë novels than between Austen and H.G. Wells. <br> 
+
+# **Sentiment Analysis with Tidy Data**
+
+Involves the use of human understanding to to infer if a section of text is positive or negative. The tidytext package contains several sentiment lexicons in the sentiments dataset <br>
+
+```{r}
+sentiments
+```
+
+The three general-purpose lexicons are: <br>
+
+* AFINN from Finn Arup from [Finn Arup Nielsen](http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=6010)
+
+
+

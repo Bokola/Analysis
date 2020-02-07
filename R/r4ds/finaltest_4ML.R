@@ -26,7 +26,7 @@ options(repr.plot.width = 4, repr.plot.height = 3.5)
  # names(advworkscusts) <- tolower(names(advworkscusts))
 
 
-temp = list.files(pattern="*.csv")[grep("^a")]
+temp = list.files(pattern="*.csv")[grep("^a", list.files(pattern="*.csv"), ignore.case = T) ]
 list2env(
   lapply(setNames(temp, tolower(make.names(gsub("\\..*", "", temp)))), function(x){
     x =read.csv(x)

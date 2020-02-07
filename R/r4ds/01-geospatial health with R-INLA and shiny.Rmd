@@ -20,6 +20,7 @@ output:
     toc: yes
     toc_depth: 3
 always_allow_html: yes
+runtime: "shiny"
 ---
 
 #Chapter 2 Spatial data and R packages for mapping
@@ -52,8 +53,11 @@ ipk = function(pkg){
   sapply(pkg, require, character.only = T)
 }
 list.of.pkgs = c('sf', 'viridis', 'geoR', 'cholera', 'rgdal', "leaflet", "mapview","DT", "tmap", "ggplot2", "tidyverse",
-                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny")
+                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts")
 ipk(list.of.pkgs)
+
+home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("home"), Sys.getenv("USERPROFILE"))
+home = gsub("\\\\", "/", home)
 ```
 ##Types of spatial data
 
@@ -231,8 +235,11 @@ library(leaflet)
 pal = colorNumeric("YlOrRd", domain = map$SID74)
 leaflet(map) %>%
   addTiles() %>%
-  addPolygons %>%
-  addLegend(pal = pal, values = ~SID74, opacity = 1)
+   addPolygons(
+    color = "white", fillColor = ~ pal(SID74),
+    fillOpacity = 1
+  ) %>%
+  leaflet::addLegend(pal = pal, values = ~SID74, opacity = 1)
 ```
 
 To save the map created to an HTML file, we can use the `saveWidget()` function of the htmlwidgets package (Vaidyanathan et al. 2018). If we wish to save an image of the map, we first save it as an HTML file with `saveWidget()` and then capture a static version of the HTML using the `webshot()` function of the webshot package.
@@ -1184,7 +1191,7 @@ l %>%
     color = "grey", weight = 1,
     fillColor = ~ pal(SIR), fillOpacity = 0.5
   ) %>%
-  addLegend(
+  leaflet::addLegend(
     pal = pal, values = ~SIR, opacity = 0.5,
     title = "SIR", position = "bottomright"
   )
@@ -1214,7 +1221,7 @@ l %>% addPolygons(
     textsize = "15px", direction = "auto"
   )
 ) %>%
-  addLegend(
+  leaflet::addLegend(
     pal = pal, values = ~SIR, opacity = 0.5,
     title = "SIR", position = "bottomright"
   )
@@ -1317,7 +1324,7 @@ lRR = leaflet(map) %>%
     )
     
   ) %>%
-  addLegend(
+  leaflet::addLegend(
     pal = pal, values = ~RR, opacity = 0.5, title = "RR",
     position = "bottomright"
   )
@@ -1369,7 +1376,7 @@ lexc <- leaflet(map) %>%
       textsize = "15px", direction = "auto"
     )
   ) %>%
-  addLegend(
+  leaflet::addLegend(
     pal = pal, values = ~exc, opacity = 0.5, title = "P(RR>2)",
     position = "bottomright"
   )
@@ -1599,23 +1606,7 @@ A shiny app can be built by creating a directory (called, for example, `appdir`)
 * a `server()` function which contains the instructions to build the objects displayed in the user interface, and
 * a call to the `shinyApp()` function that creates the app from `ui / server` pair. <br>
 
-```{r}
-library(shiny)
 
-#define user interface object
-
-ui = fluidPage()
-
-# define server function
-
-server = function(input, output){}
-
-# call to shinyApp() which returns a shiny app object
-#from an explicit UI/server pair
-
-shinyApp(ui = ui, server = server)
-
-```
 
 Note that the directory can also contain other files such as data or R scripts that are needed by the app. Then we can launch the app by typing `runApp("appdir_path")` where `appdir_path` is the path of the directory that contains the `app.R` file. <br>
 
@@ -1740,6 +1731,816 @@ if(nrow(mapFiltered()) == 0){
   return(NULL)
 }
 `
+
+# **Chapter 15 Building a Shiny app to upload and visualize spatio-temporal data**
+
+## **Layout**
+
+We build a user interface with a sidebar layout. The layout includes a title panel, a sidebar panel for inputs on the left, and a main panel for outputs on the right. The elements of the user interface are placed within the `fluidpage()` function and this permits the app to adjust automatically to the dimensions of the browser window. The title of the app is added with `titlePanel()`. We then write `slidebarLayout()` to create a sidebar layout with input and output. `sidebarLayout()` takes the arguments `sidebarPanel()` and `mainPanel()`. `sidebarPanel()` creates a a sidebar panel for inputs on the left. `mainPanel()` creates a main panel for displaying outputs on the right.<br>
+
+```{r}
+library(shiny)
+
+ui = fluidPage(
+  titlePanel("title"),
+  sidebarLayout(
+    sidebarPanel("sidebar panel for inputs"),
+    mainPanel("main panel for outputs")
+  )
+)
+```
+
+## **HTML content**
+
+Here we add a title, an image and a website link to the app. First we add the title “Spatial app” to `titlePanel()`. We want to show this title in blue so we use `p()` to create a paragraph with text and set the style to the #3474A7 color.<br>
+
+Then we add an image with the `img()` function. The images that we wish to include in the app must be contained in a folder named `www` in the same directory as `app.R` file. We use the image called `shiny.jpeg` and put it in the `sidebarPanel()`.
+<br>
+
+```{r}
+library(shiny)
+
+# ui
+
+ui = fluidPage(
+  titlePanel(p("Spatial app", style = "color:#3474A7")),
+  sidebarLayout(
+    sidebarPanel(
+      p("Made with", a(
+        "shiny", href = "http://shiny.rstudio.com"
+      ), "." ),
+      img(
+        src = "Shiny.png", width = "70px", height = "70px"
+      
+      )
+    ),
+    mainPanel("main panel for outputs")
+  )
+)
+
+#server()
+
+server = function(input, output){}
+
+#shinyApp()
+
+#shinyApp(ui = ui, server = server)
+```
+
+## **Reading Data**
+
+We only need to read the data once so we write this code at the beginning of `app.R` outside the `server()` function. This ensures the data is read only once, improving performance of the app. <br>
+
+
+## **Adding outputs**
+
+We use: <br>
+
+* **DT** to display data in interactive table,
+* **dygraphs** to display a time plot with data, and  
+* **leaflet** to create an interactive map <br>
+
+Outputs are added in the app by including in ui an `*Output()` function for the output, and adding in `server()` a `render*()` function to the output that specifies how to build the output. For example, to add a plot, we write in the `ui` `plotOutput()` and in `server()` `renderPlot()`. we use the `readOGR()` function of the **rgdal** package.  <br>
+
+```{r, message=FALSE, echo=FALSE}
+app_dir = path.expand(file.path(home, "Analysis", "R","r4ds","shinyapps"))
+library(rgdal)
+
+data = read.csv(path.expand(file.path(app_dir, "data", "data.csv")), stringsAsFactors = F)
+
+map = readOGR(path.expand(file.path(app_dir, "data", "fe_2007_39_county/fe_2007_39_county.shp")))
+```
+
+
+
+### **Table using DT**
+
+We show the `data` with an interactive table using the `DT` package. In `ui` we use `DToutput()`,. and in `server()` we use `renderDT()`. <br>
+
+`
+library(DT)
+ # in ui
+DTOutput(outputId = "table")
+
+# in server
+
+output$table <- renderDT(data)
+
+`
+<br>
+
+### **Time plot using dygraphs**
+
+We show a time plot with the data with the **dygraphs** package. In `ui` we use `dygraphOutput()`, and in `server()` we use `renderDygraph()`. **dygraphs** plots an extensible time series object `xts`. We can create this type of object using the `xts()` function of the **xts** package specifying the values and the dates. The dates in data are the years of column `year`. For now we choose to plot the values of the variable `cases` of data. <br>
+
+We need to construct an `xts` object for each county and then put them together in an object called `daaxts`. For each of the counties, we filter the data of the county and assign it to `datacounty` <br>
+
+```{r, message=FALSE}
+dataxts = NULL
+counties = unique(data$county)
+for (i in 1:length(counties)) {
+  datacounty <- data[data$county == counties[i], ]
+  dd = xts(
+    datacounty[, "cases"],
+    as.Date(paste(datacounty$year, "-01-01", sep = ""))
+    
+  )
+  dataxts <- cbind(dataxts, dd)
+}
+colnames(dataxts) = counties
+
+```
+
+Finally we plot `dataxts` with `dygraph()`, and use `dyHighlight()` to aloow mouse-over highlighting. <br>
+
+```{r}
+dygraph(dataxts) %>%
+  dyHighlight(highlightSeriesBackgroundAlpha = 0.2)
+```
+
+
+We customize the legend so that only the name of the highlighted series is shown. One option is to write a css file with the instructions and to pass the css file to the `dycss()` function. Alternatively, we can set the css directly in the code as follows <br>
+
+```{r}
+dygraph(dataxts) %>%
+  dyHighlight(highlightSeriesBackgroundAlpha = 0.2) -> d1
+
+d1$css <- "
+  .dygrph-legend > span {display:none;}
+  .dygraph-legend > span.highlight {display: inline;}
+  "
+
+d1
+```
+
+The complete code to build the `dygraphs` object is as follows <br>
+
+`
+library(dygraphs)
+library(xts)
+
+# in ui
+dygraphOutput(outputId = "timetrend")
+
+# in server
+output$timetrend = renderDygraph({
+  dataxts = NULL
+  counties = unique(data$county)
+  
+  for (i in 1:length(counties)) {
+    datacounty = data[data$county == counties[i], ]
+    dd = xts(
+      datacounty[, "cases"],
+      as.Date(paste0(datacounty$year, "01-01"))
+    )
+    dataxts = cbind(dataxts, dd)
+  }
+  colnames(dataxts) = counties
+  
+  dygraph(dataxts) %>%
+    dyHighlight(highlightSeriesBackgroundAlpha = 0.2) -> d1
+  
+  d1$x$css =  "
+  .dygraph-legend > span {display:none;}
+  .dygraph-legend > span.highlight {display: inline;}
+  "
+  d1
+})
+`
+<br>
+
+### **Map using Leaflet**
+
+We use **leaflet** package to build an interactive map. In `ui` we use `leafletOutput()`, and in `server()` we use `renderLeaflet()`. Inside `renderLeaflet()` we write the instructions to return a leaflet map. First we need to add the data to the data to the shapefile so that the values can be plotted in a map, setting the default year to 1980. <br>
+
+```{r}
+datafiltered = data[which(data$year
+                           == 1980),]
+# this returns positions of map@data$NAME in datafiltered$county
+ordercounties = match(map@data$NAME, datafiltered$county)
+map@data = datafiltered[ordercounties,]
+```
+
+We create the leaflet map with the `leaflet()` function, create a color palette with `colrBin()`, and add legend with `leaflets::addLegend()`. We plot `cases`. We also add labels with the area names and values that are displayed when the mouse is over the map <br>
+
+`
+library(leaflet)
+
+#in ui
+
+leafletOutput(outputId = "map")
+
+#in server
+
+output$map = renderLeaflet({
+  # add data to map
+  
+  datafiltered = data[which(data$year == 1980), ]
+  ordercounties = datafiltered[ordercounties, ]
+  
+  # create leaflet
+  
+  pal = colorBin("YlOrRd", domain = map$cases, bins = 7)
+  labels = sprintf("%s: %g", map$county, map$cases) %>%
+    lapply(htmltools::HTML)
+  
+  l = leaflet(map) %>%
+    addTiles() %>%
+    addPolygons(
+      fillColor = ~ pal(cases),
+      color = "white",
+      dashArray = "3",
+      fillOpacity = 0.7,
+      label = labels
+    ) %>%
+    leaflet::addLegend(
+      pal = pal, values = ~cases,
+      opacity = 0.7, title = NULL
+    )
+  
+})
+`
+
+Below is the content of app.R we have until now. A snapshot of the Shiny `app `is shown<br>
+
+```{r}
+library(shiny)
+library(rgdal)
+library(DT)
+library(dygraphs)
+library(xts)
+library(leaflet)
+
+data = read.csv(path.expand(file.path(app_dir, "data", "data.csv")), stringsAsFactors = F)
+
+map = readOGR(path.expand(file.path(app_dir, "data", "fe_2007_39_county/fe_2007_39_county.shp")))
+
+# ui object
+
+ui = fluidPage(
+  titlePanel(p("Spatial app", style = "color:#3474A7")),
+  sidebarLayout(
+    sidebarPanel(
+      p("Made with", a("Shiny",
+                       href = "https://shiny.rstudio.com"), ".")
+      
+    ),
+    mainPanel(
+      leafletOutput(outputId = "map"),
+      dygraphOutput(outputId = "timetrnd"),
+      DTOutput(outputId = "table")
+      
+    )
+  )
+)
+
+# server()
+
+server <- function(input, output) {
+  output$table <- renderDT(data)
+
+  output$timetrend <- renderDygraph({
+    dataxts <- NULL
+    counties <- unique(data$county)
+    for (l in 1:length(counties)) {
+      datacounty <- data[data$county == counties[l], ]
+      dd <- xts(
+        datacounty[, "cases"],
+        as.Date(paste0(datacounty$year, "-01-01"))
+      )
+      dataxts <- cbind(dataxts, dd)
+    }
+    colnames(dataxts) <- counties
+
+    dygraph(dataxts) %>%
+      dyHighlight(highlightSeriesBackgroundAlpha = 0.2) -> d1
+
+    d1$x$css <- "
+ .dygraph-legend > span {display:none;}
+ .dygraph-legend > span.highlight { display: inline; }
+ "
+    d1
+  })
+
+  output$map <- renderLeaflet({
+
+    # Add data to map
+    datafiltered <- data[which(data$year == 1980), ]
+    ordercounties <- match(map@data$NAME, datafiltered$county)
+    map@data <- datafiltered[ordercounties, ]
+
+    # Create leaflet
+    pal <- colorBin("YlOrRd", domain = map$cases, bins = 7)
+
+    labels <- sprintf("%s: %g", map$county, map$cases) %>%
+      lapply(htmltools::HTML)
+
+    l <- leaflet(map) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~ pal(cases),
+        color = "white",
+        dashArray = "3",
+        fillOpacity = 0.7,
+        label = labels
+      ) %>%
+      leaflet::addLegend(
+        pal = pal, values = ~cases,
+        opacity = 0.7, title = NULL
+      )
+  })
+}
+
+# shinyApp()
+shinyApp(ui = ui, server = server)
+
+
+```
+
+## **Adding Reactivity** 
+
+Now we add functionality that enables the user to select a specific variable and yeaar to be shown. To be able to select a variable, we include an input of a menu containing all the possible variables. To add an input in a shiny app, we need to out an input function `*Input()` in the `ui` object. Each input function requires several arguments. <br>
+
+`
+# in ui
+selectInput(
+inputID = "variableselected",
+label = "Select variable",
+choices = c("cases", "population")
+)
+`
+<br>
+
+In this input, the id is `variableselected`, label is `Select variable` and `choices` contains the variables `"cases"` and `"population"`. We create reactivity by including the value of the input (`input$variableselected`) in the `render*()` expressions in `server()` that build outputs. Thus, when we select a different variable in the menu, all the outputs that depend on the input will be rebuilt using the updated input value. <br>
+
+Similarly, we add a menu with id `yearselected` and with choices equal to all possible years so we can select the year we want to see. When we select a year, the input value `input$yearselected` changes and all the outputs that depend on it will be rebuilt using the new input value.<br>
+
+`# in ui
+selectInput(
+  inputId = "yearselected",
+  label = "Select year",
+  choices = 1968:1988
+)`
+
+
+### **Reactivity in dygraphs**
+
+In this section we modify the `dygraphs` time plot and the `leaflet` map so that they are built with the input values `input$variableselected` and `input$yearselected`. We modify `renderDygraph()` by writing `datacounty[, input$variableselected]` instead of `datacounty[, "cases"]`<br>
+
+### **Reactivity in Leaflet**
+
+We also modify `renderLeaflet()` by selecting data corresponding to year `input$yearselected` and plot variable `input$variableselected` instead of variable `cases`. We create a new column in `map` called `variableplot` with the values of variable `input$variableselected` and plot the map with the values in `variableplot`. In `leaflet()` we modify `colorBin()`, `addPolygons()`, `addLegend()` and `labels` to show `variableplot` instead of variable `cases`. <br>
+
+Note that a better way to modify an existing leaflet map is using the leafletProxy() function. Details on how to use this function are in the [Rstudi website](https://rstudio.github.io/leaflet/shiny.html) <br>
+
+```{r}
+library(shiny)
+library(rgdal)
+library(DT)
+library(dygraphs)
+library(xts)
+library(leaflet)
+
+data = read.csv(path.expand(file.path(app_dir, "data", "data.csv")), stringsAsFactors = F)
+
+map = readOGR(path.expand(file.path(app_dir, "data", "fe_2007_39_county/fe_2007_39_county.shp")))
+
+# ui object
+
+ui = fluidPage(
+  titlePanel(p("Spatial app", style = "color:#3474A7")),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        inputId = "variableselected",
+        label = "Select variable",
+        choices = c("cases", "population")
+      ),
+      selectInput(
+        inputId = "yearselected",
+        label = "Select year",
+        choices = 1968:1988
+      ),
+      p("Made with", a("Shiny",
+                       href = "https://shiny.rstudio.com"), ".")
+      
+    ),
+    mainPanel(
+      leafletOutput(outputId = "map"),
+      dygraphOutput(outputId = "timetrend"),
+      DTOutput(outputId = "table")
+      
+    )
+  )
+)
+
+# server()
+
+server <- function(input, output) {
+  output$table <- renderDT(data)
+
+  output$timetrend <- renderDygraph({
+    dataxts <- NULL
+    counties <- unique(data$county)
+    for (l in 1:length(counties)) {
+      datacounty <- data[data$county == counties[l], ]
+      dd <- xts(
+        datacounty[, input$variableselected],
+        as.Date(paste0(datacounty$year, "-01-01"))
+      )
+      dataxts <- cbind(dataxts, dd)
+    }
+    colnames(dataxts) <- counties
+
+    dygraph(dataxts) %>%
+      dyHighlight(highlightSeriesBackgroundAlpha = 0.2) -> d1
+
+    d1$x$css <- "
+ .dygraph-legend > span {display:none;}
+ .dygraph-legend > span.highlight { display: inline; }
+ "
+    d1
+  })
+
+  output$map <- renderLeaflet({
+
+    # Add data to map
+    # change 1980 by input$yearselected
+    datafiltered <- data[which(data$year == input$yearselected), ]
+    ordercounties <- match(map@data$NAME, datafiltered$county)
+    map@data <- datafiltered[ordercounties, ]
+    
+    #create variable plot
+    #ADD this to create variable plot
+    map$variableplot = as.numeric(map@data[, input$variableselected])
+    
+    
+
+    # Create leaflet
+    # change map$cases by map$variableplot
+    
+    pal <- colorBin("YlOrRd", domain = map$variableplot, bins = 7)
+    
+    
+    #change map$cases by map$variableplot
+    labels <- sprintf("%s: %g", map$county, map$variableplot) %>%
+      lapply(htmltools::HTML)
+    #change cases by variableplot
+    
+    l <- leaflet(map) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~ pal(variableplot),
+        color = "white",
+        dashArray = "3",
+        fillOpacity = 0.7,
+        label = labels
+      ) %>%
+      leaflet::addLegend(
+        pal = pal, values = ~variableplot,
+        opacity = 0.7, title = NULL
+      )
+  })
+}
+
+# shinyApp()
+shinyApp(ui = ui, server = server)
+
+```
+
+## **Uploading Data**
+
+Instead of reading the data at the beginning of the appp, we may want to let the user upload his/her own files. We do this by adding two inputs that enable the user to upload a CSV file and a shapefile.<br>
+
+We create inputs to upload the data with the `fileInput()` function. `fileInput()` has a parameter called `multiple` that can be set to TRUE to allow the user to select multiple files. It also has a parameter called `accept` that can be set to a character vector with the type of files the input expects.<br>
+
+`
+#in ui
+fileInput(
+  inputId = "filedata",
+  label = "Upload data. Choose csv file",
+  accept = c(".csv")
+),
+fileInput(
+  inputId = "filemap",
+  label = "Upload map. Choose shapefile",
+  multiple = TRUE,
+  accept = c(".shp", ".dbf", ".sbn", ".sbx", ".shx", "prj"),
+  
+)
+`
+<br>
+
+Note that a shapefile consists of different files with extensions `.shp`, `.dbf`, `.shx` etc. When we are uploading the shapefile in the Shiny app, we need to upload all these files at once. That is, we need to select all the files and then click upload. Selecting just the file with extension `.shp` does not upload the shapefile.<br>
+
+### **Uploading CSV file in the `server()`**
+
+We use the input values to read the CSV file and the shapefile. We do this within a reactive expression. A reactive expression is an R expression that uses an input value and returns a value. We use the `reacrive{}` function which takes an R expression surrounded by braces `({})`. The reactive expression updates whenever the value changes. For example, we read the data with `read.csv(input$filedata$datapath)` where `input$filedata$datapath` is the data path contained in the value of the input that uploads the data. We put `read.csv(input$filedata$datapath)` inside `reactive()`. In this way, each time `input$filedata$datapath` is updated, the reactive expression is reexecuted. The output of the reactive expression is assigned to `data`. In `server()`, data can be accesssed with `data()`. `data` will be updated each time the reactive expression that builds it is reexecuted.<br>
+
+`
+# in server()
+
+data = reactive({read.csv(input$filedata$datapath)})
+`
+<br>
+
+### **Uploading shapefile in `server()`**
+
+We also write a reactive expression to read the map. We assign the result to the reactive expression to `map`. In `server()`, we access the map with `map()`. To read the shapefile, we use the `readOGR()` function of the **rgdal** package. <br>
+
+`{r}
+# in server()
+
+map = reactive({
+  
+  # shpdf is a dad.frame with the name, size, type and datapath
+  # of the uploaded files
+  
+  shpdf = input$filemap
+  
+  # The files are uploaded with names
+  # 0.dbf, 1.prj, 2.shp, 3.xml, 4.shx
+  # (path/names are in column datapath)
+  # We need to rename the files with the actual names:
+  # fe_2007_39_county.dbf, etc.
+  # (these are in column name
+  
+  # Name of temporary directory where files ar uploaded
+  
+  tempdirname = dirname(shpdf$datapath[1])
+  
+  # Rename files
+  
+  for(i in 1:nrow(shpdf)){
+    file.rename(
+      shpdf$datapath[i],
+      paste0(tempdirname, "/", shpdf$name[i])
+    )
+  }
+  
+  # Now we read the shapefile with readOGR() of rgdal package
+  # passing the name of the file with .shp extension.
+
+  # We use the function grep() to search the pattern "*.shp$"
+  # within each element of the character vector shpdf$name.
+  # grep(pattern="*.shp$", shpdf$name)
+  # ($ at the end denote files that finish with .shp,
+  # not only that contain .shp)
+  
+  map = readOGR(paste(tempdirname,
+                      shpdf$name[grep(pattern = "*.shp$", shpdf$name)], sep = "/"))
+  
+  map
+  
+})
+`
+<br>
+
+### **Accessing the data and the map**
+
+To access the data and the map in `renderDT()`, `renderLeaflet()` and `renderDygraph()`, we use `map()` and `data()` <br>
+
+`
+# in serve()
+
+ouptput$table = renderDT(
+  data()
+)
+
+output$map = renderLeaflet({
+  map = map()
+  data = data()
+  ...
+})
+
+output$timetrend = renderDygraph({
+  data = data()
+  
+  ...
+})
+`
+<br>
+
+## **Handling missing inputs**
+
+After adding the inputs to upload the CSV file and the shapefile, we note that the outputs in the Shiny app render error messages until the files are uploaded. Here we modify the Shiny app to eliminate these error messages by including code that avoids to show the outputs until the files are uploaded. <br>
+
+### **Requiring input files to be available using `req()`
+
+First, inside the reactive expression that read the files, we include `req(input$inputId)` to require `input$inputId` to be available before showing the outputs. `req()` evaluates its arguments one at a time and if these are missing the execution of the reactive expression stops. In this way, the value returned by the reactive expression will not be updated, and outputs that use the value returned by the reactive expression will not be reexecuted.<br>
+
+We add `req(input$filedata)` at the beginning of the reactive expression thst reads the data. If the data has not been uploaded yet, `input$filedata` is equal to `""`. This stops the execution of the reactive expression, then `data()` is not updated, and the output depending on `data()` is not executed. <br>
+
+`
+#in ui. First line in the reactive() that reads the data
+req(input$filedata)
+`
+<br>
+
+Similarly, we add `req(input$filemap)` at the beginning of the reactive expression that reads the map. If the map has not been uploaded yet, `input$filemap` is missing, the execution of the reactive expression stops, `map()` is not updated, and the output depending on `map()` is not executed. <br>
+
+`
+# in ui. First line in the reactive() that reads the map
+req(input$filemap)
+`
+<br>
+
+### **Checking data are uploaded before creating map**
+
+Before constructing the leaflet map, the data has to be added to the shapefile. To do this, we need to make sure that both the data and the map are uploaded. We can do this by writing at the beginning of `renderLeaflet()` the following code. <br>
+
+`
+outpu$map = renderLeaflet({
+  if(is.null(data() | is.null(map()))) {
+    return(NULL)
+  }
+  ...
+)}
+`
+<br>
+
+When either `data()` or `map()` are updated, the instructions of `renderLeaflet()` are executed. Then, at the beginning of `renderLeaflet()` it is checked whether either `data()` or `map()` are `NULL`. If this is `TRUE`, the execution stops returning `NULL`. This avoids the error that we would get when trying to add the data to the map when either of these two elements is `NULL`<br>
+
+
+```{r}
+library(shiny)
+library(rgdal)
+library(DT)
+library(dygraphs)
+library(xts)
+library(leaflet)
+
+# ui object
+ui <- fluidPage(
+  titlePanel(p("Spatial app", style = "color:#3474A7")),
+  sidebarLayout(
+    sidebarPanel(
+      fileInput(
+        inputId = "filedata",
+        label = "Upload data. Choose csv file",
+        accept = c(".csv")
+      ),
+      fileInput(
+        inputId = "filemap",
+        label = "Upload map. Choose shapefile",
+        multiple = TRUE,
+        accept = c(".shp", ".dbf", ".sbn", ".sbx", ".shx", ".prj")
+      ),
+      selectInput(
+        inputId = "variableselected",
+        label = "Select variable",
+        choices = c("cases", "population")
+      ),
+      selectInput(
+        inputId = "yearselected",
+        label = "Select year",
+        choices = 1968:1988
+      ),
+      p("Made with", a("Shiny",
+        href = "http://shiny.rstudio.com"
+      ), "."),
+      img(
+        src = "imageShiny.png",
+        width = "70px", height = "70px"
+      )
+    ),
+
+    mainPanel(
+      leafletOutput(outputId = "map"),
+      dygraphOutput(outputId = "timetrend"),
+      DTOutput(outputId = "table")
+    )
+  )
+)
+
+# server()
+server <- function(input, output) {
+  data <- reactive({
+    req(input$filedata)
+    read.csv(input$filedata$datapath)
+  })
+
+  map <- reactive({
+    req(input$filemap)
+
+    # shpdf is a data.frame with the name, size, type and
+    # datapath of the uploaded files
+    shpdf <- input$filemap
+
+    # The files are uploaded with names
+    # 0.dbf, 1.prj, 2.shp, 3.xml, 4.shx
+    # (path/names are in column datapath)
+    # We need to rename the files with the actual names:
+    # fe_2007_39_county.dbf, etc.
+    # (these are in column name)
+
+    # Name of the temporary directory where files are uploaded
+    tempdirname <- dirname(shpdf$datapath[1])
+
+    # Rename files
+    for (i in 1:nrow(shpdf)) {
+      file.rename(
+        shpdf$datapath[i],
+        paste0(tempdirname, "/", shpdf$name[i])
+      )
+    }
+
+    # Now we read the shapefile with readOGR() of rgdal package
+    # passing the name of the file with .shp extension.
+
+    # We use the function grep() to search the pattern "*.shp$"
+    # within each element of the character vector shpdf$name.
+    # grep(pattern="*.shp$", shpdf$name)
+    # ($ at the end denote files that finish with .shp,
+    # not only that contain .shp)
+    map <- readOGR(paste(tempdirname,
+      shpdf$name[grep(pattern = "*.shp$", shpdf$name)],
+      sep = "/"
+    ))
+    map
+  })
+
+  output$table <- renderDT(data())
+
+  output$timetrend <- renderDygraph({
+    data <- data()
+    dataxts <- NULL
+    counties <- unique(data$county)
+    for (l in 1:length(counties)) {
+      datacounty <- data[data$county == counties[l], ]
+      dd <- xts(
+        datacounty[, input$variableselected],
+        as.Date(paste0(datacounty$year, "-01-01"))
+      )
+      dataxts <- cbind(dataxts, dd)
+    }
+    colnames(dataxts) <- counties
+    dygraph(dataxts) %>%
+      dyHighlight(highlightSeriesBackgroundAlpha = 0.2) -> d1
+    d1$x$css <- "
+ .dygraph-legend > span {display:none;}
+ .dygraph-legend > span.highlight { display: inline; }
+ "
+    d1
+  })
+
+  output$map <- renderLeaflet({
+    if (is.null(data()) | is.null(map())) {
+      return(NULL)
+    }
+
+    map <- map()
+    data <- data()
+
+    # Add data to map
+    datafiltered <- data[which(data$year == input$yearselected), ]
+    ordercounties <- match(map@data$NAME, datafiltered$county)
+    map@data <- datafiltered[ordercounties, ]
+
+    # Create variableplot
+    map$variableplot <- as.numeric(
+      map@data[, input$variableselected])
+
+    # Create leaflet
+    pal <- colorBin("YlOrRd", domain = map$variableplot, bins = 7)
+    labels <- sprintf("%s: %g", map$county, map$variableplot) %>%
+      lapply(htmltools::HTML)
+
+    l <- leaflet(map) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~ pal(variableplot),
+        color = "white",
+        dashArray = "3",
+        fillOpacity = 0.7,
+        label = labels
+      ) %>%
+      leaflet::addLegend(
+        pal = pal, values = ~variableplot,
+        opacity = 0.7, title = NULL
+      )
+  })
+}
+
+# shinyApp()
+shinyApp(ui = ui, server = server)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
