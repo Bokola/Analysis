@@ -1,0 +1,110 @@
+---
+title: "Mastering Shiny with Hadley"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  word_document:
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  md_document: null
+  pdf_document:
+    latex_engine: lualatex
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+always_allow_html: yes
+runtime: "shiny"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  if('d3treeR' %in% list.of.pkgs){
+    remotes::install_github("d3treeR/d3treeR")
+  }
+  if(!'patchwork' %in% .packages(all.available = TRUE)){
+    devtools::install_github("thomasp85/patchwork")
+  }
+  if(!'ReporteRsjars' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRsjars')
+  }
+  if(!'ReporteRs' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRs')
+  }
+  
+  if(!'INLA' %in% .packages(all.available = TRUE)){
+    install.packages("INLA", repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
+  }
+  
+  sapply(pkg, require, character.only = T)
+}
+
+list.of.pkgs = c("gapminder", "ggforce", "openintro", "shiny", "shinyFeedback", 
+  "shinythemes", "tidyverse", "vroom", "waiter", "ggplot2", "tidyverse",
+  "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts")
+ipk(list.of.pkgs)
+
+```
+
+## **Adding UI controls**
+
+```{r}
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  verbatimTextOutput("summary"),
+  tableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$summary <- renderPrint({
+    dataset <- get(input$dataset, "package:datasets")
+    summary(dataset)
+  })
+  
+  output$table <- renderTable({
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+}
+
+shinyApp(ui = ui, server =server)
+```
+
+
+## **Reducing duplication with reactive expressions**
+
+You create a reactive expression by wrapping a block of code in `reactive({...})` and assigning it to a variable, and you use a reactive expression by calling it as a function. We can output our `server()` to use reactive expressions as below: <br>
+
+```{r}
+server = function(input, output, session){
+  dataset = reactive({
+    get(input$dataset, "package:datasets")
+    
+    output$summary = renderPrint({
+      summary(dataset())
+    })
+    
+    output$table = renderTable({
+      dataset()
+      
+    })
+  })
+}
+```
+
+
+
