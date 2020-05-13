@@ -29,8 +29,15 @@ new.pkg<-list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
 if (length(new.pkg)) install.packages(new.pkg, repos='http://cran.us.r-project.org',dependencies = T)
 sapply(pkg, require, character.only=T)
 }
-list.of.pkg<-c("akima", "chron","lme4","mcmc","odesolve","spdep","spatstat","tree", "reshape2","MASS")
+list.of.pkg<-c("akima", "chron","lme4","mcmc","odesolve","spdep","spatstat","tree", "reshape2","MASS", "tidyverse")
 ipk(list.of.pkg)
+
+home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE"))
+home = gsub("\\\\", "/", home)
+
+data_dir = path.expand(file.path(home, "Google Drive","Pgd", "gachie books", "michael j. crawley_(a_very_good_book)","data"))
+
+
 
 ```
 
@@ -70,13 +77,12 @@ x
 getwd()
 objects() #lists created vars
 search() # list of attached objects & libraries
-rm(list=ls()) #tydying up
+
 ``` 
 ####***Summary Information from Vectors by Groups***
 ```{r, Summary Information from Vectors by Groups, echo=F}
 
-data<-"C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley\\1. data\\daphnia.txt"
-daphnia<-read.table(data, header=T)
+daphnia<-read.table(file.path(data_dir,"daphnia.txt"), header=T)
 attach(daphnia)
 names(daphnia)
 daphnia
@@ -119,7 +125,7 @@ sequence(c(5,2,4))
 ####**sorting and ranking data**
 ```{r, echo=F}
 
-houses<-read.table("C:\\Users\\admin\\Google Drive\\Analysis\\R\\The R Book_Michael J._Crawley\\1. data\\houses.txt", header = T)
+houses<-read.table(file.path(data_dir,"houses.txt"), header = T)
 str(houses)
 head(houses)
 names(houses)
@@ -267,7 +273,7 @@ error.bars<-function(yv,z,nn) {
     lines(c(xv[i]-g,xv[i]+g),c(yv[i]-z[i],yv[i]-z[i]))
   }
 }
-comp<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\competition.txt",header=T)
+comp<-read.table(file.path(data_dir,"competition.txt"),header=T)
 attach(comp)
 names(comp)
 se<-rep(28,75,5)
@@ -344,7 +350,7 @@ many.means(x,y,z)
 #lapply -- function to each element of a list
 
 #function to calculate sum of squares
-sapdecay<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\sapdecay.txt", header=T)
+sapdecay<-read.table(file.path(data_dir,"sapdecay.txt"), header=T)
 
 sumsq<-function(a,xv=x,yv=y) {
   yf<-exp(-a*xv)
@@ -381,9 +387,9 @@ rle(yy)[[2]][21] # mode
 ### string manipulation
 ```{r, echo=F}
 
-wf<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\worldfloras.txt", header=T)
+wf<-read.table(file.path(data_dir,"worldfloras.txt"), header=T)
 attach(wf); names(wf)
-#  pattern matching
+#  pattern matchingd
 l.wf<-tolower(names(wf)); names(wf)<-l.wf
 with(wf,as.vector(country[grep("R",as.character(country))])) # returns all cntaining character R
 
@@ -465,7 +471,7 @@ strptime(other.dates, "%d%b%y") #abbrev month, two-digit year
 typeof(excel.dates)
 
 # creating POSIXlt objects
-times<-read.table("C:\\Users\\admin\\Google Drive\\Pgd\\gachie books\\michael j. crawley_(a_very_good_book)\\data\\times.txt", header=T)
+times<-read.table(file.path(data_dir,"times.txt"), header=T)
 as.difftime(with(times, paste(hrs,min,sec,sep=":")))->duration
 with(times,tapply(duration, experiment,mean))
 ```

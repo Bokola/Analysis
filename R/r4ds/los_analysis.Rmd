@@ -1,0 +1,314 @@
+---
+title: "Neonatal admission trends from routinely collected observational data"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  bookdown::word_document2:
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  bookdown::pdf_document2:
+    latex_engine: lualatex
+    toc: yes
+    toc_depth: '3'
+  bookdown::html_document2:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+
+```{r setup , include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      fig.align = "center",
+                      fig.width = 6.5, 
+                      fig.height = 4, 
+                      dev = "png",
+                      cache = FALSE)
+options(tinytex.verbose = TRUE)
+```
+
+This is an analysis focusing on understanding if there has been any changes in admission numbers in the neonatal wards across participating CIN sites. 
+
+# METHODS
+
+This study utilizes seanonal-trend decomposition to analyse trend in admission of neonates in select public hospitals in Kenya.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+# Data retrieval and preparations
+rm(list = ls(all=T))
+
+
+rpkgs <- c("rlang", "tidyselect", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
+           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts")
+
+if(any(!rpkgs %in% .packages(all.available = TRUE))){
+  rpkgs1<-rpkgs[(!rpkgs %in% .packages(all.available = TRUE))]
+  rpkgs1 <- rpkgs1[!rpkgs1 %in% "RedcapData"]
+  install.packages(rpkgs1,dep=TRUE,repos='http://cran.rstudio.com')
+}
+#Redcap development packages
+# if(!'RedcapData' %in% .packages(all.available = TRUE)){
+#   devtools::install_github('tjhubs/RedcapData',dep=TRUE,ref='v7fixed')
+# }
+lapply(rpkgs[(rpkgs %in% .packages(all.available = TRUE))], library, character.only = TRUE)
+
+#source(file.path(home.dir,"hsuApps", "universalFunctions", "modifyData.R"))
+
+if(tolower(Sys.info()[['sysname']])=="linux"){
+  home.dir <- normalizePath(paste0(Sys.getenv()[["HOME"]],"/hsuApps")) %>% sub("\\\\", "/", .)
+}else{
+  home.dir <- normalizePath(paste0(Sys.getenv()[["USERPROFILE"]],"/Analysis/hsuApps")) %>% gsub("\\\\", "/", .)
+}
+
+proj_dir = file.path(home.dir, 'neonatal analysis project')
+data_dir = file.path(proj_dir, 'data')
+cache_dir = file.path(proj_dir, "cache", "doc")
+src_dir = file.path(proj_dir, "src", "r")
+
+for(i in c(proj_dir, data_dir, cache_dir, src_dir)){
+  if(!dir.exists(i)){
+  if(dir.create(i, recursive = T))
+    stop("Project directory\"", i, 
+         "\"has been created!\nPlease fill it with relevant files")
+  else
+    stop("The directory", i, "could not be created")
+  
+  }
+}
+
+
+```
+Loading and cleaning data
+
+```{r,message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+
+data = readr::read_csv(file.path(data_dir, "los_neodata2020-03-23.csv"))
+
+dataXXX = data
+source(file.path(src_dir, "time.R"))
+
+t_cols <- grep("\\bt_adm\\b|\\bt_discharge\\b", names(data), v = T)
+#cols = cols[-c(1,6,12,13,14,19,21, 27,29)]
+for (c in t_cols) {
+  data[, c] <- sapply(data[, c], ValidTime) #time columns (a[,c])
+  
+}
+
+cols <- grep("diag", names(data), v = T)
+#cols = cols[-c(1,6,12,13,14,19,21, 27,29)]
+for (c in cols) {
+  data[, c] <- sapply(data[, c], diag_tab) #diag_tab(a[,c])
+  
+}
+
+data = data %>%
+  mutate(
+    .,
+    birth_wt = ifelse(
+      as.numeric(birth_wt) > 100 &
+        !is.na(as.numeric(birth_wt)),
+      as.numeric(birth_wt) / 1000,
+      birth_wt
+    ),
+    hosp_id = gsub('/', '-', hosp_id),
+    discharge_weight = ifelse(
+      !is.na(discharge_weight) &
+        as.numeric(discharge_weight) > 100,
+      as.numeric(discharge_weight) / 1000,
+      discharge_weight
+    ),
+    discharge_weight,
+    wt_now = ifelse(
+      !is.na(wt_now) &
+        as.numeric(wt_now) > 100,
+      as.numeric(wt_now) / 1000,
+      wt_now
+    ),
+    wt_now = ifelse((is.na(wt_now) |
+                       grepl("-1", data$wt_now)) &
+                      date_adm == date_of_birth, birth_wt, wt_now)
+  )
+
+data = data %>%
+  mutate(
+    .,
+    wt_now = ifelse((is.na(wt_now) |
+                       grepl("-1", data$wt_now)) &
+                      date_adm == date_of_birth, birth_wt, wt_now),
+    birth.weight.group = ifelse(
+      is.na(birth_wt) | birth_wt < 0,
+      'Unrecorded',
+      ifelse(
+        birth_wt <= 1,
+        '1000 gms & Below',
+        ifelse(
+          birth_wt < 1.5,
+          '1001 - 1499 gms',
+          ifelse(
+            birth_wt < 2.5,
+            '1500 - 2499 gms',
+            ifelse(birth_wt < 4, '2500 - 3999 gms', "4000 gms & Above")
+          )
+        )
+      )
+    ),
+    temp.group = ifelse(
+      is.na(temperature_degrees_celciu) |
+        as.numeric(temperature_degrees_celciu) < 0,
+      'No Documentations',
+      ifelse(
+        temperature_degrees_celciu < 32,
+        'l_32',
+        ifelse(
+          temperature_degrees_celciu <= 35.9 &
+            temperature_degrees_celciu >= 32,
+          'l_36',
+          ifelse(
+            temperature_degrees_celciu <= 36.4 &
+              temperature_degrees_celciu >= 36.0,
+            'l_36.5',
+            ifelse(
+              temperature_degrees_celciu <= 37.5 &
+                temperature_degrees_celciu >= 36.5,
+              'l_37.5',
+              "m_37.5"
+            )
+          )
+        )
+      )
+    )
+  )
+data = data %>%
+  mutate(.,
+         los = ifelse(
+           !is.na(t_adm) &
+             !is.na(t_discharge) &
+             !is.na(date_adm) &
+             !is.na(date_discharge) &
+             !grepl('1913|1914|1915', date_adm) &
+             !grepl('1913|1914|1915', date_discharge),
+           round(as.numeric(
+             difftime(
+               strptime(paste0(date_discharge, t_discharge), "%Y-%m-%d %H:%M"),
+               strptime(paste0(date_adm, t_adm), "%Y-%m-%d %H:%M"),
+               units = "days"
+             )
+           )),
+           ifelse(
+             is.na(t_adm) |
+               is.na(t_discharge) &
+               !grepl('1913|1914|1915', date_adm) &
+               !grepl('1913|1914|1915', date_discharge),
+             round(as.numeric(
+               difftime(
+                 strptime(date_discharge, "%Y-%m-%d"),
+                 strptime(date_adm, "%Y-%m-%d"),
+                 units = "days"
+               )
+             )),
+             NA
+           )
+         )) %>%
+  mutate(
+    .,
+    los = ifelse(los < 0, NA, los),
+    all.discharge.diag := paste(
+      primary_disch_diagnosis,
+      disch_diag_1,
+      disch_diag_2,
+      disch_diag_3,
+      disch_diag_4,
+      disch_diag_5,
+      other_discharge_diag_1,
+      other_discharge_diag_2,
+      other_discharge_diag_3,
+      other_discharge_diag_4,
+      other_discharge_diag_5,
+      other_disch_diag_old,
+      other_discharge_diag_unlisted,
+      sep = ';'
+    )
+  ) %>%
+  mutate(., all.discharge.diag = diag_tab(all.discharge.diag)) %>%
+  mutate(., all.discharge.diag = stringr::str_trim(all.discharge.diag)) %>%
+  mutate(
+    .,
+    all.adm.diag = paste(
+      pry_adm_diag,
+      adm_diag_1,
+      adm_diag_2,
+      adm_diag_3,
+      other_admission_diag_1,
+      other_admission_diag_2,
+      other_admission_diag_3,
+      other_admission_diag_4,
+      other_admission_diag_5,
+      admisn_diag_not_listed,
+      sep = ';'
+    )
+  ) %>%
+  mutate(., all.adm.diag = diag_tab(all.adm.diag)) %>%
+  mutate(., all.adm.diag = stringr::str_trim(all.adm.diag)) %>%
+  mutate(., all.diag = paste(all.discharge.diag, all.adm.diag, sep = ';')) %>%
+  filter(!is.na(date_discharge) & !grepl('1913|1914|1915', date_discharge)) %>%
+  arrange(., date_discharge)
+
+  wrong = data %>%
+    filter(., date_discharge > Sys.Date()) %>%
+    select(., c(id, hosp_id, date_discharge))
+
+adm.diag = splitstackshape::cSplit(data, 'all.adm.diag', ';', direction = 'long') %>%
+  mutate(., all.diag = as.character(all.diag)) %>%
+  distinct(id, all.diag, .keep_all = TRUE) %>%
+  subset(.,!all.diag == '')
+
+disch.diag = splitstackshape::cSplit(data, 'all.discharge.diag', ';', direction = 'long') %>%
+  mutate(., all.diag = as.character(all.diag)) %>%
+  distinct(id, all.diag, .keep_all = TRUE) %>%
+  subset(.,!all.diag == '')
+
+all.diag = splitstackshape::cSplit(data, 'all.diag', ';', direction = 'long') %>%
+  mutate(., all.diag = as.character(all.diag)) %>%
+  distinct(id, all.diag, .keep_all = TRUE) %>%
+  subset(.,!all.diag == '')
+
+monthly_disch = data %>%
+  filter(., date_discharge <= Sys.Date() &
+           !grepl('2012', date_discharge)) %>%
+  mutate(., month = as.Date(paste0(format(
+    date_discharge, "%Y-%m"
+  ), '-01'))) %>%
+  group_by(month) %>%
+  summarise(., discharges = n())
+
+# ts object
+
+discharges_ts = ts(monthly_disch$discharges, start = c(2013,1), freq = 12)
+
+
+```
+
+```{r, ts-plot, fig.cap='(ref:ts-plot)'}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+plot.ts(discharges_ts)
+```
+
+Figure \@ref(fig:ts-plot) indicates an increasing size of the seasonal fluctuations and random fluctuations rulling out utility of additive models in describing the number of discharges time series. We may then try and do a log transform of the time series and see if it can be described by an additive model <br>
+
+```{r, log-ts-plot, fig.cap='(ref:log-ts-plot)'}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+log_discharges_ts = log(discharges_ts)
+plot.ts(log_discharges_ts)
+
+```
+
+
+
+
+
+

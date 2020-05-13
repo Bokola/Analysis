@@ -169,4 +169,118 @@ shinyApp(ui = ui_2, server = server)
 #one of the outputs you can add to the UI is `uiOutput()`.
 #this is an output used to render more UI
 #it is usually used to create inputs(or any other UI) from the server,or in other words you can create inputs dynamically
+#Basic examples of uiOutput()
+
+library(shiny)
+ui = fluidPage(
+  numericInput('num', 'Maximum slider value', 5),
+  uiOutput('slider')
+)
+
+server = function(input, output){
+  output$slider <- renderUI({
+    sliderInput('slider', 'Slider', min = 0,
+                max = input$num, value = 0)
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
+#We can use this uiOutput() concept to populate the choices for country selector
+#We first replace the selectInput('countryInput',..) in the UI with uiOutput("countryOutput")
+ui_3 = fluidPage(
+  titlePanel('BC Liquor Prices'),
+  sidebarLayout(
+    sidebarPanel(
+      # input for price
+      sliderInput('priceInput', 'Price', min = 0, max = 100, value = c(25, 40), pre = '$'), 
+      #input for type 
+      radioButtons('typeInput', 'Product Type', choices = c('beer', 'refreshment', 'spirits', 'wine'),
+                   selected = 'wine'),
+      # select box input for country
+      uiOutput('countryOutput')
+      
+    ),
+    mainPanel(
+      plotOutput('coolplot'), #placeholder for plot output
+      br(), br(),
+      tableOutput('results') #placeholder for table output
+      
+    )
+  )
+)
+
+server_3 = function(input, output){
+  filtered = reactive({
+    bcl %>%
+      filter(price >= input$priceInput[1],
+             price <= input$priceInput[2],
+             type == input$typeInput,
+             country == input$countryInput
+      )
+  })
+  
+  output$coolplot <- renderPlot({
+    ggplot(filtered(), aes(alcohol_content)) +
+      geom_histogram()
+  })
+  output$results <- renderTable({
+    filtered()
+  })
+  observe({ print(input$priceInput) })
+  priceDiff = reactive({ # using reactive({})
+    diff(input$priceInput)
+    
+  })
+  observe({ print(priceDiff()) })
+  output$countryOutput <- renderUI({
+    selectInput('countryInput', 'country',
+                sort(unique(bcl$country)),
+                selected = 'CANADA')
+  })
+}
+
+shinyApp(ui = ui_3, server = server_3)
+
+# Errors showing up and quickly disappearing
+#We can use NULL to escape empty categories
+server_4 = function(input, output){
+  filtered = reactive({
+    if(is.null(input$countryInput)){
+      return(NULL)
+    }
+    bcl %>%
+      filter(price >= input$priceInput[1],
+             price <= input$priceInput[2],
+             type == input$typeInput,
+             country == input$countryInput
+      )
+  })
+  
+  
+  output$coolplot <- renderPlot({
+    if(is.null(filtered())){ # using null to escape empty error in plot too
+      return()
+    }
+    ggplot(filtered(), aes(alcohol_content)) +
+      geom_histogram()
+  })
+  
+  output$results <- renderTable({
+    filtered()
+  })
+  observe({ print(input$priceInput) })
+  priceDiff = reactive({ # using reactive({})
+    diff(input$priceInput)
+    
+  })
+  observe({ print(priceDiff()) })
+  output$countryOutput <- renderUI({
+    selectInput('countryInput', 'country',
+                sort(unique(bcl$country)),
+                selected = 'CANADA')
+  })
+}
+
+shinyApp(ui = ui_3, server = server_4)
 

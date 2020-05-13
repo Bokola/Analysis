@@ -14,5 +14,5 @@ bcl <- dplyr::filter(bcl, ITEM_CATEGORY_NAME %in% c("beer", "refreshment beverag
   mutate(., type = ifelse(grepl('refr', type), 'refreshment', type))
 bcl = bcl %>%
 mutate(., price = as.numeric(price), alcohol_content = as.numeric(alcohol_content))
-
+write.csv(bcl, file.path(data_dir, 'bcl.csv'), row.names = F)
 

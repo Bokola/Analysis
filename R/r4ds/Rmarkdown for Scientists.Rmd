@@ -1,0 +1,360 @@
+---
+title: "RMarkdown for Scientists"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  bookdown::word_document2:
+    fig_caption: yes
+    toc: yes
+    toc_depth: '3'
+  bookdown::pdf_document2:
+    latex_engine: lualatex
+    toc: yes
+    toc_depth: '3'
+  bookdown::html_document2:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+## Nick’s rmarkdown hygiene recommendations
+
+
+
+```{r setup , include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      fig.align = "center",
+                      fig.width = 6.5, 
+                      fig.height = 4, 
+                      dev = "png",
+                      cache = FALSE)
+options(tinytex.verbose = TRUE)
+```
+
+
+* `echo = FALSE`: I don’t want any code printed by setting `echo = FALSE`.
+* `fig.align = "center"` Align my figures in the center
+* `fig.width = 4` & `fig.height = 4`. Set the width and height to 4 inches.
+* `dev = "png"`. Save the images as PNG
+* `cache = TRUE`. Save the output results of all my chunks so that they don’t need to be run again.
+
+
+
+```{r, library, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+browseURL('https://rmd4sci.njtierney.com/')
+ipk = function(pkg){
+  new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
+
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.pkg = c("tidyverse", "ggforce", "cowplot", "remotes",  "magrittr", "readr") 
+#ggforce for geom_arc_bar()
+#cowplot for theme_map()
+ipk(list.pkg)
+
+home = ifelse(Sys.info()['sysname'] == 'Linux', Sys.getenv('HOME'), Sys.getenv('USERPROFILE')) %>%
+  gsub('\\\\', '/',.) %>% file.path(., "Analysis", "Rmarkdown for Scientists")
+
+if(!exists(home)){
+  dir.create(home, recursive = T)
+}
+
+# usethis::use_course("bit.ly/rmd4sci-materials", destdir = home)
+# render(file.Rmd, output_format = html_document(toc = TRUE, toc_depth = 2))
+```
+
+
+In the `library` chunk you put the library calls and project file paths
+
+
+
+```{r functions}
+# A function to scale input to 0-1
+scale_01 <- function(x){
+  (x - min(x, na.rm = TRUE)) / diff(range(x, na.rm = TRUE))
+}
+```
+
+
+
+```{r read-data, message=FALSE, include=TRUE}
+
+gap<- read_csv(file.path(home, "data", "gapminder.csv"))
+
+```
+
+
+
+## Code chunk options
+
+
+
+* `cache`: TRUE/FALSE. Do you want to save the output of the chunks so it doesn't have to run next time?
+
+* `eval`: Do you want to evaluate the code?
+
+* `echo`: Do you want to print the code?
+
+* `include`: Include code uotput in final doc?
+
+
+## inline code
+
+Sometimes you want to run the code inside a sentence, a scenario referred to as running the code 'inline'
+
+There are `r nrow(airquality)` observations in the airquality dataset, and `r ncol(airquality)` variables
+
+
+## Figures, Tables and Captions
+
+### Tables 
+
+`kable` takes a `data.frame` and renders `markdown table` that works for both htm, pdf and word docs.
+
+```{r, tables}
+
+top_gap = head(gap)
+knitr::kable(top_gap)
+
+```
+
+#### Adding captions to a table
+
+Use `caption` argument
+
+```{r}
+
+knitr::kable(top_gap, caption = 'The first 6 rows of the dataset, gapminder')
+```
+
+### Figures and captions
+
+```{r, fig.cap='\\label{fig:figs}Life expectancy for Australia (1952 - 2007)'}
+
+gap %>% dplyr::filter(country == "Australia") %>%
+  ggplot(aes(y = lifeExp, x = year)) + geom_point()
+
+```
+
+### Inserting images
+
+The markdown syntax to insert an image is: `![caption]("path/to/image")`
+
+```
+
+![SSA Logo!](bit.ly/ssa-logo)
+
+```
+
+## Customizing figurs
+
+* `fig.align`: How do you want your figure aligned? Takes one of the following inputs: “default”, “center”, “left”, or “right”? (demo)
+* `fig.cap`: Would you like a caption for your figure? It takes a character vector as input: “My Amazing Graph”
+* `fig.height` & `fig.width`: How tall and wide would you like your figure in inches? Each takes one number (e.g., 7, or 9) [Note: these numbers are not quoted]
+* `out.height` & `out.width`: The height and width of your plot in the final file. This can be handy if you like the current aspect ratio of your plot, but you want to shrink it by say 50% - which you would do with “50%”. You can also include LaTeX output or HTML output. Say for example, “.8//linewidth” or “8cm” for LaTeX, or “300px” for HTML.
+
+You can set this globally in the setup chunk and keep referring to them in succeeding chunks with `knitr::opts_chunk$set(chunk_option1 = TRUE, ...)` <br>
+
+### Keeping your figures
+
+In order to save the figures, edit the YAML matter to <br>
+
+---
+title: "Awesome report"
+author: "You"
+output:
+  html_document:
+    keep_md: true
+---
+
+You’ll notice that this creates some folders called “FILENAME_files” - you can control the specific name of the folder by setting fig.path like so: <br>
+
+```
+knitr::opts_chunk$set(fig.path = "figs)
+
+```
+
+
+##  Citing Figures, Tables & Sections
+
+
+###  How to refer to tables and figures in text?
+
+
+In orderto use refencing style, you must us the following in YAML <br>
+
+```
+#pdf
+output:
+bookdown::pdf_document2
+
+#html
+
+output:
+bookdown::html_document2
+
+
+#word
+
+output:
+bookdown::word_document2
+```
+
+## Referencing a figure
+
+To refer to a figure, write the following in your text <br>
+
+```
+Figur \@ref(fig:chunk-name)
+
+```
+
+```{r gg-oz-plot, fig.cap = "Life expectancy from 1952 - 2007 for Australia. Life expentancy increases steadily except from 1962 to 1969. We can safely say that our life expectancy is higher than it has ever been!"}
+library(ggplot2)
+library(dplyr)
+gap %>%
+  filter(country == "Australia") %>%
+  ggplot(aes(x = year,
+             y = lifeExp)) + 
+  geom_point()
+```
+
+Australia's life expectancy has increased a great deal over the past 50 years
+
+(See Figure \@ref(fig:gg-oz-plot)) <br>
+
+## Referencing a table
+
+To cite a table, use <br>
+
+```
+Table \@ref(tab:chunk-name)
+
+```
+
+```{r gg-oz-tab}
+gap %>%
+  filter(country == "Australia") %>%
+  knitr::kable(caption = "Raw gapminder data for Australia.")
+```
+
+We can see below in table \@ref(tab:gg-oz-tab) the raw data used to create Figure \@ref(fig:gg-oz-plot)
+
+
+```{r}
+
+gap %>%
+  filter(country == "Australia") %>%
+  knitr::kable(caption = "Raw gapminder data for Australia.")
+```
+
+
+## Referencing a section 
+
+You can reference a section with `\@ref(slug)` <br>
+
+However, in order to write this, you need to include slug in your markdown header, like so: <br>
+
+`## your amazing header {#slug}`
+
+
+## One small note 
+
+If you are using a teplate of soe kind, such as those in `rticles`, and want the full featured citation features, then your YAML will need to include something like this: <br>
+
+```
+output:
+  base_forat: rticles::plos_article
+  
+```
+
+## Citing articles and bibliography styles
+
+Citing things in an rmarkdown document is straightforward, you refer to articles you want to cite using `[@article-handle]`. Here, `article-handle` matches the article handle in your `.bib` file. <br>
+
+This `.bib` file is referred to in the YAML of your document, under the option bibliography: filename.bib: <br>
+
+```
+title:
+author:
+output: html_document
+bibliography: references.bib
+
+```
+
+### What is a .bib file?
+
+`.bib` is a format for storing references from the haydey of LaTeX. It contains scripts with reference inforation for the article. An example: <br>
+
+```
+@Book{ggplot2,
+    author = {Hadley Wickham},
+    title = {ggplot2: Elegant Graphics for Data Analysis},
+    publisher = {Springer-Verlag New York},
+    year = {2016},
+    isbn = {978-3-319-24277-4},
+    url = {http://ggplot2.org},
+  }
+
+```
+
+### And how do I generate these .bib files?
+
+You can use the `citation` function in R itself and for specific R packages. 
+We can get the citation for R with <br>
+
+```{r}
+citation()
+```
+
+For journals or books, you’ll need to get a specific .bib file. Yes, this can be a bit of a pain, but this is where you need to use a reference management software like Zotero, Mendeley, papers, or my personal preference paperpile. The important thing to to use something. These all allow you to get .bib files of your articles, which you can then placec in your references.bib file. <br>
+
+
+### How to change the bibliography styles
+
+You can change your citation style from the [citation style language](https://citationstyles.org/) <br>
+Similar to how you referred to your `.bib` file with `bibliography: ref.bib`, you do something similar: <br>
+
+```
+title: 
+author:
+output: html_document
+bibliography: references.bib
+csl:my_journal.csl
+```
+
+Additional refernce styles are on https://github.com/citation-style-language/styles
+
+## How to move the bibliography location
+
+The bibliography is typically placed at the end of the document, so your last heading should be something like # References. However, if you want to move it, you need to use the bookdown::html_document2() output option, and then in your document, place the following piece of text in the reference section. For example. <br>
+
+```
+
+# Introduction
+
+# References {-}
+
+<div id="refs"></div>
+
+# Appendix
+
+```
+
+## Captioning and referencing equations
+
+This section introduces how to add captions to equations, and reference them in text. Note that when using captioning, you need to use the `bookdown::html_document2` output <br>
+
+### Numbering equations
+
+You can provide a number for an equation by adding `\begin{equation}` along with a label, provided with `(\#eq:lable)` 
+
+
+
+
+
+
+
