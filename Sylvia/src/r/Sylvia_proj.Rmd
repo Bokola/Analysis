@@ -1,0 +1,1096 @@
+---
+title: "Data Analysis"
+author: ""
+date: ""
+output:
+  bookdown::word_document2:
+    fig_caption: yes
+    toc: no
+    toc_depth: '3'
+  bookdown::pdf_document2:
+    latex_engine: lualatex
+    toc: yes
+    toc_depth: '3'
+  bookdown::html_document2:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: no
+    toc_depth: 3
+---
+
+
+```{r setup , include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE,
+                      warning = FALSE,
+                      cache = FALSE,
+                      fig.align = "center",
+                      fig.width = 6, 
+                      fig.asp = 0.618, 
+                      fig.show = "hold")
+
+options(tinytex.verbose = TRUE)
+options(dplyr.print_min = 6, dplyr.print_max = 6)
+options(digits = 4)
+```
+
+## Statistical Analysis
+
+We present descriptive summaries of key sample statistics. We compared baseline sample characteristics between those children found to be at risk of OSA and those not at risk. We used the Fisher's exact test or chi-square tests for categorical variables. The Wilcoxon rank sum test or Kruskal–Wallis test was used for continuous variables. We considered p-values of <0.05 to be statistically significant. <br>
+
+
+```{r, packages, results='hide'}
+
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+rm(list = ls(all=T))
+browseURL("https://stats.idre.ucla.edu/r/dae/logit-regression/")
+
+list.pkg <- c("plyr", "tidyr", "rlang", "tidyselect", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
+           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr", "rsample", "h2o", "tidymodels", "skimr","tibble", "gridExtra", "ggforce", "colorspace", "colorblindr","cowplot","dviz.supp")
+
+ipk = function(pkg){
+  new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
+  if("practicalgg" %in% list.pkg){
+    remotes::install_github("wilkelab/practicalgg")
+  }
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T ,repos = "http://cran.us.r-project.org")
+  sapply(pkg, require, character.only = T)
+}
+ipk(list.pkg)
+#source(file.path(home.dir,"hsuApps", "universalFunctions", "modifyData.R"))
+
+if(tolower(Sys.info()[['sysname']])=="linux"){
+  home.dir <- normalizePath(paste0(Sys.getenv()[["HOME"]])) %>% sub("\\\\", "/", .)
+}else{
+  home.dir <- normalizePath(paste0(Sys.getenv()[["USERPROFILE"]],"/Analysis")) %>% gsub("\\\\", "/", .)
+}
+
+proj_dir = file.path(home.dir, 'Sylvia')
+data_dir = file.path(proj_dir, 'data')
+cache_dir = file.path(proj_dir, "cache", "doc")
+src_dir = file.path(proj_dir, "src", "r")
+
+for(i in c(proj_dir, data_dir, cache_dir, src_dir)){
+  if(!dir.exists(i)){
+  if(dir.create(i, recursive = T))
+    stop("Project directory\"", i, 
+         "\"has been created!\nPlease fill it with relevant files")
+  else
+    stop("The directory", i, "could not be created")
+  
+  }
+}
+
+```
+
+
+
+```{r baseline}
+
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+data = readr::read_csv(file.path(data_dir, "data.csv")) %>%
+  janitor::clean_names()
+
+meta_data = readr::read_table(file.path(data_dir, "meta data.txt"))
+meta_data = meta_data %>%
+  select(-grep("x", colnames(.), ignore.case = T)) %>%
+  janitor::clean_names() %>%
+  mutate(., name = tolower(name))
+
+# psq before surgery
+data = data %>%
+  mutate(., hospital = ifelse(grepl('knh', hosp, ignore.case = T), 'public', 'private'),
+         `birth weight` = ifelse(bth_wght < 2.5, '< 2.5 kgs', '>= 2.5 kgs'))
+data$psq_b_yes = rowSums(data[,69:90] == 1, na.rm = T) # 1 = yes, 2 = no, 0 = dont know
+data$psq_b = round(data$psq_b_yes/(22- rowSums(data[,69:90] == 0, na.rm = T)),2)
+data$psq_b_binary = ifelse(data$psq_b > 0.33, 1,0) # 1 = psq suspected = SDBS
+data$age = ifelse(!is.na(data$age_mnths), data$age_yrs + round(data$age_mnths/12,1), data$age_yrs)
+
+# psq after surgery
+
+data$psq_yes = rowSums(data[,37:58] == 1, na.rm = T) # 1 = yes, 2 = no, 0 = dont know
+data$psq = round(data$psq_yes/(22- rowSums(data[,37:58] == 0, na.rm = T)),2)
+data$psq_binary = ifelse(data$psq > 0.33, 1,0) # 1 = psq suspected = SDBS
+
+# quantile(data$bmi, probs = c(0.05, 0.85, 0.95)) # bmi categories
+
+data = data %>%
+  mutate(., bmi_cat = ifelse(bmi < quantile(bmi, probs = c(0.05)), "Underweight",
+                             ifelse(bmi >= quantile(bmi, probs = c(0.05)) & bmi < quantile(bmi, probs = c(0.85)), "Normal",
+                                    ifelse(bmi >= quantile(bmi, probs = c(0.85)) & bmi < quantile(bmi, probs = c(0.95)), "Overweight", "Obese"))))
+
+data = data %>%
+  mutate(., age_cat = ifelse(age <= 5, "2-5", "6-10"),
+         asthma_diag = ifelse(child_asthma == 1 | wheezing == 1| medication_a ==1 | medication ==1 | medication_d ==1 | medication_e ==1| medication_f == 1, 1,0),
+         allergic_rhinitis_diag = ifelse(allergic_rhinitis ==1 | a_symptoms == 1 | b_symptoms ==1 | c_symptoms == 1, 1, 0))
+
+names = names(data[, 59:96])
+
+osa_cols = c('shake_breath', 'shake_breath_b', 'apnes_b', 'apnoea_during_sleep', 'struggle_breathing', 'struggle_breath_b', 'conserns', 'concrn_breath_b', 'loud_snore_b', 'snore_loud', 'snore_sleep', 'snore_sleep_b')
+
+data = data %>%
+  mutate_at(vars(shake_breath, shake_breath_b, apnes_b, apnoea_during_sleep, struggle_breathing, struggle_breath_b, conserns, concrn_breath_b, loud_snore_b, snore_loud, snore_sleep, snore_sleep_b), ~replace(., is.na(.), 0))
+
+# osa_cols = data[, 59:96]
+
+for(c in osa_cols){
+data[,c] = sapply(data[,c], function(x){
+  x = ifelse(is.na(x), 0, x)
+})
+}
+# severe OSA before surgery
+
+data$A = round((data$shake_breath + data$apnoea_during_sleep)/2,2)
+data$B = round((data$A + data$struggle_breathing)/2,2)
+data$C = round((data$B + data$conserns)/2,2)
+data$D = round((data$C + data$snore_loud)/2,2)
+data$E = round((data$D + data$snore_sleep)/2,2)
+data$osa_binary = ifelse(data$E >=2.72, 1, 0)
+
+# severe osa after surgery
+
+data$AA = round((data$shake_breath_b + data$apnes_b)/2,2)
+data$BB = round((data$AA + data$struggle_breath_b)/2,2)
+data$CC = round((data$BB + data$concrn_breath_b)/2,2)
+data$DD = round((data$CC + data$loud_snore_b)/2,2)
+data$EE = round((data$DD + data$snore_sleep_b)/2,2)
+data$osa_b_binary = ifelse(data$E >=2.72, 1, 0)
+# 
+# tmp <- do.call(data.frame,
+#            list(mean = apply(data, 2, mean),
+#                 sd = apply(data, 2, sd),
+#                 median = apply(data, 2, median),
+#                 min = apply(data, 2, min),
+#                 max = apply(data, 2, max),
+#                 n = apply(data, 2, length)))
+# tmp
+# 
+# age = data %>%
+#   summarise(`mean age` = mean(age, na.rm = T),
+#             `min age` = min(age, na.rm = T),
+#             `max age` = max(age, na.rm = T))
+# age  = age %>%
+#   gather(key = "characteristic", value = "all participants")
+
+
+# all charactersitics at baseline
+
+
+
+summ = function(data){
+  
+
+out_all = data %>%
+  summarise(`Age` = paste(round(mean(data$age, na.rm = T),2), round(sd(data$age, na.rm = T),2), sep = "\u00B1")) %>%
+  cbind(
+    `2-5 yrs` = paste0(sum(data$age_cat == '2-5'), '(',round(sum(data$age_cat == '2-5')/nrow(data)*100),")"),
+    `6-10 yrs` = paste0(sum(data$age_cat == '6-10'), '(',round(sum(data$age_cat == '6-10')/nrow(data)*100),")")
+  ) %>%
+  cbind(
+    data %>%
+      summarise(`Gender, n(%)` = NA_character_)
+    
+  ) %>%
+  cbind(
+    `\tMale` = paste0(sum(data$sex==1, na.rm = T),'(',round(sum(data$sex==1, na.rm = T)/ nrow(data) *100),')')
+  ) %>%
+  cbind(`\tFemale`=
+          paste0(sum(data$sex==0, na.rm = T),'(',round(sum(data$sex==0, na.rm = T)/ nrow(data) *100),')') 
+  ) %>% cbind(
+    `Asthma, n(%)` = paste0(sum(data$asthma_diag == 1,na.rm = T), '(', round(sum(data$asthma_diag == 1,na.rm = T)/nrow(data) *100), ')')
+  ) %>%
+  cbind(
+    `Allergic rhinitis, n(%)` = paste0(sum(data$allergic_rhinitis_diag == 1,na.rm = T), '(', round(sum(data$allergic_rhinitis_diag == 1,na.rm = T)/nrow(data) *100), ')')
+  ) %>%
+  cbind(
+    `BMI(kg/m^2)` = paste(round(mean(data$bmi, na.rm = T),2), round(sd(data$bmi, na.rm = T),2), sep = "\u00B1")
+  ) %>%
+  cbind(
+    `Birth weight category, n(%)` = NA_character_,
+    `\t<2.5 kgs` = paste0(sum(data$`birth weight` == "< 2.5 kgs"), '(', round(sum(data$`birth weight` == "< 2.5 kgs")/nrow(data)*100), ')'),
+    `\t>=2.5 kgs` = paste0(sum(data$`birth weight` == ">= 2.5 kgs"), '(', round(sum(data$`birth weight` == ">= 2.5 kgs")/nrow(data)*100), ')')
+  ) %>%
+  cbind(
+    `Hospital category, n(%)` = NA_character_,
+    `\tPrivate` = paste0(sum(data$hospital =='private'), '(', round(sum(data$hospital == 'private')/nrow(data)*100), ')'),
+    `\tPublic` = paste0(sum(data$hospital == 'public'), '(', round(sum(data$hospital == 'public')/nrow(data)*100), ')')
+  ) %>%
+  cbind(
+    `BMI category, n(%)` = NA_character_,
+    `\tUnderweigh` = paste0(sum(data$bmi_cat == 'Underweight'), '(', round(sum(data$bmi_cat == 'Underweight')/nrow(data)*100), ')'),
+    `\tNormal` = paste0(sum(data$bmi_cat == 'Normal'), '(', round(sum(data$bmi_cat == 'Normal')/nrow(data)*100), ')'),
+    `\tOverweight` = paste0(sum(data$bmi_cat =='Overweight'), '(', round(sum(data$bmi_cat == 'Overweight')/nrow(data)*100), ')'),
+    `\tObese` = paste0(sum(data$bmi_cat == 'Obese'), '(', round(sum(data$bmi_cat == 'Obese')/nrow(data)*100), ')')
+  ) %>%
+  cbind(
+    `Height` = paste(round(mean(data$height, na.rm = T),2), round(sd(data$height, na.rm = T),2), sep = "\u00B1")
+  ) %>%
+  cbind(
+    `SDB,n(%)` = paste0(sum(data$psq_binary == 1), '(', round(sum(data$psq_binary == 1)/nrow(data)*100),")")
+  ) %>%
+  cbind(
+    `OSA,n(%)` = paste0(sum(data$osa_binary == 1), '(', round(sum(data$osa_binary == 1)/nrow(data)*100),")")
+  )
+
+
+out_all = out_all %>%
+  gather(key = "Characteristics", value = "All Participants\n")
+# return(out_all)
+assign(paste('out_', deparse(substitute(data)), sep = ""), out_all, envir = .GlobalEnv)
+
+}
+
+summ(data)
+
+# with SDB at baseline
+
+data_sdb = filter(data, psq_binary == 1)
+
+summ(data_sdb)
+names(out_data_sdb) = c("Characteristics", "PSQ > 0.33")
+
+# no SDB at baseline
+
+data_no_sdb = filter(data, psq_binary == 0)
+summ(data_no_sdb)
+names(out_data_no_sdb) = c("Characteristics", "PSQ < 0.33")
+
+# with OSA at baseline
+
+data_osa = filter(data, psq_binary ==1 & osa_binary== 1)
+summ(data_osa)
+names(out_data_osa) = c("Characteristics", "POSAT >= 2.72")
+
+# no OSA at baseline
+
+data_no_osa = filter(data, psq_binary == 1 & osa_binary== 0)
+summ(data_no_osa)
+names(out_data_no_osa) = c("Characteristics", "POSAT < 2.72")
+
+
+
+sdb_baseline = left_join(out_data, out_data_sdb) %>%
+  left_join(out_data_no_sdb)
+
+#  test statistics and p-values
+
+test_stat = function(data, data_1){
+  
+sex = left_join(
+  data_sdb %>%
+    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
+    ddply(.(sex), summarise,
+          `psq` = length(sub_id)),
+  data_no_sdb %>%
+    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
+    ddply(.(sex), summarise,
+          `no psq` = length(sub_id))  
+  
+) 
+
+sexx = gather(sex, key, value, -sex)
+chi_sex =  chisq.test( xtabs(value ~ key + sex, data = sexx))
+
+age = cbind(
+  data %>%
+    summarise(psq = mean(age, na.rm= T)),
+  data_1 %>%
+    summarise(`no psq` = mean(age, na.rm = T))
+)
+
+age_w = wilcox.test(data$age, data_1$age)
+age_t = t.test(data$age, data_1$age)
+
+#asthma
+
+asthma = left_join(
+  data %>%
+    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
+    ddply(.(asthma_diag), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
+    ddply(.(asthma_diag), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - asthma_diag) #%>%
+
+chi_asthma = chisq.test(xtabs(value ~ key + asthma_diag, data = asthma))
+
+#allergic rhinitis
+
+rhinitis = left_join(
+  data %>%
+    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
+    ddply(.(allergic_rhinitis_diag), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
+    ddply(.(allergic_rhinitis_diag), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - allergic_rhinitis_diag) #%>%
+
+chi_rhinitis = chisq.test(xtabs(value ~ key + allergic_rhinitis_diag, data = rhinitis))
+
+#BMI
+
+bmi_t = t.test(data$bmi, data_1$bmi)
+bmi_w= wilcox.test(data$bmi, data_1$bmi)
+
+# BMI category
+
+bmi_cat = left_join(
+  data %>%
+    mutate(bmi_cat = as.factor(bmi_cat)) %>%
+    ddply(.(bmi_cat), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(bmi_cat = as.factor(bmi_cat)) %>%
+    ddply(.(bmi_cat), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - bmi_cat) #%>%
+
+chi_bmi_cat = chisq.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
+f_bmi_cat = fisher.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
+
+# Birth weight category
+
+birth_weight = left_join(
+  data %>%
+    mutate(`birth weight` = as.factor(`birth weight`)) %>%
+    ddply(.(`birth weight`), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(`birth weight` = as.factor(`birth weight`)) %>%
+    ddply(.(`birth weight`), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - `birth weight`) %>%
+  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
+
+chi_birth_weight = chisq.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
+f_birth_weight = fisher.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
+
+# Hospital category
+
+hospital = left_join(
+  data %>%
+    mutate(hospital = as.factor(hospital)) %>%
+    ddply(.(hospital), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(hospital = as.factor(hospital)) %>%
+    ddply(.(hospital), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - hospital) %>%
+  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
+
+chi_hospital = chisq.test(xtabs(value ~ key + hospital, data = hospital))
+f_hospital = fisher.test(xtabs(value ~ key + hospital, data = hospital))
+
+
+# height
+
+height_t = t.test(data$height, data_1$height)
+height_w = wilcox.test(data$height, data_1$height)
+
+#osa
+
+osa = left_join(
+  data %>%
+    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
+    ddply(.(osa_binary), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
+    ddply(.(osa_binary), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - osa_binary) #%>%
+
+chi_osa = chisq.test(xtabs(value ~ key + osa_binary, data = osa))
+
+
+p_val_baseline = cbind(
+  `Gender, n(%)` = round(chi_sex$p.value,3),
+  `Age` = round(age_w$p.value,3),
+  `Asthma, n(%)` = round(chi_asthma$p.value,3),
+  `Allergic rhinitis, n(%)` = round(chi_rhinitis$p.value,3),
+  `BMI category, n(%)` = round(f_bmi_cat$p.value,3),
+  `Birth weight category, n(%)` = round(f_birth_weight$p.value,3),
+  `Hospital category, n(%)` = round(f_hospital$p.value,3),
+  `OSA,n(%)` = round(chi_osa$p.value,3)
+)
+
+p_val_baseline = as_tibble(p_val_baseline) %>%
+  mutate_all(., as.numeric) %>%
+  gather(., key = "Characteristics", value = "p-value")
+assign(paste("p_val_", deparse(substitute(data)), sep = ""), p_val_baseline, envir = .GlobalEnv)
+}
+
+test_stat(data_sdb, data_no_sdb)
+
+
+sdb_baseline_out = sdb_baseline %>%
+  left_join(., p_val_data_sdb)
+
+sdb_baseline_out = sdb_baseline_out %>%
+  mutate_if(is.numeric, ~replace(., is.na(.), '')) %>%
+  mutate_if(is.character,~replace(., is.na(.), ''))
+
+names(sdb_baseline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_binary == 0)), "p-value")
+
+# Baseline table
+
+options("ReporteRs-fontsize" = 12);options("ReporteRs-default-font" = "Calibri")
+
+table.baseline <- sdb_baseline_out %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.baseline[,1] = parLeft()
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. Baseline characteristics of all participants with and without SDB') %>%
+addFlexTable(., flextable = table.baseline)
+
+writeDoc(doc, file = file.path(cache_dir, paste('baseline characteristics.docx')))
+knitr::kable(mtcars[1:10,], caption = "Baseline characteristics of all participants with and without SDB'")
+```
+
+## Descriptive Analysis
+
+Overal, a total of `r nrow(data)` children with a mean age of `r round(mean(data$age),1)` ( `r min(data$age)`, `r max(data$age)`) were recruited. Of these, `r nrow(filter(data, sex == 1))` (`r paste0(round(nrow(filter(data, sex ==1))/ nrow(data)*100,0), "%")`) were male. Comparing baseline characteristics between children with possible diagnosis of SDB `r sum(data$psq_binary == 1)` ( `r round(sum(data$psq_binary == 1)/nrow(data)*100,2)`) and those without revealed a significant difference in  suspected allergic rhinitis (p=0.017) and those with suspected OSA (p < 0.000). There were however no significant differences in other population characteristics as shown in table \@ref(tab:baseline). <br>
+
+```{r, endline}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+# with SDB at endline
+
+data_sdb_end = filter(data, psq_b_binary == 1)
+summ(data_sdb_end)
+names(out_data_sdb_end) = c("Characteristics", "PSQ > 0.33")
+
+# no SDB at endline
+
+data_no_sdb_end = filter(data, psq_b_binary == 0)
+summ(data_no_sdb_end)
+names(out_data_no_sdb_end) = c("Characteristics", "PSQ < 0.33")
+
+# with OSA at endline
+
+data_osa_end = filter(data, psq_b_binary ==1 & osa_b_binary== 1)
+summ(data_osa_end)
+names(out_data_osa_end) =c("Characteristics", value = "POSAT >= 2.72")
+
+# no OSA at endline
+
+data_no_osa_end = filter(data, psq_b_binary == 1 & osa_b_binary== 0)
+summ(data_no_osa_end)
+names(out_data_no_osa_end)= c("Characteristics", value = "POSAT < 2.72")
+
+sdb_endline = left_join(out_data, out_data_sdb_end) %>%
+  left_join(out_data_no_sdb_end)
+
+#  test statistics and p-values
+
+#  test statistics and p-values
+
+test_stat_bmi_hosp = function(data, data_1){
+
+  sex = left_join(
+  data_sdb %>%
+    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
+    ddply(.(sex), summarise,
+          `psq` = length(sub_id)),
+  data_no_sdb %>%
+    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
+    ddply(.(sex), summarise,
+          `no psq` = length(sub_id))  
+  
+) 
+
+sexx = gather(sex, key, value, -sex)
+chi_sex =  chisq.test( xtabs(value ~ key + sex, data = sexx))
+
+age = cbind(
+  data %>%
+    summarise(psq = mean(age, na.rm= T)),
+  data_1 %>%
+    summarise(`no psq` = mean(age, na.rm = T))
+)
+
+age_w = wilcox.test(data$age, data_1$age)
+age_t = t.test(data$age, data_1$age)
+
+#asthma
+
+asthma = left_join(
+  data %>%
+    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
+    ddply(.(asthma_diag), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
+    ddply(.(asthma_diag), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - asthma_diag) #%>%
+
+chi_asthma = chisq.test(xtabs(value ~ key + asthma_diag, data = asthma))
+
+#allergic rhinitis
+
+rhinitis = left_join(
+  data %>%
+    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
+    ddply(.(allergic_rhinitis_diag), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
+    ddply(.(allergic_rhinitis_diag), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - allergic_rhinitis_diag) #%>%
+
+chi_rhinitis = chisq.test(xtabs(value ~ key + allergic_rhinitis_diag, data = rhinitis))
+
+#BMI
+
+bmi_t = t.test(data$bmi, data_1$bmi)
+bmi_w= wilcox.test(data$bmi, data_1$bmi)
+
+# # BMI category
+# 
+# bmi_cat = left_join(
+#   data %>%
+#     mutate(bmi_cat = as.factor(bmi_cat)) %>%
+#     ddply(.(bmi_cat), summarise,
+#           `psq` = length(sub_id)),
+#   data_1 %>%
+#     mutate(bmi_cat = as.factor(bmi_cat)) %>%
+#     ddply(.(bmi_cat), summarise,
+#           `no psq` = length(sub_id))  
+#   
+# ) %>%
+#   gather(.,key, value, - bmi_cat) #%>%
+# 
+# chi_bmi_cat = chisq.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
+# f_bmi_cat = fisher.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
+
+# Birth weight category
+
+birth_weight = left_join(
+  data %>%
+    mutate(`birth weight` = as.factor(`birth weight`)) %>%
+    ddply(.(`birth weight`), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(`birth weight` = as.factor(`birth weight`)) %>%
+    ddply(.(`birth weight`), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - `birth weight`) %>%
+  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
+
+chi_birth_weight = chisq.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
+f_birth_weight = fisher.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
+
+# Hospital category
+
+# hospital = left_join(
+#   data %>%
+#     mutate(hospital = as.factor(hospital)) %>%
+#     ddply(.(hospital), summarise,
+#           `psq` = length(sub_id)),
+#   data_1 %>%
+#     mutate(hospital = as.factor(hospital)) %>%
+#     ddply(.(hospital), summarise,
+#           `no psq` = length(sub_id))  
+#   
+# ) %>%
+#   gather(.,key, value, - hospital) %>%
+#   mutate_if(is.numeric, ~replace(.,is.na(.), 0))
+# 
+# chi_hospital = chisq.test(xtabs(value ~ key + hospital, data = hospital))
+# f_hospital = fisher.test(xtabs(value ~ key + hospital, data = hospital))
+
+
+# height
+
+height_t = t.test(data$height, data_1$height)
+height_w = wilcox.test(data$height, data_1$height)
+
+#osa
+
+osa = left_join(
+  data %>%
+    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
+    ddply(.(osa_binary), summarise,
+          `psq` = length(sub_id)),
+  data_1 %>%
+    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
+    ddply(.(osa_binary), summarise,
+          `no psq` = length(sub_id))  
+  
+) %>%
+  gather(.,key, value, - osa_binary) #%>%
+
+chi_osa = chisq.test(xtabs(value ~ key + osa_binary, data = osa))
+
+
+p_val_baseline = cbind(
+  `Gender, n(%)` = round(chi_sex$p.value,3),
+  `Age` = round(age_w$p.value,3),
+  `Asthma, n(%)` = round(chi_asthma$p.value,3),
+  `Allergic rhinitis, n(%)` = round(chi_rhinitis$p.value,3),
+  # `BMI category, n(%)` = round(f_bmi_cat$p.value,3),
+  `Birth weight category, n(%)` = round(f_birth_weight$p.value,3),
+  # `Hospital category, n(%)` = round(f_hospital$p.value,3),
+  `OSA,n(%)` = round(chi_osa$p.value,3)
+)
+
+p_val_baseline = as_tibble(p_val_baseline) %>%
+  mutate_all(., as.numeric) %>%
+  gather(., key = "Characteristics", value = "p-value")
+assign(paste("p_val_", deparse(substitute(data)), sep = ""), p_val_baseline, envir = .GlobalEnv)
+}
+
+test_stat_bmi_hosp(data_sdb_end, data_no_sdb_end)
+
+
+sdb_endline_out = sdb_endline %>%
+  left_join(., p_val_data_sdb_end)
+
+sdb_endline_out = sdb_endline_out %>%
+  mutate_if(is.numeric, ~replace(., is.na(.), '')) %>%
+  mutate_if(is.character,~replace(., is.na(.), ''))
+
+
+names(sdb_endline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_b_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_b_binary == 0)), "p-value")
+
+# endline table
+
+options("ReporteRs-fontsize" = 12);options("ReporteRs-default-font" = "Calibri")
+
+table.endline <- sdb_endline_out %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.endline[,1] = parLeft()
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. characteristics of all participants with and without SDB, 6-8 weeks post operation') %>%
+addFlexTable(., flextable = table.endline)
+
+writeDoc(doc, file = file.path(cache_dir, paste('endline characteristics.docx')))
+knitr::kable(mtcars[1:10,], caption = "Characteristics of participants with and without SDB at 6-8 weeks post operation")
+```
+
+A total of `r nrow(filter(data, psq_b_binary == 1))` (`r round(nrow(filter(data, psq_b_binary == 1))/nrow(data)*100)`) childen and caregivers interviewed after treatment of SDB related symptoms showed signs of SDB (PSQ score >0.33). There were however no significant inter group differences in overal characteristics between chilldren with scores over 0.33 and those with scores lower than 0.33. More descriptive results are as presented in the table \@ref(tab:endline). <br>
+
+
+```{r bar-plots-baseline, fig.cap= "Class separation of categorical dependent variables across the two levels of PSQ score"}
+
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+data = data %>%
+  mutate(., asthma_diag = ifelse(asthma_diag == 0, 'yes', 'no'),
+         allergic_rhinitis_diag = ifelse(allergic_rhinitis_diag == 1, 'yes', 'no'),
+         sex = ifelse(sex == 1, 'male', 'female'))
+
+data_viz = data %>%
+  mutate(., psq_binary = ifelse(psq_binary == 1, "PSQ > 0.33", "PSQ <= 0.33"))
+library(gridExtra)
+plot_bars <- function(df, catcols){
+  options(repr.plot.width = 6, repr.plot.height = 5)
+  temp0 <- df[df$psq_binary == "PSQ <= 0.33", ]
+  temp1 <- df[df$psq_binary =="PSQ > 0.33", ]
+  for (col in cat_cols){
+    p1 <- ggplot(temp0, aes_string(col)) +
+      geom_bar(fill = "#56B4E9", alpha = 0.9) +
+      ggtitle(paste(gsub("_|diag"," ", col), '\nPSQ < 0.33')) + 
+      coord_cartesian(clip = "off") +
+      xlab("") +
+    scale_y_continuous(
+    name = "count",
+    limits = c(0, 60),
+    breaks = c(0, 4, 25,40),
+    expand = c(0, 0)
+    )+
+    theme_minimal_hgrid(12, rel_small = 1)#+
+    #   theme(
+    #   #axis.ticks.length = grid::unit(0, "pt"),
+    #   axis.ticks.x = element_blank(),
+    #   axis.line = element_blank(),
+    #   plot.margin = margin(3, 7, 3, 1.5)
+    # )
+    p2 <- ggplot(temp1, aes_string(col)) +
+      geom_bar(fill = "#56B4E9", alpha = 0.9) +
+      ggtitle(paste(gsub("_|diag"," ", col), '\nPSQ > 0.33')) +
+       coord_cartesian(clip = "off") +
+      xlab("") +
+      scale_y_continuous(
+    name = "count",
+    limits = c(0, 60),
+    breaks = c(0, 4, 25,40),
+    expand = c(0, 0)
+    )+
+      theme_minimal_hgrid(12, rel_small = 1) #+
+    #   theme(
+    #   #axis.ticks.length = grid::unit(0, "pt"),
+    #   axis.ticks.x = element_blank(),
+    #   axis.line = element_blank(),
+    #   plot.margin = margin(3, 7, 3, 1.5)
+    # )
+    grid.arrange(p1, p2, nrow = 1)
+  }
+}
+cat_cols = c("age_cat", "asthma_diag","allergic_rhinitis_diag", "sex", "hospital", "`birth weight`", "psq_binary")
+plot_bars(data_viz, cat_cols)
+    # scale_y_continuous(expand = c(0, 0),
+    #                    name = "median income (USD)",
+    #                    breaks = c(0, 20000, 40000, 60000),
+    #                    labels = c("$0", "$20,000", "$40,000", "$60,000")) +
+    # xlab("age (years)") +
+    # coord_cartesian(clip = "off") +
+    # theme_dviz_hgrid() +
+    # theme(
+    #   #axis.ticks.length = grid::unit(0, "pt"),
+    #   axis.ticks.x = element_blank(),
+    #   axis.line = element_blank(),
+    #   plot.margin = margin(3, 7, 3, 1.5)
+    # )
+
+```
+
+
+To better understand class separation between the two PSQ score levels, we plotted bar graphs of age category, asthma, allergic rhinitis, birth weight, hospital status and of the PSQ score levels, figure \@ref(fig:bar-plot-baseline). Notably, there were some trend across the PSQ score levels; with age, asthma, allergic rhinitis, gender and hospital type categories having more numbers for scores of PSQ > 0. 33, when compared to a score of PSQ < 0.33. This observation indicates the possibility of these independent categorical explaining variability in PSQ scores. <br> 
+
+
+```{r box-plot-baseline, fig.cap= "variation of numeric dependent variables across different levels of PSQ score"}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+plot_box <- function(df, cols, col_x = 'psq_binary'){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols){
+    p <- ggplot(df, aes_string(col_x, col)) + 
+        geom_boxplot(fill = 'grey90') +
+         ggtitle(paste(gsub("_"," ", col))) + 
+        coord_cartesian(clip = "off") +
+        xlab("") +
+        ylab("") +
+        theme_minimal_hgrid(12, rel_small = 1)
+    print(p)
+     
+  }
+}
+
+num_cols = c('height', 'wealth_quantile', "bmi")
+plot_box(data_viz, num_cols)
+```
+
+We also visualized this class separation across numeric independent variables. There was clear class separation in the distribution of height across the two PSQ score levels. No particular trend was observed for bmi and wealth quantile as shown in Figure \@ref(fig:box-plot-baseline). <br>
+
+
+
+A pie chart diagram of bmi category shows a missing class `obese` for PSQ scores > 0.33. This in a way limits modelling when some classes have cell counts of zero across variable of interest. <br>
+
+```{r pie-plot-baseline, fig.cap= "variation of bmi categories for PSQ score > 0.33"}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+# radius of of the pie and radius for outside and inside labels
+rpie = 1
+rlabel_out = 1.05*rpie
+rlabel_in = 0.6*rpie
+
+bund_pie = data%>%
+  filter(psq_binary == 1) %>%
+  group_by(bmi_cat) %>%
+   tally() %>%
+  arrange(n) %>%
+  mutate(end_angle = 2*pi*cumsum(n)/sum(n), # ending angle for each pie slice
+         start_angle = lag(end_angle, default = 0), # starting angle for each pie slice
+         mid_angle = 0.5*(start_angle + end_angle), # middle of each pie slice, for the text label
+          # horizontal and vertical justifications depend on whether we're to the left/right
+          # or top/bottom of the pie
+         hjust = ifelse(mid_angle > pi, 1, 0),
+         vjust = ifelse(mid_angle < pi/2 | mid_angle > 3*pi/2, 0, 1),
+         colors = c("#E7D739", "#E64D93", "#B6494A","#4E4E4E")
+         )
+
+p1 = ggplot(bund_pie) +
+  geom_arc_bar(
+    aes(
+      x0 = 0, y0 = 0, r0 = 0, r = rpie,
+      start = start_angle, end = end_angle, fill = colors
+    ),
+    color = "white"
+  ) +
+  geom_text(
+    aes(
+      x = rlabel_in * sin(mid_angle),
+      y = rlabel_in * cos(mid_angle),
+      label = n
+    ),
+    size = 14/.pt,
+    color = c("black", "white", "white", "white")
+  ) +
+  geom_text(
+    aes(
+      x = rlabel_out * sin(mid_angle),
+      y = rlabel_out * cos(mid_angle),
+      label = bmi_cat,
+      hjust = hjust, vjust = vjust
+    ),
+    size = 10/.pt
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    limits = c(-1.5, 1.4),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    limits = c(-1.05, 1.15),
+    expand = c(0, 0)
+  ) +
+  scale_fill_identity() +
+  coord_fixed() +
+  theme_map()
+bund_pie = data%>%
+  filter(psq_binary == 0) %>%
+  group_by(bmi_cat) %>%
+   tally() %>%
+  arrange(n) %>%
+  mutate(end_angle = 2*pi*cumsum(n)/sum(n), # ending angle for each pie slice
+         start_angle = lag(end_angle, default = 0), # starting angle for each pie slice
+         mid_angle = 0.5*(start_angle + end_angle), # middle of each pie slice, for the text label
+          # horizontal and vertical justifications depend on whether we're to the left/right
+          # or top/bottom of the pie
+         hjust = ifelse(mid_angle > pi, 1, 0),
+         vjust = ifelse(mid_angle < pi/2 | mid_angle > 3*pi/2, 0, 1),
+         colors = c("#E7D739", "#B6494A","#4E4E4E")
+         )
+
+p2 = ggplot(bund_pie) +
+  geom_arc_bar(
+    aes(
+      x0 = 0, y0 = 0, r0 = 0, r = rpie,
+      start = start_angle, end = end_angle, fill = colors
+    ),
+    color = "white"
+  ) +
+  geom_text(
+    aes(
+      x = rlabel_in * sin(mid_angle),
+      y = rlabel_in * cos(mid_angle),
+      label = n
+    ),
+    size = 14/.pt,
+    color = c("black", "white", "white")
+  ) +
+  geom_text(
+    aes(
+      x = rlabel_out * sin(mid_angle),
+      y = rlabel_out * cos(mid_angle),
+      label = bmi_cat,
+      hjust = hjust, vjust = vjust
+    ),
+    size = 10/.pt
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    limits = c(-1.5, 1.4),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    limits = c(-1.05, 1.15),
+    expand = c(0, 0)
+  ) +
+  scale_fill_identity() +
+  coord_fixed() +
+  theme_map()
+
+p1
+```
+
+
+```{r pie2-plot-baseline, fig.cap= "variation of bmi categories for PSQ score <= 0.33"}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+p2
+```
+
+
+
+
+```{r logit, fig.cap= "Estomates of logistic regression of PSQ score before operation"}
+
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+
+Data = data
+# data = Data
+
+
+
+
+# cols = names(data[,44:96])
+# data[,cols] = sapply(data[, cols], as.character)
+# data$allergic_rhinitis_diag = as.numeric(data$allergic_rhinitis_diag) %>%
+#   as.character(.)
+
+# data$osa_binary = as.character(data$osa_binary)
+# 
+# data$asthma_diag = as.character(data$asthma_diag)
+# data$sex = as.character(data$sex)
+# data$psq_binary = as.factor(data$psq_binary)
+
+# data = data[,-c(108:114)]
+# data = data[,-c(109:113)]
+
+# data = data %>%
+#   select(-c(shake_breath_b, apnes_b))
+# 
+# data_reg = data %>%
+#   select(-c(sub_id, sub_id_b))
+
+
+# split
+
+# set.seed(123)
+# 
+# train_test_split = rsample::initial_split(
+#   data = data_reg,
+#   prop = 0.7,
+#   strata = "psq_binary"
+# )
+# 
+# # train_test_split
+# 
+# train_tbl = train_test_split %>% training()
+# test_tbl = train_test_split %>% testing()
+# 
+# #  pre process
+# 
+# recipe_simple <- function(dataset) {
+#   recipe(psq_binary ~ ., data = dataset) %>%
+#     step_string2factor(all_nominal(), -all_outcomes()) %>%
+#     prep(data = dataset)
+# }
+# 
+# recipe_prepped = recipe_simple(dataset = train_tbl)
+# 
+# train_baked <- bake(recipe_prepped, new_data = train_tbl)
+# test_baked  <- bake(recipe_prepped, new_data = test_tbl)
+
+# fit model
+
+# logistic_glm <-
+#   logistic_reg(mode = "classification") %>%
+#   set_engine("glm") %>%
+#   fit(psq_binary ~ age_cat+hospital+bmi_cat+allergic_rhinitis_diag+asthma_diag+height+`birth weight`, data = train_baked)
+# predictions_glm <- logistic_glm %>%
+#   predict(new_data = test_baked) %>%
+#   bind_cols(test_baked %>% select(psq_binary))
+# head(predictions_glm)
+
+# predictions_glm %>%
+#   conf_mat(psq_binary, .pred_class) %>%
+#   pluck(1) %>%
+#   as_tibble() %>%
+#   ggplot(aes(Prediction, Truth, alpha = n)) +
+#   geom_tile(show.legend = FALSE) +
+#   geom_text(aes(label = n), colour = "white", alpha = 1, size = 8)
+
+# predictions_glm %>%
+#   metrics(psq_binary, .pred_class) %>%
+#   select(-.estimator) %>%
+#   filter(.metric == "accuracy") 
+# 
+# tibble(
+#   "precision" = 
+#      precision(predictions_glm, psq_binary, .pred_class) %>%
+#      select(.estimate),
+#   "recall" = 
+#      recall(predictions_glm, psq_binary, .pred_class) %>%
+#      select(.estimate)
+# ) %>%
+#   unnest() -> precision
+#   # kable() 
+# 
+# t = tidy(logistic_glm)
+# kable(t, caption = "Logistic regression coefficients, SD and p-value")
+# # lapply(data, unique)
+
+logistic_glm <-glm(psq_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+hospital+bmi_cat, data = data)
+
+summary(logistic_glm)
+estimates = tidy(logistic_glm)
+ci = confint.default(logistic_glm)
+interval = tidy(ci)
+names(interval) = c("term", "`2.5 %`", "`97.5 %`")
+estimates = estimates %>%
+  left_join(interval)
+kable(estimates)
+```
+
+
+## Logistic regression results
+
+We further performed a logistic regression to explore predictors of SDB scores > 0.33. Overal, having allergic rhinitis contributed a significant change in log odds of SDB by (`r paste('0.2322', '0.10244', sep = "\u00B1" )`), p-value = 0.0266. Accessing treatment of SDB in a public hospital also had an effect of 0.3032 on log odds of having SDB when compared to going to a private hospital. Inter group difference in other categorical factors like bmi category, age, birth weight category, gender were not significant as shown in table \@ref(tab:logit) <br>. This was a very simple logistic regression model with minimal paremtric tuning, but which can be improved if more data indicative of SDB were available. <br>
+
+
+```{r glm-test, echo=FALSE}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+library(aod)
+
+chi_glm = wald.test(b = coef(logistic_glm), Sigma = vcov(logistic_glm), Terms = 9:11)
+a = chi_glm$result[[1]][3] # p-value
+
+```
+
+We tested for the overall effect of bmi category and it wasn't statistically significant (p = 0.4322). One explanation for this is the existence of null cells across PSQ score levels. <br> 
+
+```{r odds-ratio, echo=FALSE, fig.cap="Odds of the logistic regression and CIs"}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+odds = exp(cbind(OR = coef(logistic_glm), confint(logistic_glm))) %>% tidy()
+
+names(odds) = c("term", "OR", "`2.5 %`", "`97.5 %`")
+
+kable(odds)
+
+
+```
+
+
+An interpretation of the odds indicate that having allergic rhinitis increased the odds of a having PSQ score > 0.33 by a factor of 1.26. An admission into a public hospital was also associated by an increase in the odds of having SDB by a factor of 1.35. A similara infrence can be drawn for remainder of the factors shown in table \@ref(tab:odds-ratio). <br>
+
+
+
+
+
+
