@@ -1,0 +1,97 @@
+Name                 Type    Length Missing_Value(s) Value_Label          Question_Caption                                                        
+hosp                 String      10                                       Hospital                                                                  
+Sub_id               Integer      5                                       Subject identification                                                    
+age_yrs              Integer      5                                       Age(Years)                                                                
+age_mnths            Integer      5                                       Age(Months)                                                               
+bth_wght             Float        5                                       Birth weight                                                              
+sex                  String       2                  sex                  Sex                                                                       
+weight               Float        6                                       Weight(Kg)                                                                
+height               Float        7                                       Height                                                                    
+bmi                  Float        7                                       BMI(kg/m2)                                                                
+BMI_STATUS           Integer      4                  bmi_status           bmi_status                                                                
+V9                   Integer      3                                       Age                                                                       
+employment           String       3                  employment           Employment                                                                
+wealth_quantile      Integer     10                                       Wealth quintile –monthly earning (Kshs)                                   
+insuarance           String       3                  insuarance           Insurance scheme                                                          
+smoking              String       2                  Yes_No               Smoking                                                                   
+child_asthma         String       2                  Yes_No               Child known to have asthma?                                               
+wheezing             String       2                  Yes_No               He/she had wheezing in the last 3 months?                                 
+medication_a         String       2                  Yes_No               Salbutamol inhaler (eg Ventolin)                                          
+medication_b         String       2                  Yes_No               Inhaled corticosteroid (eg budecort..)                                    
+medication           String       2                  Yes_No               Ventolin syrup                                                            
+medication_d         String       2                  Yes_No               Oral steroid (prednisolone)                                               
+medication_e         String       2                  Yes_No               Nebulization                                                              
+medication_f         String       2                  Yes_No               Antihistamine                                                             
+allergic_rhinitis    String       2                  Yes_No               Child known to have allergic rhinitis?                                    
+a_symptoms           String       2                  Yes_No               Persistent sneezing                                                       
+b_symptoms           String       2                  Yes_No               Persistent itching or rubbing of the nose                                 
+c_symptoms           String       2                  Yes_No               Rhinorhoea and nasal obstruction lasting longer than two weeks.           
+V26                  String       2                  Right_Left           Prominent inferior turbinates                                             
+findings_b           String       2                  y_n_na               Allergic dorsal nasal crease                                              
+c_findings           String       2                  y_n_na               Allergic shiners                                                          
+steroid_nasal_spray  String       2                  Yes_No               Chils used steroid nasal sprays or drops (last three months?)             
+antiacids            String       2                  Yes_No                Child use antacids(Gaviscon) or proton pump inhibitors?                  
+if_yes               String      15                                       If yes, which one?                                                        
+why                  String      20                                       Why was it prescribed?                                                    
+exposed_cigarret     String       2                  Yes_No               Child exposed to cigarette smoke ?                                        
+V34                  String       2                  craniofacial_anomaly Craniofacial anomaly found on Examination.                                
+snore_more           String       2                  Y_N_DK               A2-snore more than half the time                                          
+snore_always         String       2                  Y_N_DK               A3-always snore                                                           
+snore_badly          String       2                  Y_N_DK               A4-snore badly                                                            
+heavy_loud_breathing String       2                  Y_N_DK               A5-Have heavy or loud breathing                                           
+rouble_breathing     String       2                  Y_N_DK               A6- has trouble breathing or struggle to breathe                          
+stop_beathing_night  String       2                  Y_N_DK               A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?                       
+breath_thru_mouth    String       2                  Y_N_DK               A24- Tend to breathe through the mouth during the day?                    
+dry_mouth            String       2                  Y_N_DK               A25-tend to have a dry mouth on waking up in the morning?                 
+wet_bed              String       2                  Y_N_DK               A32- for children above 4yrs;occasionally wet the bed?                    
+waking_unrefreshed   String       2                  Y_N_DK               B1- wake up feeling unrefreshed in the morning?                           
+sleeping_prob        String       2                  Y_N_DK               B2- have a problem with sleepiness during the day?                        
+sleepy_day           String       2                  Y_N_DK               5. APPEARS SLEEPY DURING THE DAY?B4                                       
+hard_wake            String       2                  Y_N_DK               6. HARD TO WAKE CHILD UP ?B6                                              
+wake_headaches       String       2                  Y_N_DK               7. WAKE UP WITH HEADACHES ?B7                                             
+stopped_growing      String       2                  Y_N_DK               8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.           
+overweight           String       2                  Y_N_DK               9. CHILD OVERWEIGHT?B22                                                   
+listen               String       2                  Y_N_DK               C3-listen when spoken to directly?                                        
+diff_organizing      String       2                  Y_N_DK               C5- has difficulty organizing task and activity?                          
+easily_distructed    String       2                  Y_N_DK               C8- is easily distracted by extraneous stimuli?                           
+fidgets_hands        String       2                  Y_N_DK               C10- fidgets with hands or feet or squirms in seat?                       
+active               String       2                  Y_N_DK               C14-is on the go or often acts as if driven by a motor?.                  
+intrudes             String       2                  Y_N_DK               C18- interrupts or intrudes on others eg. butts into conversation or game 
+shake_breath         String       2                  APNOEA               Shake your child to breathe?                                              
+apnoea_during_sleep  String       2                  APNOEA               Have you witnessed an apnoea during sleep?                                
+struggle_breathing   String       2                  APNOEA               Child struggle breathing while asleep?                                    
+conserns             String       2                  APNOEA               Concerns about your child breathing while asleep?                         
+snore_loud           String       2                  snore_loud           How loud does your child snore?                                           
+snore_sleep          String       2                  APNOEA               Child snore while asleep?                                                 
+hsp_b                String      10                                       Hospital                                                                  
+sub_id_b             Integer      5                                       Subject identification                                                    
+age_b                Integer      5                                       Age(Years)                                                                
+age_m                Integer      5                                       Age(Months)                                                               
+snore_more_b         String       2                  Y_N_DK               A2-snore more than half the time                                          
+snore_always_b       String       2                  Y_N_DK               A3-always snore                                                           
+snore_badly_b        String       2                  Y_N_DK               A4-snore badly                                                            
+snore_heavy_b        String       2                  Y_N_DK               A5-Have heavy or loud breathing                                           
+trouble_breathing_b  String       2                  Y_N_DK               A6- has trouble breathing or struggle to breathe                          
+V71                  String       2                  Y_N_DK               A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?                       
+V72                  String       2                  Y_N_DK               A24- Tend to breathe through the mouth during the day?                    
+V73                  String       2                  Y_N_DK               A25-tend to have a dry mouth on waking up in the morning?                 
+V74                  String       2                  Y_N_DK               A32- for children above 4yrs;occasionally wet the bed?                    
+unfreshed_b          String       2                  Y_N_DK               B1- wake up feeling unrefreshed in the morning?                           
+prob_sleeping        String       2                  Y_N_DK               B2- have a problem with sleepiness during the day?                        
+sleepy_day_b         String       2                  Y_N_DK               5. APPEARS SLEEPY DURING THE DAY?B4                                       
+hard_wake_b          String       2                  Y_N_DK               6. HARD TO WAKE CHILD UP ?B6                                              
+headache_b           String       2                  Y_N_DK               7. WAKE UP WITH HEADACHES ?B7                                             
+not_growing_b        String       2                  Y_N_DK               8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.           
+overweight_b         String       2                  Y_N_DK               9. CHILD OVERWEIGHT?B22                                                   
+listens_b            String       2                  Y_N_DK               C3-listen when spoken to directly?                                        
+diff_tasks           String       2                  Y_N_DK               C5- has difficulty organizing task and activity?                          
+distracted_b         String       2                  Y_N_DK               C8- is easily distracted by extraneous stimuli?                           
+fidgets_b            String       2                  Y_N_DK               C10- fidgets with hands or feet or squirms in seat?                       
+active_b             String       2                  Y_N_DK               C14-is on the go or often acts as if driven by a motor?.                  
+interrupts_b         String       2                  Y_N_DK               C18- interrupts or intrudes on others eg. butts into conversation or game 
+shake_breath_b       String       2                  APNOEA               Shake your child to breathe?                                              
+apnes_b              String       2                  APNOEA               Have you witnessed an apnoea during sleep?                                
+struggle_breath_b    String       2                  APNOEA               Child struggle breathing while asleep?                                    
+concrn_breath_b      String       2                  APNOEA               Concerns about your child breathing while asleep?                         
+loud_snore_b         String       2                  snore_loud           How loud does your child snore?                                           
+snore_sleep_b        String       2                  APNOEA               Child snore while asleep?

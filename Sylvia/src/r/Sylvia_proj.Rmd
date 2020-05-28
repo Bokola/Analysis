@@ -33,6 +33,7 @@ knitr::opts_chunk$set(echo = FALSE,
 options(tinytex.verbose = TRUE)
 options(dplyr.print_min = 6, dplyr.print_max = 6)
 options(digits = 4)
+options(scipen=999)
 ```
 
 ## Statistical Analysis
@@ -46,9 +47,11 @@ knitr::opts_chunk$set(chunk_option1 = TRUE)
 
 rm(list = ls(all=T))
 browseURL("https://stats.idre.ucla.edu/r/dae/logit-regression/")
+browseURL("https://stackoverflow.com/questions/8161836/how-do-i-replace-na-values-with-zeros-in-an-r-dataframe")
+browseURL("https://stackoverflow.com/questions/15111629/create-summary-table-of-categorical-variables-of-different-lengths")
 
-list.pkg <- c("plyr", "tidyr", "rlang", "tidyselect", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
-           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr", "rsample", "h2o", "tidymodels", "skimr","tibble", "gridExtra", "ggforce", "colorspace", "colorblindr","cowplot","dviz.supp")
+list.pkg <- c("plyr", "tidyr", "rlang", "tidydplyr::select", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
+           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr", "rsample", "tidymodels", "skimr","tibble", "gridExtra", "ggforce", "colorspace", "colorblindr","cowplot","dviz.supp", "gee", "lme4", "multcomp")
 
 ipk = function(pkg){
   new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
@@ -96,11 +99,20 @@ data = readr::read_csv(file.path(data_dir, "data.csv")) %>%
 
 meta_data = readr::read_table(file.path(data_dir, "meta data.txt"))
 meta_data = meta_data %>%
-  select(-grep("x", colnames(.), ignore.case = T)) %>%
+  dplyr::select(-grep("x", colnames(.), ignore.case = T)) %>%
   janitor::clean_names() %>%
   mutate(., name = tolower(name))
 
 # psq before surgery
+data = data %>%
+  rename(stop_breathing_night_b = v71, breath_mouth_b = v72, dry_mouth_b = v73, wet_bed_b = v74)
+
+meta_data$name = gsub('\\bv71\\b', 'stop_breathing_night_b', meta_data$name)
+meta_data$name = gsub('\\bv72\\b', 'breath_mouth_b', meta_data$name)
+meta_data$name = gsub('\\bv73\\b', 'dry_mouth_b', meta_data$name)
+meta_data$name = gsub('\\bv74\\b', 'wet_bed_b', meta_data$name)
+
+
 data = data %>%
   mutate(., hospital = ifelse(grepl('knh', hosp, ignore.case = T), 'public', 'private'),
          `birth weight` = ifelse(bth_wght < 2.5, '< 2.5 kgs', '>= 2.5 kgs'))
@@ -118,13 +130,13 @@ data$psq_binary = ifelse(data$psq > 0.33, 1,0) # 1 = psq suspected = SDBS
 # quantile(data$bmi, probs = c(0.05, 0.85, 0.95)) # bmi categories
 
 data = data %>%
-  mutate(., bmi_cat = ifelse(bmi < quantile(bmi, probs = c(0.05)), "Underweight",
+  mutate(., bmi_cat = ifelse(bmi < quantile(bmi, probs = c(0.05)), "Underweightt",
                              ifelse(bmi >= quantile(bmi, probs = c(0.05)) & bmi < quantile(bmi, probs = c(0.85)), "Normal",
                                     ifelse(bmi >= quantile(bmi, probs = c(0.85)) & bmi < quantile(bmi, probs = c(0.95)), "Overweight", "Obese"))))
 
 data = data %>%
   mutate(., age_cat = ifelse(age <= 5, "2-5", "6-10"),
-         asthma_diag = ifelse(child_asthma == 1 | wheezing == 1| medication_a ==1 | medication ==1 | medication_d ==1 | medication_e ==1| medication_f == 1, 1,0),
+         asthma_diag = ifelse(child_asthma == 1 | wheezing == 1| medication_a ==1 | medication ==1 | medication_d ==1 | medication_e ==1, 1,0),
          allergic_rhinitis_diag = ifelse(allergic_rhinitis ==1 | a_symptoms == 1 | b_symptoms ==1 | c_symptoms == 1, 1, 0))
 
 names = names(data[, 59:96])
@@ -178,70 +190,8 @@ data$osa_b_binary = ifelse(data$E >=2.72, 1, 0)
 
 # all charactersitics at baseline
 
-
-
-summ = function(data){
-  
-
-out_all = data %>%
-  summarise(`Age` = paste(round(mean(data$age, na.rm = T),2), round(sd(data$age, na.rm = T),2), sep = "\u00B1")) %>%
-  cbind(
-    `2-5 yrs` = paste0(sum(data$age_cat == '2-5'), '(',round(sum(data$age_cat == '2-5')/nrow(data)*100),")"),
-    `6-10 yrs` = paste0(sum(data$age_cat == '6-10'), '(',round(sum(data$age_cat == '6-10')/nrow(data)*100),")")
-  ) %>%
-  cbind(
-    data %>%
-      summarise(`Gender, n(%)` = NA_character_)
-    
-  ) %>%
-  cbind(
-    `\tMale` = paste0(sum(data$sex==1, na.rm = T),'(',round(sum(data$sex==1, na.rm = T)/ nrow(data) *100),')')
-  ) %>%
-  cbind(`\tFemale`=
-          paste0(sum(data$sex==0, na.rm = T),'(',round(sum(data$sex==0, na.rm = T)/ nrow(data) *100),')') 
-  ) %>% cbind(
-    `Asthma, n(%)` = paste0(sum(data$asthma_diag == 1,na.rm = T), '(', round(sum(data$asthma_diag == 1,na.rm = T)/nrow(data) *100), ')')
-  ) %>%
-  cbind(
-    `Allergic rhinitis, n(%)` = paste0(sum(data$allergic_rhinitis_diag == 1,na.rm = T), '(', round(sum(data$allergic_rhinitis_diag == 1,na.rm = T)/nrow(data) *100), ')')
-  ) %>%
-  cbind(
-    `BMI(kg/m^2)` = paste(round(mean(data$bmi, na.rm = T),2), round(sd(data$bmi, na.rm = T),2), sep = "\u00B1")
-  ) %>%
-  cbind(
-    `Birth weight category, n(%)` = NA_character_,
-    `\t<2.5 kgs` = paste0(sum(data$`birth weight` == "< 2.5 kgs"), '(', round(sum(data$`birth weight` == "< 2.5 kgs")/nrow(data)*100), ')'),
-    `\t>=2.5 kgs` = paste0(sum(data$`birth weight` == ">= 2.5 kgs"), '(', round(sum(data$`birth weight` == ">= 2.5 kgs")/nrow(data)*100), ')')
-  ) %>%
-  cbind(
-    `Hospital category, n(%)` = NA_character_,
-    `\tPrivate` = paste0(sum(data$hospital =='private'), '(', round(sum(data$hospital == 'private')/nrow(data)*100), ')'),
-    `\tPublic` = paste0(sum(data$hospital == 'public'), '(', round(sum(data$hospital == 'public')/nrow(data)*100), ')')
-  ) %>%
-  cbind(
-    `BMI category, n(%)` = NA_character_,
-    `\tUnderweigh` = paste0(sum(data$bmi_cat == 'Underweight'), '(', round(sum(data$bmi_cat == 'Underweight')/nrow(data)*100), ')'),
-    `\tNormal` = paste0(sum(data$bmi_cat == 'Normal'), '(', round(sum(data$bmi_cat == 'Normal')/nrow(data)*100), ')'),
-    `\tOverweight` = paste0(sum(data$bmi_cat =='Overweight'), '(', round(sum(data$bmi_cat == 'Overweight')/nrow(data)*100), ')'),
-    `\tObese` = paste0(sum(data$bmi_cat == 'Obese'), '(', round(sum(data$bmi_cat == 'Obese')/nrow(data)*100), ')')
-  ) %>%
-  cbind(
-    `Height` = paste(round(mean(data$height, na.rm = T),2), round(sd(data$height, na.rm = T),2), sep = "\u00B1")
-  ) %>%
-  cbind(
-    `SDB,n(%)` = paste0(sum(data$psq_binary == 1), '(', round(sum(data$psq_binary == 1)/nrow(data)*100),")")
-  ) %>%
-  cbind(
-    `OSA,n(%)` = paste0(sum(data$osa_binary == 1), '(', round(sum(data$osa_binary == 1)/nrow(data)*100),")")
-  )
-
-
-out_all = out_all %>%
-  gather(key = "Characteristics", value = "All Participants\n")
-# return(out_all)
-assign(paste('out_', deparse(substitute(data)), sep = ""), out_all, envir = .GlobalEnv)
-
-}
+DataXXX = data
+source(file.path(src_dir, "data_clean.R"))
 
 summ(data)
 
@@ -277,184 +227,51 @@ sdb_baseline = left_join(out_data, out_data_sdb) %>%
 
 #  test statistics and p-values
 
-test_stat = function(data, data_1){
-  
-sex = left_join(
-  data_sdb %>%
-    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
-    ddply(.(sex), summarise,
-          `psq` = length(sub_id)),
-  data_no_sdb %>%
-    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
-    ddply(.(sex), summarise,
-          `no psq` = length(sub_id))  
-  
-) 
-
-sexx = gather(sex, key, value, -sex)
-chi_sex =  chisq.test( xtabs(value ~ key + sex, data = sexx))
-
-age = cbind(
-  data %>%
-    summarise(psq = mean(age, na.rm= T)),
-  data_1 %>%
-    summarise(`no psq` = mean(age, na.rm = T))
-)
-
-age_w = wilcox.test(data$age, data_1$age)
-age_t = t.test(data$age, data_1$age)
-
-#asthma
-
-asthma = left_join(
-  data %>%
-    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
-    ddply(.(asthma_diag), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
-    ddply(.(asthma_diag), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - asthma_diag) #%>%
-
-chi_asthma = chisq.test(xtabs(value ~ key + asthma_diag, data = asthma))
-
-#allergic rhinitis
-
-rhinitis = left_join(
-  data %>%
-    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
-    ddply(.(allergic_rhinitis_diag), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
-    ddply(.(allergic_rhinitis_diag), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - allergic_rhinitis_diag) #%>%
-
-chi_rhinitis = chisq.test(xtabs(value ~ key + allergic_rhinitis_diag, data = rhinitis))
-
-#BMI
-
-bmi_t = t.test(data$bmi, data_1$bmi)
-bmi_w= wilcox.test(data$bmi, data_1$bmi)
-
-# BMI category
-
-bmi_cat = left_join(
-  data %>%
-    mutate(bmi_cat = as.factor(bmi_cat)) %>%
-    ddply(.(bmi_cat), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(bmi_cat = as.factor(bmi_cat)) %>%
-    ddply(.(bmi_cat), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - bmi_cat) #%>%
-
-chi_bmi_cat = chisq.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
-f_bmi_cat = fisher.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
-
-# Birth weight category
-
-birth_weight = left_join(
-  data %>%
-    mutate(`birth weight` = as.factor(`birth weight`)) %>%
-    ddply(.(`birth weight`), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(`birth weight` = as.factor(`birth weight`)) %>%
-    ddply(.(`birth weight`), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - `birth weight`) %>%
-  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
-
-chi_birth_weight = chisq.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
-f_birth_weight = fisher.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
-
-# Hospital category
-
-hospital = left_join(
-  data %>%
-    mutate(hospital = as.factor(hospital)) %>%
-    ddply(.(hospital), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(hospital = as.factor(hospital)) %>%
-    ddply(.(hospital), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - hospital) %>%
-  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
-
-chi_hospital = chisq.test(xtabs(value ~ key + hospital, data = hospital))
-f_hospital = fisher.test(xtabs(value ~ key + hospital, data = hospital))
-
-
-# height
-
-height_t = t.test(data$height, data_1$height)
-height_w = wilcox.test(data$height, data_1$height)
-
-#osa
-
-osa = left_join(
-  data %>%
-    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
-    ddply(.(osa_binary), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
-    ddply(.(osa_binary), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - osa_binary) #%>%
-
-chi_osa = chisq.test(xtabs(value ~ key + osa_binary, data = osa))
-
-
-p_val_baseline = cbind(
-  `Gender, n(%)` = round(chi_sex$p.value,3),
-  `Age` = round(age_w$p.value,3),
-  `Asthma, n(%)` = round(chi_asthma$p.value,3),
-  `Allergic rhinitis, n(%)` = round(chi_rhinitis$p.value,3),
-  `BMI category, n(%)` = round(f_bmi_cat$p.value,3),
-  `Birth weight category, n(%)` = round(f_birth_weight$p.value,3),
-  `Hospital category, n(%)` = round(f_hospital$p.value,3),
-  `OSA,n(%)` = round(chi_osa$p.value,3)
-)
-
-p_val_baseline = as_tibble(p_val_baseline) %>%
-  mutate_all(., as.numeric) %>%
-  gather(., key = "Characteristics", value = "p-value")
-assign(paste("p_val_", deparse(substitute(data)), sep = ""), p_val_baseline, envir = .GlobalEnv)
-}
 
 test_stat(data_sdb, data_no_sdb)
-
+# data = data_sdb; data_1 =  data_no_sdb
 
 sdb_baseline_out = sdb_baseline %>%
-  left_join(., p_val_data_sdb)
+  left_join(., p_val_data_sdb) %>%
+  left_join(., conf_data_sdb)
 
 sdb_baseline_out = sdb_baseline_out %>%
   mutate_if(is.numeric, ~replace(., is.na(.), '')) %>%
   mutate_if(is.character,~replace(., is.na(.), ''))
 
-names(sdb_baseline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_binary == 0)), "p-value")
+names(sdb_baseline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_binary == 0)), "p-value", "CI")
 
 # Baseline table
 
+
 options("ReporteRs-fontsize" = 12);options("ReporteRs-default-font" = "Calibri")
+
+table.baseline <- tab_1 %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.baseline[,1] = parLeft()
+
+table.end <- tab_2 %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.end[,1] = parLeft()
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. Socio - demographic characteristics of participants at baseline') %>%
+addFlexTable(., flextable = table.baseline) %>%
+
+addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 2. Socio - demographic characteristics of participants post surgery') %>%
+addFlexTable(., flextable = table.end)
+
+writeDoc(doc, file = file.path(cache_dir, paste('socio-demographic characteristics.docx')))
 
 table.baseline <- sdb_baseline_out %>% vanilla.table(.) %>% 
   setZebraStyle(., odd = '#eeeeee', even = 'white')
@@ -467,8 +284,24 @@ doc = docx() %>%
   
 
 addSection(., landscape = FALSE)%>% # Change Orientation of the page
-addTitle(., value = 'TABLE 1. Baseline characteristics of all participants with and without SDB') %>%
+addTitle(., value = 'TABLE 2. Baseline characteristics of all participants with and without SDB') %>%
 addFlexTable(., flextable = table.baseline)
+
+table.sdb <- prop_out %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.baseline[,1] = parLeft()
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. Baseline characteristics of all participants with SDB') %>%
+addFlexTable(., flextable = table.sdb)
+writeDoc(doc, file = file.path(cache_dir, paste('SDB prevalence.docx')))
+
 
 writeDoc(doc, file = file.path(cache_dir, paste('baseline characteristics.docx')))
 knitr::kable(mtcars[1:10,], caption = "Baseline characteristics of all participants with and without SDB'")
@@ -510,183 +343,31 @@ sdb_endline = left_join(out_data, out_data_sdb_end) %>%
 
 #  test statistics and p-values
 
-#  test statistics and p-values
-
-test_stat_bmi_hosp = function(data, data_1){
-
-  sex = left_join(
-  data_sdb %>%
-    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
-    ddply(.(sex), summarise,
-          `psq` = length(sub_id)),
-  data_no_sdb %>%
-    mutate(sex = factor(sex,  labels = c("female","male"))) %>%
-    ddply(.(sex), summarise,
-          `no psq` = length(sub_id))  
-  
-) 
-
-sexx = gather(sex, key, value, -sex)
-chi_sex =  chisq.test( xtabs(value ~ key + sex, data = sexx))
-
-age = cbind(
-  data %>%
-    summarise(psq = mean(age, na.rm= T)),
-  data_1 %>%
-    summarise(`no psq` = mean(age, na.rm = T))
-)
-
-age_w = wilcox.test(data$age, data_1$age)
-age_t = t.test(data$age, data_1$age)
-
-#asthma
-
-asthma = left_join(
-  data %>%
-    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
-    ddply(.(asthma_diag), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(asthma_diag = factor(asthma_diag,  labels = c("no","yes"))) %>%
-    ddply(.(asthma_diag), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - asthma_diag) #%>%
-
-chi_asthma = chisq.test(xtabs(value ~ key + asthma_diag, data = asthma))
-
-#allergic rhinitis
-
-rhinitis = left_join(
-  data %>%
-    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
-    ddply(.(allergic_rhinitis_diag), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(allergic_rhinitis_diag = factor(allergic_rhinitis_diag,  labels = c("no","yes"))) %>%
-    ddply(.(allergic_rhinitis_diag), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - allergic_rhinitis_diag) #%>%
-
-chi_rhinitis = chisq.test(xtabs(value ~ key + allergic_rhinitis_diag, data = rhinitis))
-
-#BMI
-
-bmi_t = t.test(data$bmi, data_1$bmi)
-bmi_w= wilcox.test(data$bmi, data_1$bmi)
-
-# # BMI category
-# 
-# bmi_cat = left_join(
-#   data %>%
-#     mutate(bmi_cat = as.factor(bmi_cat)) %>%
-#     ddply(.(bmi_cat), summarise,
-#           `psq` = length(sub_id)),
-#   data_1 %>%
-#     mutate(bmi_cat = as.factor(bmi_cat)) %>%
-#     ddply(.(bmi_cat), summarise,
-#           `no psq` = length(sub_id))  
-#   
-# ) %>%
-#   gather(.,key, value, - bmi_cat) #%>%
-# 
-# chi_bmi_cat = chisq.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
-# f_bmi_cat = fisher.test(xtabs(value ~ key + bmi_cat, data = bmi_cat))
-
-# Birth weight category
-
-birth_weight = left_join(
-  data %>%
-    mutate(`birth weight` = as.factor(`birth weight`)) %>%
-    ddply(.(`birth weight`), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(`birth weight` = as.factor(`birth weight`)) %>%
-    ddply(.(`birth weight`), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - `birth weight`) %>%
-  mutate_if(is.numeric, ~replace(.,is.na(.), 0))
-
-chi_birth_weight = chisq.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
-f_birth_weight = fisher.test(xtabs(value ~ key + `birth weight`, data = birth_weight))
-
-# Hospital category
-
-# hospital = left_join(
-#   data %>%
-#     mutate(hospital = as.factor(hospital)) %>%
-#     ddply(.(hospital), summarise,
-#           `psq` = length(sub_id)),
-#   data_1 %>%
-#     mutate(hospital = as.factor(hospital)) %>%
-#     ddply(.(hospital), summarise,
-#           `no psq` = length(sub_id))  
-#   
-# ) %>%
-#   gather(.,key, value, - hospital) %>%
-#   mutate_if(is.numeric, ~replace(.,is.na(.), 0))
-# 
-# chi_hospital = chisq.test(xtabs(value ~ key + hospital, data = hospital))
-# f_hospital = fisher.test(xtabs(value ~ key + hospital, data = hospital))
-
-
-# height
-
-height_t = t.test(data$height, data_1$height)
-height_w = wilcox.test(data$height, data_1$height)
-
-#osa
-
-osa = left_join(
-  data %>%
-    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
-    ddply(.(osa_binary), summarise,
-          `psq` = length(sub_id)),
-  data_1 %>%
-    mutate(osa_binary = factor(osa_binary,  labels = c("no","yes"))) %>%
-    ddply(.(osa_binary), summarise,
-          `no psq` = length(sub_id))  
-  
-) %>%
-  gather(.,key, value, - osa_binary) #%>%
-
-chi_osa = chisq.test(xtabs(value ~ key + osa_binary, data = osa))
-
-
-p_val_baseline = cbind(
-  `Gender, n(%)` = round(chi_sex$p.value,3),
-  `Age` = round(age_w$p.value,3),
-  `Asthma, n(%)` = round(chi_asthma$p.value,3),
-  `Allergic rhinitis, n(%)` = round(chi_rhinitis$p.value,3),
-  # `BMI category, n(%)` = round(f_bmi_cat$p.value,3),
-  `Birth weight category, n(%)` = round(f_birth_weight$p.value,3),
-  # `Hospital category, n(%)` = round(f_hospital$p.value,3),
-  `OSA,n(%)` = round(chi_osa$p.value,3)
-)
-
-p_val_baseline = as_tibble(p_val_baseline) %>%
-  mutate_all(., as.numeric) %>%
-  gather(., key = "Characteristics", value = "p-value")
-assign(paste("p_val_", deparse(substitute(data)), sep = ""), p_val_baseline, envir = .GlobalEnv)
-}
 
 test_stat_bmi_hosp(data_sdb_end, data_no_sdb_end)
 
+# sdb_baseline_out = sdb_baseline %>%
+#   left_join(., p_val_data_sdb) %>%
+#   left_join(., conf_data_sdb)
+# 
+# sdb_baseline_out = sdb_baseline_out %>%
+#   mutate_if(is.numeric, ~replace(., is.na(.), '')) %>%
+#   mutate_if(is.character,~replace(., is.na(.), ''))
+# 
+# names(sdb_baseline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_binary == 0)), "p-value", "CI")
+
+
 
 sdb_endline_out = sdb_endline %>%
-  left_join(., p_val_data_sdb_end)
+  left_join(., p_val_data_sdb_end) %>%
+  left_join(., conf_data_sdb_end)
 
 sdb_endline_out = sdb_endline_out %>%
   mutate_if(is.numeric, ~replace(., is.na(.), '')) %>%
   mutate_if(is.character,~replace(., is.na(.), ''))
 
 
-names(sdb_endline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_b_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_b_binary == 0)), "p-value")
+names(sdb_endline_out) = c("Characteristics", paste0('All participants\n','n=', nrow(data)), paste0("PSQ > 0.33\n", "n=", sum(data$psq_b_binary == 1)), paste0("PSQ < 0.33\n", "n=", sum(data$psq_b_binary == 0)), "p-value", "CI")
 
 # endline table
 
@@ -948,7 +629,7 @@ p2
 
 
 
-```{r logit, fig.cap= "Estomates of logistic regression of PSQ score before operation"}
+```{r logit, fig.cap= "Estimates of logistic regression of PSQ score before operation"}
 
 knitr::opts_chunk$set(chunk_option1 = TRUE)
 
@@ -956,7 +637,7 @@ Data = data
 # data = Data
 
 
-
+data$wet_bed = as.factor(data$wet_bed)
 
 # cols = names(data[,44:96])
 # data[,cols] = sapply(data[, cols], as.character)
@@ -973,10 +654,10 @@ Data = data
 # data = data[,-c(109:113)]
 
 # data = data %>%
-#   select(-c(shake_breath_b, apnes_b))
+#   dplyr::select(-c(shake_breath_b, apnes_b))
 # 
 # data_reg = data %>%
-#   select(-c(sub_id, sub_id_b))
+#   dplyr::select(-c(sub_id, sub_id_b))
 
 
 # split
@@ -1015,7 +696,7 @@ Data = data
 #   fit(psq_binary ~ age_cat+hospital+bmi_cat+allergic_rhinitis_diag+asthma_diag+height+`birth weight`, data = train_baked)
 # predictions_glm <- logistic_glm %>%
 #   predict(new_data = test_baked) %>%
-#   bind_cols(test_baked %>% select(psq_binary))
+#   bind_cols(test_baked %>% dplyr::select(psq_binary))
 # head(predictions_glm)
 
 # predictions_glm %>%
@@ -1028,16 +709,16 @@ Data = data
 
 # predictions_glm %>%
 #   metrics(psq_binary, .pred_class) %>%
-#   select(-.estimator) %>%
+#   dplyr::select(-.estimator) %>%
 #   filter(.metric == "accuracy") 
 # 
 # tibble(
 #   "precision" = 
 #      precision(predictions_glm, psq_binary, .pred_class) %>%
-#      select(.estimate),
+#      dplyr::select(.estimate),
 #   "recall" = 
 #      recall(predictions_glm, psq_binary, .pred_class) %>%
-#      select(.estimate)
+#      dplyr::select(.estimate)
 # ) %>%
 #   unnest() -> precision
 #   # kable() 
@@ -1048,7 +729,7 @@ Data = data
 
 logistic_glm <-glm(psq_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+hospital+bmi_cat, data = data)
 
-summary(logistic_glm)
+# summary(logistic_glm)
 estimates = tidy(logistic_glm)
 ci = confint.default(logistic_glm)
 interval = tidy(ci)
@@ -1056,6 +737,7 @@ names(interval) = c("term", "`2.5 %`", "`97.5 %`")
 estimates = estimates %>%
   left_join(interval)
 kable(estimates)
+
 ```
 
 
@@ -1088,6 +770,55 @@ kable(odds)
 
 
 An interpretation of the odds indicate that having allergic rhinitis increased the odds of a having PSQ score > 0.33 by a factor of 1.26. An admission into a public hospital was also associated by an increase in the odds of having SDB by a factor of 1.35. A similara infrence can be drawn for remainder of the factors shown in table \@ref(tab:odds-ratio). <br>
+
+
+## General estimating equation model
+
+
+```{r gee, fig.cap= "Estimates of logistic regression of PSQ score after operation"}
+
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+library(geepack)
+library(glmnet)
+
+train_x <- model.matrix(psq_b_binary ~allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+bmi+wet_bed, data)[,-1]
+a = as.numeric(row.names(train_x))
+train = filter(data, as.numeric(row.names(data)) %in% a)
+# create training and testing response vectors
+train_y <- train$psq_b_binary
+ridge <- glmnet(x = train_x, y = train_y, alpha = 0.2, family = "binomial")
+print(ridge)
+plot(ridge)
+a = coef(ridge,s=0.1) %>% yardstick::tidy()
+
+
+kable(a[-1,])
+# ridge$lambda.min
+# cvfit = cv.glmnet(x = train_x, y = train_y, alpha = 0.2, family = "binomial")
+# plot(cvfit)
+# cvfit$lambda.min
+# coef(cvfit, s = "lambda.min")
+psq_gee2 <- gee(psq_b_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+bmi+wet_bed, data = data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1)
+
+estimates = summary(psq_gee2)
+coef = yardstick::tidy(estimates$coefficients)
+coef = coef %>%  dplyr::select(c(.rownames,Estimate,Robust.S.E.)) %>% `colnames<-`(c('variable', 'coef', 'se'))
+coef$odds = exp(coef$coef)
+coef$lower_ci = round(exp(coef$coef +
+c(-1) * coef$se * qnorm(0.975)),4)
+coef$upper_ci =round(exp(coef$coef +
+c(1) * coef$se * qnorm(0.975)),4)
+
+
+
+```
+
+```{r coef, fig.cap= "Estimates of gee of PSQ score after operation"}
+
+skimr::kable(coef)
+```
+
+
 
 
 
