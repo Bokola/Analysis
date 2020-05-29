@@ -219,8 +219,7 @@ neat.table <- function(cat_out, name){
   data.frame(Variable = name, xx)
 }
 
-data_yes_out
-
+data = as.data.frame(data)
 xxxx = list()
 
 for(x in names(data_yes_out)) {
@@ -237,7 +236,8 @@ for(x in names(data_yes_out)) {
 xx = xxxx %>% dplyr::bind_rows()
 yy = yyyy %>% dplyr::bind_rows()
 
-zz = rbind(xx, yy)
+zz = rbind(xx, yy) %>%
+  mutate(., p_val = round(p_val,4))
 
 mmm = do.call(rbind, lapply(seq_along(cat_out), function(i)neat.table(cat_out[i], names(cat_out[i]))))
 mmm_b = do.call(rbind, lapply(seq_along(cat_out_b), function(i)neat.table(cat_out_b[i], names(cat_out_b[i]))))
@@ -298,6 +298,11 @@ cat_col_out_b = cat_col_out_b %>%
 cat_col_out_b = cat_col_out_b %>%
   dplyr::select(c(Variable, Count,ci)) %>% `colnames<-`(c("Characteristics", "Count\nSDB Baseline", "Mean(CI)\n SDB Baseline")) 
 
+zz_b = zz %>% filter(., period == "before") %>% dplyr::select(., - period) %>% dplyr::rename(Characteristics = var) %>%
+  mutate(., Characteristics = ifelse(Characteristics %in% label$name, label$question_caption, Characteristics))
+cat_col_out_b = left_join(cat_col_out_b, zz_b) %>%
+  mutate_all(., ~replace(., is.na(.), ""))
+
 
 # after
 
@@ -310,6 +315,11 @@ cat_col_out_after = cat_col_out_after %>%
   mutate(., Variable = ifelse(Variable %in% label$name, label$question_caption, Variable)) 
 cat_col_out_after = cat_col_out_after %>%
   dplyr::select(c(Variable, Count,ci)) %>% `colnames<-`(c("Characteristics", "Count\nSDB endline", "Mean(CI)\n SDB endline")) 
+
+zz_e = zz %>% filter(., period == "after") %>% dplyr::select(., - period) %>% dplyr::rename(Characteristics = var) %>%
+  mutate(., Characteristics = ifelse(Characteristics %in% label$name, label$question_caption, Characteristics))
+cat_col_out_after = left_join(cat_col_out_after, zz_e) %>%
+  mutate_all(., ~replace(., is.na(.), ""))
 
 
 summ(data)

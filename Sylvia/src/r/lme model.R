@@ -96,10 +96,10 @@ Output <- bind_rows(lapply(DF, function(DF){
   return(TMP)
 }))
 
-names(mmm_b) = c("Variable", "Value", "Count_b", "Percent_b", "ci_b")
-names(mmm_e) = c("Variable", "Value", "Count_e", "Percent_e", "ci_e")
-try = left_join(mmm_e, mmm_b)
-try = try %>%
-  group_by(Variable) %>%
-  filter(., n() > 1) %>%
-  ungroup()
+# names(mmm_b) = c("Variable", "Value", "Count_b", "Percent_b", "ci_b")
+# names(mmm_e) = c("Variable", "Value", "Count_e", "Percent_e", "ci_e")
+# try = left_join(mmm_e, mmm_b)
+# try = try %>%
+#   group_by(Variable) %>%
+#   filter(., n() > 1) %>%
+#   ungroup()
