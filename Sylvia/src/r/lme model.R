@@ -103,3 +103,5 @@ Output <- bind_rows(lapply(DF, function(DF){
 #   group_by(Variable) %>%
 #   filter(., n() > 1) %>%
 #   ungroup()
+# a = data.frame(a = c('a','z'), b = c(NA_integer_, 3))
+# arrange(a,a,desc(is.na(b)))

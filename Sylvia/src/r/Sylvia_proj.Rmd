@@ -103,6 +103,9 @@ meta_data = meta_data %>%
   janitor::clean_names() %>%
   mutate(., name = tolower(name))
 
+data$asthma_treat = ifelse(data$medication_a ==1|data$medication_b ==1| data$medication == 1| data$medication_d == 1 | data$medication_e == 1, "yes", "no")
+data$rhiniti_symptomatic = ifelse(data$a_symptoms ==1 | data$b_symptoms ==1 | data$c_symptoms == 1| data$v26 ==1 | data$findings_b == 1| data$c_findings ==1, "yes", "no")
+
 # psq before surgery
 data = data %>%
   rename(stop_breathing_night_b = v71, breath_mouth_b = v72, dry_mouth_b = v73, wet_bed_b = v74)
@@ -144,13 +147,13 @@ names = names(data[, 59:96])
 osa_cols = c('shake_breath', 'shake_breath_b', 'apnes_b', 'apnoea_during_sleep', 'struggle_breathing', 'struggle_breath_b', 'conserns', 'concrn_breath_b', 'loud_snore_b', 'snore_loud', 'snore_sleep', 'snore_sleep_b')
 
 data = data %>%
-  mutate_at(vars(shake_breath, shake_breath_b, apnes_b, apnoea_during_sleep, struggle_breathing, struggle_breath_b, conserns, concrn_breath_b, loud_snore_b, snore_loud, snore_sleep, snore_sleep_b), ~replace(., is.na(.), 0))
+  mutate_at(vars(shake_breath, shake_breath_b, apnes_b, apnoea_during_sleep, struggle_breathing, struggle_breath_b, conserns, concrn_breath_b, loud_snore_b, snore_loud, snore_sleep, snore_sleep_b), ~replace(., is.na(.), NA_integer_))
 
 # osa_cols = data[, 59:96]
 
 for(c in osa_cols){
 data[,c] = sapply(data[,c], function(x){
-  x = ifelse(is.na(x), 0, x)
+  x = ifelse(is.na(x), NA_integer_, x)
 })
 }
 # severe OSA before surgery
@@ -789,7 +792,7 @@ knitr::opts_chunk$set(chunk_option1 = TRUE)
 library(geepack)
 library(glmnet)
 
-data = filter(data, !is.na(wet_bed))
+# data = filter(data, !is.na(wet_bed))
 train_x <- model.matrix(psq_b_binary ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+smoking+bmi+wet_bed, data)[,-1]
 a = as.numeric(row.names(train_x))
 train = filter(data, as.numeric(row.names(data)) %in% a)

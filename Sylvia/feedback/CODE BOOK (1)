@@ -1,0 +1,1764 @@
+==========================
+Report:  CodeBook
+Created: 3/2/2020 17:27:42
+==========================
+
+------------------------------------------------------------------
+File 1: C:\Users\dobote\Desktop\2020\Work 2020\Datta2\Database.epx 
+------------------------------------------------------------------
+
+File 1: C:\Users\dobote\Desktop\2020\Work 2020\Datta2\Database.epx
+------------------------------
+Title       Untitled Project   
+Created     2/28/2020 21:06:14 
+Last Edited 3/1/2020 10:03:31  
+Cycle       67                 
+------------------------------
+Backup on shutdown: yes
+Email on shutdown: no
+Project Encryption: none
+
+Dataforms:
+-------------------------------------------------------------------------------------------------
+Caption   Created            Structure Edited  Data Edited       Sections Fields Records Deleted  
+-------------------------------------------------------------------------------------------------
+Dataset 1 2/28/2020 21:06:14 3/1/2020 10:03:31 3/1/2020 10:03:31        1     94      32       1  
+-------------------------------------------------------------------------------------------------
+
+-----------------------
+Caption   Fields in key 
+-----------------------
+Dataset 1               
+-----------------------
+
+
+===================
+Dataform: Dataset 1
+===================
+
+List Overview
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Name                 Type    Length Missing Value(s) Value Label          Question / Caption                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+H22                  Heading                                              ====================================                                                                               
+H1                   Heading                                              THE PREVALENCE AND PREDICTORS OF SLEEP DISORDERED BREATHING POST ADENOTONSILLECTOMY IN CHILDREN 2 TO 18 YEARS      
+H2                   Heading                                              ====================================                                                                               
+hosp                 String      10                                       Hospital                                                                                                           
+H3                   Heading                                              A. Socio-Demographics                                                                                              
+Sub_id               Integer      5                                       Subject identification                                                                                             
+age                  Integer      5                                       Age                                                                                                                
+bth_wght             Float        5                                       Birth weight                                                                                                       
+sex                  String       2                  sex                  Sex                                                                                                                
+weight               Float        6                                       Weight(Kg)                                                                                                         
+height               Float        7                                       Height                                                                                                             
+bmi                  Float        7                                       BMI(kg/m2)                                                                                                         
+care_xtrics          Heading                                              Caregiver characteristics                                                                                          
+V9                   Integer      3                                       Age                                                                                                                
+contacts             Integer     15                                       TELEPHONE NUMBERS                                                                                                  
+employment           String       3                  employment           Employment                                                                                                         
+wealth_quantile      Integer     10                                       Wealth quintile –monthly earning (Kshs)                                                                            
+insuarance           String       3                  insuarance           Insurance scheme                                                                                                   
+smoking              String       2                  Yes_No               Smoking                                                                                                            
+H5                   Heading                                              B. Comorbidities                                                                                                   
+child_asthma         String       2                  Yes_No               Child known to have asthma?                                                                                        
+wheezing             String       2                  Yes_No               He/she had wheezing in the last 3 months?                                                                          
+medication_a         String       2                  Yes_No               Salbutamol inhaler (eg Ventolin)                                                                                   
+medication_b         String       2                  Yes_No               Inhaled corticosteroid (eg budecort..)                                                                             
+medication           String       2                  Yes_No               Ventolin syrup                                                                                                     
+medication_d         String       2                  Yes_No               Oral steroid (prednisolone)                                                                                        
+medication_e         String       2                  Yes_No               Nebulization                                                                                                       
+medication_f         String       2                  Yes_No               Antihistamine                                                                                                      
+allergic_rhinitis    String       2                  Yes_No               Child known to have allergic rhinitis?                                                                             
+H7                   Heading                                              -----------------------------------------------------------------------------------------------------------------  
+H6                   Heading                                              Symptoms in the last three months.                                                                                 
+a_symptoms           String       2                  Yes_No               Persistent sneezing                                                                                                
+b_symptoms           String       2                  Yes_No               Persistent itching or rubbing of the nose                                                                          
+c_symptoms           String       2                  Yes_No               Rhinorhoea and nasal obstruction lasting longer than two weeks.                                                    
+H8                   Heading                                              ------------------------------------------------------------------------------------------------------------------ 
+H9                   Heading                                              Examination findings.                                                                                              
+V26                  String       2                  Right_Left           Prominent inferior turbinates                                                                                      
+findings_b           String       2                  y_n_na               Allergic dorsal nasal crease                                                                                       
+c_findings           String       2                  y_n_na               Allergic shiners                                                                                                   
+H10                  Heading                                              ------------------------------------------------------------------------------------------------------------------ 
+steroid_nasal_spray  String       2                  Yes_No               Chils used steroid nasal sprays or drops (last three months?)                                                      
+antiacids            String       2                  Yes_No                Child use antacids(Gaviscon) or proton pump inhibitors?                                                           
+if_yes               String      15                                       If yes, which one?                                                                                                 
+why                  String      20                                       Why was it prescribed?                                                                                             
+exposed_cigarret     String       2                  Yes_No               Child exposed to cigarette smoke ?                                                                                 
+V34                  String       2                  craniofacial_anomaly Craniofacial anomaly found on Examination.                                                                         
+H11                  Heading                                              ====================================                                                                               
+H12                  Heading                                              C. PAEDIATRIC SLEEP QUESTIONNAIRE:  SLEEP DISORDERED BREATHING SUB- SCALE (PSQ-SRDB)(Chervin, #33)                 
+H19                  Heading                                              ====================================                                                                               
+H13                  Heading                                              1.WHILE SLEEPING  DOES YOUR CHILD…                                                                                 
+snore_more           String       2                  Y_N_DK               A2-snore more than half the time                                                                                   
+snore_always         String       2                  Y_N_DK               A3-always snore                                                                                                    
+snore_badly          String       2                  Y_N_DK               A4-snore badly                                                                                                     
+heavy_loud_breathing String       2                  Y_N_DK               A5-Have heavy or loud breathing                                                                                    
+rouble_breathing     String       2                  Y_N_DK               A6- has trouble breathing or struggle to breathe                                                                   
+H14                  Heading                                              2.HAVE YOU EVER:                                                                                                   
+stop_beathing_night  String       2                  Y_N_DK               A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?                                                                
+H15                  Heading                                              3.DOES YOUR CHILD…                                                                                                 
+breath_thru_mouth    String       2                  Y_N_DK               A24- Tend to breathe through the mouth during the day?                                                             
+dry_mouth            String       2                  Y_N_DK               A25-tend to have a dry mouth on waking up in the morning?                                                          
+wet_bed              String       2                  Y_N_DK               A32- for children above 4yrs;occasionally wet the bed?                                                             
+H16                  Heading                                              4.DOES YOUR CHILD…                                                                                                 
+waking_unrefreshed   String       2                  Y_N_DK               B1- wake up feeling unrefreshed in the morning?                                                                    
+sleeping_prob        String       2                  Y_N_DK               B2- have a problem with sleepiness during the day?                                                                 
+sleepy_day           String       2                  Y_N_DK               5. APPEARS SLEEPY DURING THE DAY?B4                                                                                
+hard_wake            String       2                  Y_N_DK               6. HARD TO WAKE CHILD UP ?B6                                                                                       
+wake_headaches       String       2                  Y_N_DK               7. WAKE UP WITH HEADACHES ?B7                                                                                      
+stopped_growing      String       2                  Y_N_DK               8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.                                                    
+overweight           String       2                  Y_N_DK               9. CHILD OVERWEIGHT?B22                                                                                            
+H17                  Heading                                              10.THIS CHILD OFTEN:                                                                                               
+listen               String       2                  Y_N_DK               C3-listen when spoken to directly?                                                                                 
+diff_organizing      String       2                  Y_N_DK               C5- has difficulty organizing task and activity?                                                                   
+easily_distructed    String       2                  Y_N_DK               C8- is easily distracted by extraneous stimuli?                                                                    
+fidgets_hands        String       2                  Y_N_DK               C10- fidgets with hands or feet or squirms in seat?                                                                
+active               String       2                  Y_N_DK               C14-is on the go or often acts as if driven by a motor?.                                                           
+intrudes             String       2                  Y_N_DK               C18- interrupts or intrudes on others eg. butts into conversation or game                                          
+H20                  Heading                                              ====================================                                                                               
+H18                  Heading                                              D. PAEDIATRIC OBSTRUCTIVE SLEEP APNOEA SCREENING TOOL (POSAT)[31]                                                  
+H21                  Heading                                              ====================================                                                                               
+shake_breath         String       2                  APNOEA               Shake your child to breathe?                                                                                       
+apnoea_during_sleep  String       2                  APNOEA               Have you witnessed an apnoea during sleep?                                                                         
+struggle_breathing   String       2                  APNOEA               Child struggle breathing while asleep?                                                                             
+conserns             String       2                  APNOEA               Concerns about your child breathing while asleep?                                                                  
+snore_loud           String       2                  snore_loud           How loud does your child snore?                                                                                    
+snore_sleep          String       2                  APNOEA               Child snore while asleep?                                                                                          
+H25                  Heading                                              ====================================                                                                               
+H23                  Heading                                              Study Questionnaire----6 WEEKS POST ADENOSTONSILLECTOMY SURVEY                                                     
+H24                  Heading                                              THE PREVALENCE AND PREDICTORS OF SLEEP DISORDERED BREATHING POST ADENOTONSILLECTOMY IN CHILDREN 2 TO 18 YEARS      
+H26                  Heading                                              ====================================                                                                               
+hsp_b                String      10                                       Hospital                                                                                                           
+H27                  Heading                                              A. Socio-Demographics                                                                                              
+sub_id_b             Integer      5                                       Subject identification                                                                                             
+age_b                Integer      5                                       Age                                                                                                                
+H28                  Heading                                              ====================================                                                                               
+H29                  Heading                                              C. PAEDIATRIC SLEEP QUESTIONNAIRE:  SLEEP DISORDERED BREATHING SUB- SCALE (PSQ-SRDB)(Chervin, #33)                 
+H30                  Heading                                              ====================================                                                                               
+H31                  Heading                                              1.WHILE SLEEPING  DOES YOUR CHILD…                                                                                 
+snore_more_b         String       2                  Y_N_DK               A2-snore more than half the time                                                                                   
+snore_always_b       String       2                  Y_N_DK               A3-always snore                                                                                                    
+snore_badly_b        String       2                  Y_N_DK               A4-snore badly                                                                                                     
+snore_heavy_b        String       2                  Y_N_DK               A5-Have heavy or loud breathing                                                                                    
+trouble_breathing_b  String       2                  Y_N_DK               A6- has trouble breathing or struggle to breathe                                                                   
+H32                  Heading                                              2.HAVE YOU EVER:                                                                                                   
+V71                  String       2                  Y_N_DK               A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?                                                                
+H33                  Heading                                              3.DOES YOUR CHILD…                                                                                                 
+V72                  String       2                  Y_N_DK               A24- Tend to breathe through the mouth during the day?                                                             
+V73                  String       2                  Y_N_DK               A25-tend to have a dry mouth on waking up in the morning?                                                          
+V74                  String       2                  Y_N_DK               A32- for children above 4yrs;occasionally wet the bed?                                                             
+H34                  Heading                                              4.DOES YOUR CHILD…                                                                                                 
+unfreshed_b          String       2                  Y_N_DK               B1- wake up feeling unrefreshed in the morning?                                                                    
+prob_sleeping        String       2                  Y_N_DK               B2- have a problem with sleepiness during the day?                                                                 
+sleepy_day_b         String       2                  Y_N_DK               5. APPEARS SLEEPY DURING THE DAY?B4                                                                                
+hard_wake_b          String       2                  Y_N_DK               6. HARD TO WAKE CHILD UP ?B6                                                                                       
+headache_b           String       2                  Y_N_DK               7. WAKE UP WITH HEADACHES ?B7                                                                                      
+not_growing_b        String       2                  Y_N_DK               8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.                                                    
+overweight_b         String       2                  Y_N_DK               9. CHILD OVERWEIGHT?B22                                                                                            
+H35                  Heading                                              10.THIS CHILD OFTEN:                                                                                               
+listens_b            String       2                  Y_N_DK               C3-listen when spoken to directly?                                                                                 
+diff_tasks           String       2                  Y_N_DK               C5- has difficulty organizing task and activity?                                                                   
+distracted_b         String       2                  Y_N_DK               C8- is easily distracted by extraneous stimuli?                                                                    
+fidgets_b            String       2                  Y_N_DK               C10- fidgets with hands or feet or squirms in seat?                                                                
+active_b             String       2                  Y_N_DK               C14-is on the go or often acts as if driven by a motor?.                                                           
+interrupts_b         String       2                  Y_N_DK               C18- interrupts or intrudes on others eg. butts into conversation or game                                          
+H37                  Heading                                              ====================================                                                                               
+H36                  Heading                                              D. PAEDIATRIC OBSTRUCTIVE SLEEP APNOEA SCREENING TOOL (POSAT)[31]                                                  
+H38                  Heading                                              ====================================                                                                               
+shake_breath_b       String       2                  APNOEA               Shake your child to breathe?                                                                                       
+apnes_b              String       2                  APNOEA               Have you witnessed an apnoea during sleep?                                                                         
+struggle_breath_b    String       2                  APNOEA               Child struggle breathing while asleep?                                                                             
+concrn_breath_b      String       2                  APNOEA               Concerns about your child breathing while asleep?                                                                  
+loud_snore_b         String       2                  snore_loud           How loud does your child snore?                                                                                    
+snore_sleep_b        String       2                  APNOEA               Child snore while asleep?                                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: hosp: Hospital
+-----------------------
+Type             String 
+Length               10 
+Show Value Label   true 
+-----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: Sub_id: Subject identification
+------------------------
+Type             Integer 
+Length                 5 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: age: Age
+------------------------
+Type             Integer 
+Length                 5 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: bth_wght: Birth weight 
+----------------------
+Type             Float 
+Length             3.1 
+Show Value Label  true 
+----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: sex: Sex
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: sex [I]: (String)
+----------------------------------
+Value Label  Missing (M), set: sex 
+----------------------------------
+1     Male                         
+0     Female                       
+----------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: weight: Weight(Kg)
+----------------------
+Type             Float 
+Length             4.1 
+Show Value Label  true 
+----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: height: Height
+----------------------
+Type             Float 
+Length             4.2 
+Show Value Label  true 
+----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: bmi: BMI(kg/m2)
+----------------------
+Type             Float 
+Length             4.2 
+Show Value Label  true 
+----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V9: Age
+------------------------
+Type             Integer 
+Length                 3 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: contacts: TELEPHONE NUMBERS
+------------------------
+Type             Integer 
+Length                15 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: employment: Employment
+-------------------------------
+Type                     String 
+Length                        3 
+Jumps            2 > insuarance 
+Show Value Label           true 
+-------------------------------
+
+Value label: employment [I]: (String)
+------------------------------------------------
+Value Label         Missing (M), set: employment 
+------------------------------------------------
+1     Employed                                   
+2     Self Employed                              
+3     Unemployed                                 
+------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: wealth_quantile: Wealth quintile –monthly earning (Kshs)
+-------------------------------
+Type                    Integer 
+Length                       10 
+Jumps            2 > employment 
+Show Value Label           true 
+-------------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: insuarance: Insurance scheme 
+-----------------------
+Type             String 
+Length                3 
+Show Value Label   true 
+-----------------------
+
+Value label: insuarance [I]: (String)
+-------------------------------------------
+Value Label    Missing (M), set: insuarance 
+-------------------------------------------
+1     NHIF                                  
+2     Employer                              
+3     None                                  
+4     Other                                 
+-------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: smoking: Smoking
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: child_asthma: Child known to have asthma? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: wheezing: He/she had wheezing in the last 3 months?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication_a: Salbutamol inhaler (eg Ventolin) 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication_b: Inhaled corticosteroid (eg budecort..)
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication: Ventolin syrup 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication_d: Oral steroid (prednisolone) 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication_e: Nebulization
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: medication_f: Antihistamine  
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: allergic_rhinitis: Child known to have allergic rhinitis?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: a_symptoms: Persistent sneezing
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: b_symptoms: Persistent itching or rubbing of the nose 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: c_symptoms: Rhinorhoea and nasal obstruction lasting longer than two weeks. 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V26: Prominent inferior turbinates 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Right_Left [I]: (String)
+----------------------------------------
+Value Label Missing (M), set: Right_Left 
+----------------------------------------
+1     Right                              
+2     Left                               
+3     N/A                                
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: findings_b: Allergic dorsal nasal crease 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: y_n_na [I]: (String)
+------------------------------------
+Value Label Missing (M), set: y_n_na 
+------------------------------------
+1     Yes                            
+2     No                             
+3     N/A                            
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: c_findings: Allergic shiners 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: y_n_na [I]: (String)
+------------------------------------
+Value Label Missing (M), set: y_n_na 
+------------------------------------
+1     Yes                            
+2     No                             
+3     N/A                            
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: steroid_nasal_spray: Chils used steroid nasal sprays or drops (last three months?)
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: antiacids:  Child use antacids(Gaviscon) or proton pump inhibitors? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: if_yes: If yes, which one?
+-----------------------
+Type             String 
+Length               15 
+Show Value Label   true 
+-----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: why: Why was it prescribed? 
+-----------------------
+Type             String 
+Length               20 
+Show Value Label   true 
+-----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: exposed_cigarret: Child exposed to cigarette smoke ? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Yes_No [I]: (String)
+------------------------------------
+Value Label Missing (M), set: Yes_No 
+------------------------------------
+1     Yes                            
+0     No                             
+------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V34: Craniofacial anomaly found on Examination.
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: craniofacial_anomaly [I]: (String)
+-------------------------------------------------------------------
+Value Label                  Missing (M), set: craniofacial_anomaly 
+-------------------------------------------------------------------
+1     Down syndrome                                                 
+2     Cleft palate                                                  
+3     Micro/retrognath                                              
+4     narrow maxillary arch                                         
+5     Nasoseptal obstruction                                        
+6     Other                                                         
+0     n/a                                                           
+-------------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_more: A2-snore more than half the time
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_always: A3-always snore
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_badly: A4-snore badly
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: heavy_loud_breathing: A5-Have heavy or loud breathing
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: rouble_breathing: A6- has trouble breathing or struggle to breathe 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: stop_beathing_night: A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: breath_thru_mouth: A24- Tend to breathe through the mouth during the day?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: dry_mouth: A25-tend to have a dry mouth on waking up in the morning?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: wet_bed: A32- for children above 4yrs;occasionally wet the bed?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: waking_unrefreshed: B1- wake up feeling unrefreshed in the morning?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: sleeping_prob: B2- have a problem with sleepiness during the day?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: sleepy_day: 5. APPEARS SLEEPY DURING THE DAY?B4
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: hard_wake: 6. HARD TO WAKE CHILD UP ?B6
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: wake_headaches: 7. WAKE UP WITH HEADACHES ?B7
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: stopped_growing: 8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: overweight: 9. CHILD OVERWEIGHT?B22
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: listen: C3-listen when spoken to directly?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: diff_organizing: C5- has difficulty organizing task and activity?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: easily_distructed: C8- is easily distracted by extraneous stimuli?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: fidgets_hands: C10- fidgets with hands or feet or squirms in seat?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: active: C14-is on the go or often acts as if driven by a motor?.
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: intrudes: C18- interrupts or intrudes on others eg. butts into conversation or game
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: shake_breath: Shake your child to breathe? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: apnoea_during_sleep: Have you witnessed an apnoea during sleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: struggle_breathing: Child struggle breathing while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: conserns: Concerns about your child breathing while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_loud: How loud does your child snore? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: snore_loud [I]: (String)
+-------------------------------------------------
+Value Label          Missing (M), set: snore_loud 
+-------------------------------------------------
+1     Medium loud                                 
+2     Loud                                        
+3     Very loud                                   
+4     Extremely loud                              
+0     Mild quite                                  
+-------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_sleep: Child snore while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: hsp_b: Hospital
+-----------------------
+Type             String 
+Length               10 
+Show Value Label   true 
+-----------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: sub_id_b: Subject identification
+------------------------
+Type             Integer 
+Length                 5 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: age_b: Age
+------------------------
+Type             Integer 
+Length                 5 
+Show Value Label    true 
+------------------------
+
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_more_b: A2-snore more than half the time
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_always_b: A3-always snore
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_badly_b: A4-snore badly
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_heavy_b: A5-Have heavy or loud breathing
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: trouble_breathing_b: A6- has trouble breathing or struggle to breathe 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V71: A7-SEEN YOUR CHILD STOP BREATHING DURING THE NIGHT?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V72: A24- Tend to breathe through the mouth during the day?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V73: A25-tend to have a dry mouth on waking up in the morning?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: V74: A32- for children above 4yrs;occasionally wet the bed?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: unfreshed_b: B1- wake up feeling unrefreshed in the morning?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: prob_sleeping: B2- have a problem with sleepiness during the day?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: sleepy_day_b: 5. APPEARS SLEEPY DURING THE DAY?B4
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: hard_wake_b: 6. HARD TO WAKE CHILD UP ?B6
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: headache_b: 7. WAKE UP WITH HEADACHES ?B7
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: not_growing_b: 8. STOPPED GROWING AT A NORMAL RATE AT ANY TIME SINCE BIRTH?B9.
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: overweight_b: 9. CHILD OVERWEIGHT?B22
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: listens_b: C3-listen when spoken to directly?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: diff_tasks: C5- has difficulty organizing task and activity?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: distracted_b: C8- is easily distracted by extraneous stimuli?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: fidgets_b: C10- fidgets with hands or feet or squirms in seat?
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: active_b: C14-is on the go or often acts as if driven by a motor?.
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: interrupts_b: C18- interrupts or intrudes on others eg. butts into conversation or game
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: Y_N_DK [I]: (String)
+----------------------------------------
+Value Label     Missing (M), set: Y_N_DK 
+----------------------------------------
+1     Yes                                
+2     No                                 
+0     Dont Know                          
+----------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: shake_breath_b: Shake your child to breathe? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: apnes_b: Have you witnessed an apnoea during sleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: struggle_breath_b: Child struggle breathing while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: concrn_breath_b: Concerns about your child breathing while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: loud_snore_b: How loud does your child snore? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: snore_loud [I]: (String)
+-------------------------------------------------
+Value Label          Missing (M), set: snore_loud 
+-------------------------------------------------
+1     Medium loud                                 
+2     Loud                                        
+3     Very loud                                   
+4     Extremely loud                              
+0     Mild quite                                  
+-------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
+Variable: snore_sleep_b: Child snore while asleep? 
+-----------------------
+Type             String 
+Length                2 
+Show Value Label   true 
+-----------------------
+
+Value label: APNOEA [I]: (String)
+---------------------------------------------------------------
+Value Label                            Missing (M), set: APNOEA 
+---------------------------------------------------------------
+1     rarely (once per week)                                    
+2     occasionally (twice per week)                             
+3     frequently(3 to 4 times per week                          
+4     almost always(>4 times per week)                          
+0     never (zero)                                              
+---------------------------------------------------------------
+
+.-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-..-^-.
+
