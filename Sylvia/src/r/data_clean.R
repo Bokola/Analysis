@@ -18,56 +18,147 @@ browseURL("https://stackoverflow.com/questions/32767164/use-gsub-remove-all-stri
 summ = function(data){
   
   
-  out_all = data %>%
-    summarise(`Age` = paste(round(mean(data$age, na.rm = T),2), round(sd(data$age, na.rm = T),2), sep = "\u00B1")) %>%
+  out_all = 
+    #   cbind(
+    #   `Overall` = paste0(round(sum(data$psq_b_binary == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1, na.rm = T)/nrow(data))),4)*100,")")
+    # )%>%
     cbind(
-      `2-5 yrs` = paste0(sum(data$age_cat == '2-5'), '(',round(sum(data$age_cat == '2-5')/nrow(data)*100),")"),
-      `6-10 yrs` = paste0(sum(data$age_cat == '6-10'), '(',round(sum(data$age_cat == '6-10')/nrow(data)*100),")")
-    ) %>%
-    cbind(
-      data %>%
-        summarise(`Gender, n(%)` = NA_character_)
+      Height =paste0(median(data_sdb$height, na.rm = T), "(", unname(quantile(data_sdb$height, 0.25, na.rm = T)), "-", unname(quantile(data_sdb$height, 0.75, na.rm = T)), ")"),
+      bmi =paste0(median(data_sdb$bmi, na.rm = T), "(", unname(quantile(data_sdb$bmi, 0.25, na.rm = T)), "-", unname(quantile(data_sdb$bmi, 0.75, na.rm = T)), ")"),
+      Age = paste0(median(data_sdb$age, na.rm = T), "(", unname(quantile(data_sdb$age, 0.25, na.rm = T)), "-", unname(quantile(data_sdb$age, 0.75, na.rm = T)), ")"),
+      `\t2-5 yrs` = paste0(round(sum( data$age_cat == '2-5', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$age_cat == '2-5', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$age_cat == '2-5', na.rm = T)/nrow(data)*(1-sum( data$age_cat == '2-5', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$age_cat == '2-5', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$age_cat == '2-5', na.rm = T)/nrow(data)*(1-sum( data$age_cat == '2-5', na.rm = T)/nrow(data))),4)*100,")"),
+      `\t6-10 yrs` =paste0(round(sum( data$age_cat == '6-10', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$age_cat == '6-10', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$age_cat == '6-10', na.rm = T)/nrow(data)*(1-sum( data$age_cat == '6-10', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$age_cat == '6-10', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$age_cat == '6-10', na.rm = T)/nrow(data)*(1-sum( data$age_cat == '6-10', na.rm = T)/nrow(data))),4)*100,")")
       
     ) %>%
     cbind(
-      `\tMale` = paste0(sum(data$sex==1, na.rm = T),'(',round(sum(data$sex==1, na.rm = T)/ nrow(data) *100),')')
+      data %>%
+        summarise(`Gender` = NA_character_)
+      
+    ) %>%
+    cbind(
+      `\tMale` = paste0(round(sum( data$sex==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$sex==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$sex==1, na.rm = T)/nrow(data)*(1-sum( data$sex==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$sex==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$sex==1, na.rm = T)/nrow(data)*(1-sum( data$sex==1, na.rm = T)/nrow(data))),4)*100,")")
+      
     ) %>%
     cbind(`\tFemale`=
-            paste0(sum(data$sex==0, na.rm = T),'(',round(sum(data$sex==0, na.rm = T)/ nrow(data) *100),')') 
-    ) %>% cbind(
-      `Asthma, n(%)` = paste0(sum(data$asthma_diag == 1,na.rm = T), '(', round(sum(data$asthma_diag == 1,na.rm = T)/nrow(data) *100), ')')
+            paste0(round(sum( data$sex==0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$sex==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$sex==0, na.rm = T)/nrow(data)*(1-sum( data$sex==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$sex==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$sex==0, na.rm = T)/nrow(data)*(1-sum( data$sex==0, na.rm = T)/nrow(data))),4)*100,")") 
+    )%>% cbind(
+      `Asthma` = NA_character_,
+      `\tAsthma Yes` =  paste0(round(sum( data$asthma_diag == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$asthma_diag == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_diag == 1, na.rm = T)/nrow(data)*(1-sum( data$asthma_diag == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$asthma_diag == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_diag == 1, na.rm = T)/nrow(data)*(1-sum( data$asthma_diag == 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tAsthma No` = paste0(round(sum( data$asthma_diag == 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$asthma_diag == 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_diag == 0, na.rm = T)/nrow(data)*(1-sum( data$asthma_diag == 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$asthma_diag == 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_diag == 0, na.rm = T)/nrow(data)*(1-sum( data$asthma_diag == 0, na.rm = T)/nrow(data))),4)*100,")")
+      
     ) %>%
     cbind(
-      `Allergic rhinitis, n(%)` = paste0(sum(data$allergic_rhinitis_diag == 1,na.rm = T), '(', round(sum(data$allergic_rhinitis_diag == 1,na.rm = T)/nrow(data) *100), ')')
+      `Allergic rhinitis` = NA_character_,
+      `\tYes` = paste0(round(sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis_diag == 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tNo` = paste0(round(sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis_diag == 0, na.rm = T)/nrow(data))),4)*100,")")
+      
+      
     ) %>%
     cbind(
-      `BMI(kg/m^2)` = paste(round(mean(data$bmi, na.rm = T),2), round(sd(data$bmi, na.rm = T),2), sep = "\u00B1")
+      `Birth weight category` = NA_character_,
+      `\t<2.5 kgs` = paste0(round(sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data)*(1-sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data)*(1-sum( data$`birth weight` == "< 2.5 kgs", na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\t>=2.5 kgs` = paste0(round(sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data)*(1-sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data)*(1-sum( data$`birth weight` == ">= 2.5 kgs", na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
-      `Birth weight category, n(%)` = NA_character_,
-      `\t<2.5 kgs` = paste0(sum(data$`birth weight` == "< 2.5 kgs"), '(', round(sum(data$`birth weight` == "< 2.5 kgs")/nrow(data)*100), ')'),
-      `\t>=2.5 kgs` = paste0(sum(data$`birth weight` == ">= 2.5 kgs"), '(', round(sum(data$`birth weight` == ">= 2.5 kgs")/nrow(data)*100), ')')
+      `Hospital category` = NA_character_,
+      `\tPrivate` =  paste0(round(sum( data$hospital =='private', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$hospital =='private', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$hospital =='private', na.rm = T)/nrow(data)*(1-sum( data$hospital =='private', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$hospital =='private', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$hospital =='private', na.rm = T)/nrow(data)*(1-sum( data$hospital =='private', na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tPublic` = paste0(round(sum( data$hospital == 'public', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$hospital == 'public', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$hospital == 'public', na.rm = T)/nrow(data)*(1-sum( data$hospital == 'public', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$hospital == 'public', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$hospital == 'public', na.rm = T)/nrow(data)*(1-sum( data$hospital == 'public', na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
-      `Hospital category, n(%)` = NA_character_,
-      `\tPrivate` = paste0(sum(data$hospital =='private'), '(', round(sum(data$hospital == 'private')/nrow(data)*100), ')'),
-      `\tPublic` = paste0(sum(data$hospital == 'public'), '(', round(sum(data$hospital == 'public')/nrow(data)*100), ')')
+      `BMI category`= NA_character_,
+      `\tUnderweight` = paste0(round(sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Underweightt', na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tNormal` = paste0(round(sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Normal', na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tOverweight` = paste0(round(sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat =='Overweight', na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tObese` = paste0(round(sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data)*100,2), "(",round(sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data)*(1-sum( data$bmi_cat == 'Obese', na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
-      `BMI category, n(%)` = NA_character_,
-      `\tUnderweight` = paste0(sum(data$bmi_cat == 'Underweightt'), '(', round(sum(data$bmi_cat == 'Underweightt')/nrow(data)*100), ')'),
-      `\tNormal` = paste0(sum(data$bmi_cat == 'Normal'), '(', round(sum(data$bmi_cat == 'Normal')/nrow(data)*100), ')'),
-      `\tOverweight` = paste0(sum(data$bmi_cat =='Overweight'), '(', round(sum(data$bmi_cat == 'Overweight')/nrow(data)*100), ')'),
-      `\tObese` = paste0(sum(data$bmi_cat == 'Obese'), '(', round(sum(data$bmi_cat == 'Obese')/nrow(data)*100), ')')
+      `OSA` = NA_character_,
+      
+      `\tOSA Yes` = paste0(round(sum( data$osa_binary == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$osa_binary == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$osa_binary == 1, na.rm = T)/nrow(data)*(1-sum( data$osa_binary == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$osa_binary == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$osa_binary == 1, na.rm = T)/nrow(data)*(1-sum( data$osa_binary == 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tOSA No` = paste0(round(sum( data$osa_binary == 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$osa_binary == 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$osa_binary == 0, na.rm = T)/nrow(data)*(1-sum( data$osa_binary == 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$osa_binary == 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$osa_binary == 0, na.rm = T)/nrow(data)*(1-sum( data$osa_binary == 0, na.rm = T)/nrow(data))),4)*100,")")
+      
     ) %>%
     cbind(
-      `Height` = paste(round(mean(data$height, na.rm = T),2), round(sd(data$height, na.rm = T),2), sep = "\u00B1")
+      `wet bed`= NA_character_,
+      `\twet Yes` = paste0(round(sum( data$wet_bed== 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$wet_bed== 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$wet_bed== 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\twet No` = paste0(round(sum( data$wet_bed== 2, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$wet_bed== 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$wet_bed== 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100,")")#,
+      
+      # `\twet dont know` = paste0(round(sum( data$wet_bed== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$wet_bed== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$wet_bed== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum( data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
-      `SDB,n(%)` = paste0(sum(data$psq_binary == 1), '(', round(sum(data$psq_binary == 1)/nrow(data)*100),")")
+      Employment = NA_character_,
+      `\tEmployed` = paste0(round(sum( data$employment == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$employment == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 1, na.rm = T)/nrow(data)*(1-sum( data$employment == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$employment == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 1, na.rm = T)/nrow(data)*(1-sum( data$employment == 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tSelf employed` = paste0(round(sum( data$employment == 2, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$employment == 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 2, na.rm = T)/nrow(data)*(1-sum( data$employment == 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$employment == 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 2, na.rm = T)/nrow(data)*(1-sum( data$employment == 2, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tUnemployed` = paste0(round(sum( data$employment == 3, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$employment == 3, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 3, na.rm = T)/nrow(data)*(1-sum( data$employment == 3, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$employment == 3, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$employment == 3, na.rm = T)/nrow(data)*(1-sum( data$employment == 3, na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
-      `OSA,n(%)` = paste0(sum(data$osa_binary == 1), '(', round(sum(data$osa_binary == 1)/nrow(data)*100),")")
+      Insurance = NA_character_,
+      `\tEmployer` =  paste0(round(sum( data$insuarance == 2, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$insuarance == 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance == 2, na.rm = T)/nrow(data)*(1-sum( data$insuarance == 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$insuarance == 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance == 2, na.rm = T)/nrow(data)*(1-sum( data$insuarance == 2, na.rm = T)/nrow(data))),4)*100,")"),
+      `\tNHIF` =  paste0(round(sum( data$insuarance ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$insuarance ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==1, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$insuarance ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==1, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tNone`= paste0(round(sum( data$insuarance ==3, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$insuarance ==3, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==3, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==3, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$insuarance ==3, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==3, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==3, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tOther` = paste0(round(sum( data$insuarance ==4, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$insuarance ==4, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==4, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==4, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$insuarance ==4, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$insuarance ==4, na.rm = T)/nrow(data)*(1-sum( data$insuarance ==4, na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      Smoking = NA_character_,
+      `\tsmoking Yes` = paste0(round(sum( data$smoking == 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$smoking == 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$smoking == 1, na.rm = T)/nrow(data)*(1-sum( data$smoking == 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$smoking == 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$smoking == 1, na.rm = T)/nrow(data)*(1-sum( data$smoking == 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tsmoking No` = paste0(round(sum( data$smoking == 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$smoking == 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$smoking == 0, na.rm = T)/nrow(data)*(1-sum( data$smoking == 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$smoking == 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$smoking == 0, na.rm = T)/nrow(data)*(1-sum( data$smoking == 0, na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      `child asthma` = NA_character_,
+      `\tchild_asthma Yes` = paste0(round(sum( data$child_asthma== 1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$child_asthma== 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$child_asthma== 1, na.rm = T)/nrow(data)*(1-sum( data$child_asthma== 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$child_asthma== 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$child_asthma== 1, na.rm = T)/nrow(data)*(1-sum( data$child_asthma== 1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tchild_asthma No` = paste0(round(sum( data$child_asthma== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$child_asthma== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$child_asthma== 0, na.rm = T)/nrow(data)*(1-sum( data$child_asthma== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$child_asthma== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$child_asthma== 0, na.rm = T)/nrow(data)*(1-sum( data$child_asthma== 0, na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      Wheezing = NA_character_,
+      `\twheezing Yes` =  paste0(round(sum( data$wheezing ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$wheezing ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wheezing ==1, na.rm = T)/nrow(data)*(1-sum( data$wheezing ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$wheezing ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wheezing ==1, na.rm = T)/nrow(data)*(1-sum( data$wheezing ==1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\twheezing No` = paste0(round(sum( data$wheezing ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$wheezing ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wheezing ==0, na.rm = T)/nrow(data)*(1-sum( data$wheezing ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$wheezing ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$wheezing ==0, na.rm = T)/nrow(data)*(1-sum( data$wheezing ==0, na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      `Asthma treatment` = NA_character_,
+      `\tasthma treat yes` = paste0(round(sum( data$asthma_treat =="yes", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum( data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum( data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tasthma treat no` = paste0(round(sum( data$asthma_treat =="no", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$asthma_treat =="no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum( data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$asthma_treat =="no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum( data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      `Symptomatic rhinitis` = NA_character_,
+      `\tsymptomatic rhinitis no` = paste0(round(sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data)*(1-sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data)*(1-sum( data$rhiniti_symptomatic == "no", na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tsymptomatic rhinitis yes` = paste0(round(sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data)*100,2), "(",round(sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data)*(1-sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data)*(1-sum( data$rhiniti_symptomatic == "yes", na.rm = T)/nrow(data))),4)*100,")")
+      
+    ) %>%
+    cbind(
+      `Known allergic rhinitis` = NA_character_,
+      `\tknown allergic rhinitis yes` = paste0(round(sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis ==1, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tknown allergic rhinitis no` = paste0(round(sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data)*(1-sum( data$allergic_rhinitis ==0, na.rm = T)/nrow(data))),4)*100,")")
+    ) %>%
+    cbind(
+      `intranasal steroids` = NA_character_,
+      `\tintranasal steroids no` = paste0(round(sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data)*(1-sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data)*(1-sum( data$steroid_nasal_spray ==0, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tintranasal steroids yes` = paste0(round(sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data)*(1-sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data)*(1-sum( data$steroid_nasal_spray ==1, na.rm = T)/nrow(data))),4)*100,")") 
+    ) %>%
+    cbind(
+      antiacids = NA_character_,
+      `\tantiacids no` = paste0(round(sum( data$antiacids==0, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$antiacids==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$antiacids==0, na.rm = T)/nrow(data)*(1-sum( data$antiacids==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$antiacids==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$antiacids==0, na.rm = T)/nrow(data)*(1-sum( data$antiacids==0, na.rm = T)/nrow(data))),4)*100,")"),
+      
+      `\tantiacids yes` = paste0(round(sum( data$antiacids==1, na.rm = T)/nrow(data)*100,2), "(",round(sum( data$antiacids==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum( data$antiacids==1, na.rm = T)/nrow(data)*(1-sum( data$antiacids==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum( data$antiacids==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum( data$antiacids==1, na.rm = T)/nrow(data)*(1-sum( data$antiacids==1, na.rm = T)/nrow(data))),4)*100,")")
     )
   
   
@@ -176,7 +267,7 @@ for(c in yes_no_dont){
 # stocksm %>% spread(time, price)
 
 apnoea = meta_data %>%
-  filter(., value_label == 'APNOEA') %>%
+  filter(., value_label == 'APNOEA'|value_label == "snore_loud") %>%
   dplyr::select(name) %>% pull()
 table(data_yes[,apnoea])
 
@@ -301,13 +392,16 @@ for(c in other){
 }
   
 data_yes_out = data_yes[,c(yes_no, yes_no_dont,apnoea, employment, insurance, y_n_na, right_left, sex, other)]
+data_yes_out$psq_binary = data$psq_binary
+data_yes_out$psq_b_binary = data$psq_b_binary
+data_yes_out = data_yes_out %>%
+  mutate(., psq_binary = ifelse(psq_binary==0, "No", "Yes"),
+         psq_b_binary = ifelse(psq_b_binary==0, "No", "Yes"))
 data_yes_out_b = data_yes_out
-data_yes_out_b$psq_binary = data$psq_binary
-data_yes_out_b$psq_b_binary = data$psq_b_binary
 
 cat_out <- lapply(data_yes_out, table)
-cat_out_b = lapply(filter(data_yes_out_b, psq_binary == 1), table)
-cat_out_e = lapply(filter(data_yes_out_b, psq_b_binary == 1), table)
+cat_out_b = lapply(filter(data_yes_out_b, psq_binary == "Yes"), table)
+cat_out_e = lapply(filter(data_yes_out_b, psq_b_binary == "Yes"), table)
 
 data = as.data.frame(data)
 data_yes_out = as.data.frame(data_yes_out)
@@ -390,8 +484,8 @@ label = meta_data %>%
 #   dplyr::filter(., name %in% start)
 # label_after = label %>%
 #   dplyr::filter(., name %in% end)
-cols_b = subset(cols, cols$Variable %in% mmm_before$Variable)
-cols_after = subset(cols, cols$Variable %in% mmm_after$Variable)
+cols_b = subset(cols, cols$Variable %in% mmm_before$Variable) %>% mutate_if(., is.factor, as.character)
+cols_after = subset(cols, cols$Variable %in% mmm_after$Variable) %>% mutate_if(., is.factor, as.character)
 
 cat_col_out_b = rbind(cols_b,mmm_before) %>%
   mutate_if(is.factor, as.character) %>%
@@ -403,6 +497,8 @@ cat_col_out_after = rbind(mmm_after, cols_after) %>%
 
 label = label %>%
   `colnames<-`(c("Variable", "label"))
+osa = data.frame(Variable = c("osa_binary", "osa_b_binary"), label = c("baseline OSA", "residual OSA"))
+label = rbind(label, osa)
 cat_col_out_b = cat_col_out_b %>%
   mutate(., Variable = ifelse(is.na(Value), Variable, paste("\t", Value, sep = "")))
 
@@ -427,10 +523,15 @@ cat_col_out_b = left_join(cat_col_out_b, zz_b) %>%
 
 
 # after
-
+# xy = left_join(cat_col_out_after, label)
 cat_col_out_after= left_join(cat_col_out_after, label) #helps in ordering
+cat_col_out_after = cat_col_out_after %>%
+  mutate(., label = ifelse(grepl("allergic_rhinitis_diag", Variable), "Allergic rhinitis diagnosis", label))
+cat_col_out_after = cat_col_out_after %>%
+  mutate(., label = ifelse(grepl("asthma_diag",Variable), "Asthma diagnosis", label))
 cat_col_out_after= cat_col_out_after%>%
   mutate(., Variable = ifelse(is.na(Value) & !is.na(label), label, Variable))
+
 cat_col_out_after = cat_col_out_after %>%
   mutate(., Variable = ifelse(!is.na(Value) & !is.na(label), paste("\t", Value, sep = ""), Variable))
 # aa = cat_col_out_b
@@ -918,9 +1019,9 @@ prop_baseline = function(data){
       `wet bed`= NA_character_,
       `\twet Yes` = paste0(round(sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\twet No` = paste0(round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100,")"),
+      `\twet No` = paste0(round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100,")")#,
       
-      `\twet dont know` = paste0(round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100,")")
+      # `\twet dont know` = paste0(round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
       Employment = NA_character_,
@@ -959,15 +1060,15 @@ prop_baseline = function(data){
     ) %>%
     cbind(
       `Asthma treatment` = NA_character_,
-      `\tasthma treat yes` = paste0(round(sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data))),4)*100,")"),
+      `\tasthma treat yes` = paste0(round(sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\tasthma treat no` = paste0(round(sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data))),4)*100,")")
+      `\tasthma treat no` = paste0(round(sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
       `Symptomatic rhinitis` = NA_character_,
-      `\tsymptomatic rhinitis no` = paste0(round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data))),4)*100,")"),
+      `\tsymptomatic rhinitis no` = paste0(round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\tsymptomatic rhinitis yes` = paste0(round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data))),4)*100,")")
+      `\tsymptomatic rhinitis yes` = paste0(round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data))),4)*100,")")
       
     ) %>%
     cbind(
@@ -1074,9 +1175,9 @@ prop_endline = function(data){
       `wet bed`= NA_character_,
       `\twet Yes` = paste0(round(sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 1, na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\twet No` = paste0(round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100,")"),
+      `\twet No` = paste0(round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 2, na.rm = T)/nrow(data))),4)*100,")")#,
       
-      `\twet dont know` = paste0(round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100,")")
+      # `\twet dont know` = paste0(round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$wet_bed== 0, na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
       Employment = NA_character_,
@@ -1115,15 +1216,15 @@ prop_endline = function(data){
     ) %>%
     cbind(
       `Asthma treatment` = NA_character_,
-      `\tasthma treat yes` = paste0(round(sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat ==1, na.rm = T)/nrow(data))),4)*100,")"),
+      `\tasthma treat yes` = paste0(round(sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat =="yes", na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\tasthma treat no` = paste0(round(sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat ==0, na.rm = T)/nrow(data))),4)*100,")")
+      `\tasthma treat no` = paste0(round(sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$asthma_treat =="no", na.rm = T)/nrow(data))),4)*100,")")
     ) %>%
     cbind(
       `Symptomatic rhinitis` = NA_character_,
-      `\tsymptomatic rhinitis no` = paste0(round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==0, na.rm = T)/nrow(data))),4)*100,")"),
+      `\tsymptomatic rhinitis no` = paste0(round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="no", na.rm = T)/nrow(data))),4)*100,")"),
       
-      `\tsymptomatic rhinitis yes` = paste0(round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic ==1, na.rm = T)/nrow(data))),4)*100,")")
+      `\tsymptomatic rhinitis yes` = paste0(round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*100,2), "(",round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data))),4)*100, "-", round(sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data) + c(qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data)*(1-sum(data$psq_b_binary == 1 & data$rhiniti_symptomatic =="yes", na.rm = T)/nrow(data))),4)*100,")")
       
     ) %>%
     cbind(

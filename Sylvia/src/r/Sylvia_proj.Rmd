@@ -103,12 +103,12 @@ meta_data = meta_data %>%
   janitor::clean_names() %>%
   mutate(., name = tolower(name))
 
-data$asthma_treat = ifelse(data$medication_a ==1|data$medication_b ==1| data$medication == 1| data$medication_d == 1 | data$medication_e == 1, "yes", "no")
-data$rhiniti_symptomatic = ifelse(data$a_symptoms ==1 | data$b_symptoms ==1 | data$c_symptoms == 1| data$v26 ==1 | data$findings_b == 1| data$c_findings ==1, "yes", "no")
+
 
 # psq before surgery
 data = data %>%
   rename(stop_breathing_night_b = v71, breath_mouth_b = v72, dry_mouth_b = v73, wet_bed_b = v74)
+data = data %>% mutate(., wet_bed = ifelse(wet_bed == 0, NA_integer_, wet_bed))
 
 meta_data$name = gsub('\\bv71\\b', 'stop_breathing_night_b', meta_data$name)
 meta_data$name = gsub('\\bv72\\b', 'breath_mouth_b', meta_data$name)
@@ -192,7 +192,8 @@ data$osa_b_binary = ifelse(data$E >=2.72, 1, 0)
 
 
 # all charactersitics at baseline
-
+data$asthma_treat = ifelse(data$medication_a ==1|data$medication_b ==1| data$medication == 1| data$medication_d == 1 | data$medication_e == 1, "yes", "no")
+data$rhiniti_symptomatic = ifelse(data$a_symptoms ==1 | data$b_symptoms ==1 | data$c_symptoms == 1| data$v26 ==1 | data$findings_b == 1| data$c_findings ==1, "yes", "no")
 DataXXX = data
 source(file.path(src_dir, "data_clean.R"))
 
@@ -305,6 +306,8 @@ addTitle(., value = 'TABLE 1. Baseline characteristics of all participants with 
 addFlexTable(., flextable = table.sdb)
 writeDoc(doc, file = file.path(cache_dir, paste('SDB prevalence.docx')))
 
+# summ(data)
+# summ(data_sdb)
 
 writeDoc(doc, file = file.path(cache_dir, paste('baseline characteristics.docx')))
 knitr::kable(mtcars[1:10,], caption = "Baseline characteristics of all participants with and without SDB'")
@@ -731,12 +734,12 @@ Data = data
 # # lapply(data, unique)
 
 col = c("osa_binary", "wet_bed", "allergic_rhinitis_diag", "asthma_diag", "antiacids", "smoking")
-for(c in col){
-data[, c] = sapply(data[,c], function(x){
-  x = ifelse(x == 0, 'No', 'Yes')
-  x = factor(x, levels = c('No', 'Yes'))
-})
-}
+# for(c in col){
+# data[, c] = sapply(data[,c], function(x){
+#   x = ifelse(x == 0, 'No', 'Yes')
+#   x = factor(x, levels = c('No', 'Yes'))
+# })
+# }
 
 logistic_glm <-glm(psq_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+hospital+bmi_cat, data = data)
 
@@ -793,24 +796,26 @@ library(geepack)
 library(glmnet)
 
 # data = filter(data, !is.na(wet_bed))
-train_x <- model.matrix(psq_b_binary ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+smoking+bmi+wet_bed, data)[,-1]
-a = as.numeric(row.names(train_x))
-train = filter(data, as.numeric(row.names(data)) %in% a)
-# create training and testing response vectors
-train_y <- train$psq_b_binary
-ridge <- glmnet(x = train_x, y = train_y, alpha = 0.2, family = "binomial")
-print(ridge)
-plot(ridge)
-a = coef(ridge,s=0.1) %>% yardstick::tidy()
 
 
-kable(a[-1,])
+
+
 # ridge$lambda.min
 # cvfit = cv.glmnet(x = train_x, y = train_y, alpha = 0.2, family = "binomial")
 # plot(cvfit)
 # cvfit$lambda.min
 # coef(cvfit, s = "lambda.min")
-psq_gee2 <- gee(psq_b_binary  ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+bmi+wet_bed, data = data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1)
+c = c("osa_binary", "allergic_rhinitis_diag", "asthma_diag", "antiacids", "wet_bed")
+lapply(data[,c], table)
+model_data = data_yes_out %>%
+  mutate_if(is.character, as.factor)
+model_data$age = data$age
+model_data$bmi = data$bmi
+model_data$`birth weight` = data$`birth weight`
+model_data$sub_id = data$sub_id
+model_data$psq_b_binary = data$psq_b_binary
+psq_gee2 <- tryCatch(gee(psq_b_binary  ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+bmi#+wet_bed
+                , data = model_data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1), error = function(e) NA)
 
 
 cols = col = c("osa_binary", "wet_bed", "allergic_rhinitis_diag", "asthma_diag", "antiacids", "smoking")
@@ -821,15 +826,51 @@ cols = col = c("osa_binary", "wet_bed", "allergic_rhinitis_diag", "asthma_diag",
 # crude odds
 
 yyyy = list()
-dep = c("allergic_rhinitis_diag", "asthma_diag", "antiacids","birth weight", "age", "osa_binary", "bmi", "wet_bed")
+dep = names(model_data)# %>%
+dep = subset(dep,!grepl("sub_id|psq|smoking|medication_b|medication_d|exposed_cigarret|snore_badly_b|stop_breathing_night_b|sleepy_day_b|apnes_b|overweight_b|shake_breath_b", dep))
+
 for(x in dep) {
-  model = gee(psq_b_binary ~ data[,x], data = data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1) # two angle brackets
-  est = summary(model)
+  model = tryCatch(gee(psq_b_binary ~ data[,x], data = model_data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1), error = function(e) NA) # two angle brackets
+  est = summary(model) 
+  # est = est["coefficients"] #%>% yardstick::tidy() #%>%
+  # est = est %>% yardstick::tidy()
+  # est = est %>% dplyr::select(c(.rownames, Estimate, Robust.S.E.)) %>% `colnames<-`(c("var", "coef","se"))
   coef = yardstick::tidy(est$coefficients)
-  yyyy[[x]] = list(variable = x, coef =coef$Estimate[2], `crude odds` = exp(coef$Estimate)[2])
+  coef = coef %>% dplyr::select(c(.rownames, Estimate, Robust.S.E.)) %>% `colnames<-`(c("var", "coef","se"))
+  # yyyy[[x]] = list(variable = x, coef =coef$Estimate[2], `crude odds` = exp(coef$Estimate)[2])
+  # yyyy[[x]] = list(variable = x, coef =unlist(model["coefficients"])[2] %>% unname(), `crude odds` = exp(unlist(model["coefficients"])[2] %>% unname()))
+  yyyy[[x]] = list(variable = x, coef = coef$coef[2], `crude odds` = exp(coef$coef[2]), `CI odds` = paste0("[",round(exp(coef$coef[2] + c(-1) * coef$se[2] * qnorm(0.975)),4), "-", round(exp(coef$coef[2] +
+c(1) * coef$se[2] * qnorm(0.975)),4),"]"))
+  # est[[1]][4]
   
 }
 yy = yyyy %>% dplyr::bind_rows()
+as = data.frame(Variable = c("asthma_diag", "allergic_rhinitis_diag"), label = c("Asthma", "Allergic rhinitis"))
+label = rbind(label, as)
+yy = left_join(yy, label, by = c("variable" = "Variable"))
+# yy = yy %>%
+#   mutate(., variable = ifelse(!is.na(label), label, variable))
+yy = yy %>%
+  dplyr::select(variable,label, dplyr::everything()) %>%
+  arrange(desc(`crude odds`))
+
+tab_crude_odds = yy %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+tab_crude_odds[,1] = parLeft()
+  
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. crude coefficients and odds') %>%
+addFlexTable(., flextable = tab_crude_odds)
+
+writeDoc(doc, file = file.path(cache_dir, paste('crude coefficients.docx')))
+
 
 estimates = summary(psq_gee2)
 coef = yardstick::tidy(estimates$coefficients)
@@ -840,8 +881,39 @@ c(-1) * coef$se * qnorm(0.975)),4)
 coef$upper_ci =round(exp(coef$coef +
 c(1) * coef$se * qnorm(0.975)),4)
 
-skimr::kable(yy)
+# train_x <- model.matrix(psq_b_binary ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+smoking+bmi+wet_bed, data)[,-1]
+model_data2 = model_data
+model_data2 = model_data2[,dep]
+model_data2$psq_b_binary = model_data$psq_b_binary
 
+train_x <- model.matrix(psq_b_binary ~ ., model_data2)[,-1]
+a = as.numeric(row.names(train_x))
+train = filter(data, as.numeric(row.names(data)) %in% a)
+# create training and testing response vectors
+train_y <- train$psq_b_binary
+ridge <- glmnet(x = train_x, y = train_y, alpha = 0.2, family = "binomial")
+print(ridge)
+plot(ridge)
+a = coef(ridge,s=0.1) %>% yardstick::tidy()
+a = a  %>% arrange(-abs(value))
+skimr::kable(a[-1,])
+
+var_coef = a[-1,] %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+var_coef[,1] = parLeft()
+  
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. variable importance') %>%
+addFlexTable(., flextable = var_coef)
+
+writeDoc(doc, file = file.path(cache_dir, paste('variable importance.docx')))
 ```
 
 ```{r coef, fig.cap= "Estimates of gee of PSQ score after operation"}
