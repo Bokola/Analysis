@@ -1098,7 +1098,8 @@ prop_baseline = function(data){
   
 }
 
-prop_baseline(data)
+# prop_baseline(data)
+prop_baseline(data_sdb)
 
 prop_endline = function(data){
   
@@ -1253,7 +1254,8 @@ prop_endline = function(data){
   assign('out_prop_e',  out_prop, envir = .GlobalEnv)
   
 }
-prop_endline(data)
+# prop_endline(data)
+prop_endline(data_sdb)
 prop_out = left_join(out_prop_b, out_prop_e)
 
 # p-val
@@ -1651,7 +1653,8 @@ test_sdb = function(data, data_1){
   assign("conf_sdb", conf_sdb, envir = .GlobalEnv)
   assign("p_val_sdb",  p_val_sdb, envir = .GlobalEnv)
 }
-test_sdb(filter(data, psq_binary == 1), filter(data, psq_b_binary == 1))
+# test_sdb(filter(data, psq_binary == 1), filter(data, psq_b_binary == 1))
+test_sdb(filter(data_sdb, psq_binary == 1), filter(data_sdb, psq_b_binary == 1))
 
 prop_out = prop_out %>%
   left_join(., p_val_sdb)  %>%

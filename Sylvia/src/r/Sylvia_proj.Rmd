@@ -196,6 +196,7 @@ data$asthma_treat = ifelse(data$medication_a ==1|data$medication_b ==1| data$med
 data$rhiniti_symptomatic = ifelse(data$a_symptoms ==1 | data$b_symptoms ==1 | data$c_symptoms == 1| data$v26 ==1 | data$findings_b == 1| data$c_findings ==1, "yes", "no")
 DataXXX = data
 source(file.path(src_dir, "data_clean.R"))
+source(file.path(src_dir, "proportions.R"))
 
 summ(data)
 
@@ -276,6 +277,34 @@ addTitle(., value = 'TABLE 2. Socio - demographic characteristics of participant
 addFlexTable(., flextable = table.end)
 
 writeDoc(doc, file = file.path(cache_dir, paste('socio-demographic characteristics.docx')))
+
+# xtics
+
+# Baseline table
+
+
+options("ReporteRs-fontsize" = 12);options("ReporteRs-default-font" = "Calibri")
+
+table.xtics <- prop_out %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+table.xtics[,1] = parLeft()
+
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = TRUE)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. Characteristics at baseline and endline') %>%
+addFlexTable(., flextable = table.xtics) %>%
+
+addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = FALSE)%>% # Change Orientation of the page
+writeDoc(doc, file = file.path(cache_dir, paste('base_endline characteristics.docx')))
 
 table.baseline <- sdb_baseline_out %>% vanilla.table(.) %>% 
   setZebraStyle(., odd = '#eeeeee', even = 'white')
@@ -880,6 +909,7 @@ coef$lower_ci = round(exp(coef$coef +
 c(-1) * coef$se * qnorm(0.975)),4)
 coef$upper_ci =round(exp(coef$coef +
 c(1) * coef$se * qnorm(0.975)),4)
+skimr::kable(coef)
 
 # train_x <- model.matrix(psq_b_binary ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+smoking+bmi+wet_bed, data)[,-1]
 model_data2 = model_data
