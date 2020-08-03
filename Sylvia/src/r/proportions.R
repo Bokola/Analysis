@@ -176,7 +176,7 @@ summ_e = function(data){
   
   out_all = 
     cbind(
-      `Overall` = paste0(round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*100,2), "(",round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data) + c(-qnorm(0.975))*sqrt((1/nrow(data))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data))),4)*100, "-", round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data) + c(qnorm(0.975))*sqrt((1/nrow(Data))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data))),4)*100,")")
+      `Overall` = paste0(round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*100,2), "(",round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb) + c(-qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb))),4)*100, "-", round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb) + c(qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb))),4)*100,")")
       )%>%
       cbind(
         Height =paste0(median(data$height, na.rm = T), "(", unname(quantile(data$height, 0.25, na.rm = T)), "-", unname(quantile(data$height, 0.75, na.rm = T)), ")"),
@@ -1423,7 +1423,7 @@ prop_endline_sdb = function(data){
   # data = data_sdb
   
   out_prop = cbind(
-    `Overall` = paste0(round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*100,2), "(",round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data) + c(-qnorm(0.975))*sqrt((1/nrow(Data))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data))),4)*100, "-", round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data) + c(qnorm(0.975))*sqrt((1/nrow(Data))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(Data))),4)*100,")")
+    `Overall` = paste0(round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*100,2), "(",round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb) + c(-qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb))),4)*100, "-", round(sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb) + c(qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 1 , na.rm = T)/nrow(data_sdb))),4)*100,")")
   )%>%
     cbind(
       Height =paste0(median(data$height, na.rm = T), "(", unname(quantile(data$height, 0.25, na.rm = T)), "-", unname(quantile(data$height, 0.75, na.rm = T)), ")"),
@@ -1579,7 +1579,7 @@ prop_endline_no_sdb = function(data){
   # data = data_sdb
   
   out_prop = cbind(
-    `Overall` = paste0(round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data)*100,2), "(",round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data) + c(-qnorm(0.975))*sqrt((1/nrow(Data))*sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data))),4)*100, "-", round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data) + c(qnorm(0.975))*sqrt((1/nrow(Data))*sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data)*(1-sum(data$psq_b_binary == 0, na.rm = T)/nrow(Data))),4)*100,")")
+    `Overall` = paste0(round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb)*100,2), "(",round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb) + c(-qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb))),4)*100, "-", round(sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb) + c(qnorm(0.975))*sqrt((1/nrow(data_sdb))*sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb)*(1-sum(data$psq_b_binary == 0, na.rm = T)/nrow(data_sdb))),4)*100,")")
   )%>%
     cbind(
       Height =paste0(median(data$height, na.rm = T), "(", unname(quantile(data$height, 0.25, na.rm = T)), "-", unname(quantile(data$height, 0.75, na.rm = T)), ")"),

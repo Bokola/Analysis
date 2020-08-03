@@ -194,7 +194,9 @@ data$osa_b_binary = ifelse(data$E >=2.72, 1, 0)
 # all charactersitics at baseline
 data$asthma_treat = ifelse(data$medication_a ==1|data$medication_b ==1| data$medication == 1| data$medication_d == 1 | data$medication_e == 1, "yes", "no")
 data$rhiniti_symptomatic = ifelse(data$a_symptoms ==1 | data$b_symptoms ==1 | data$c_symptoms == 1| data$v26 ==1 | data$findings_b == 1| data$c_findings ==1, "yes", "no")
+# data = filter(data, psq_binary == 1)
 DataXXX = data
+
 source(file.path(src_dir, "data_clean.R"))
 source(file.path(src_dir, "proportions.R"))
 
