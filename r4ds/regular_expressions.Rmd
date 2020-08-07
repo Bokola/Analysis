@@ -1,0 +1,60 @@
+---
+title: "Regular Expressions"
+output: html_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+
+```
+A description of regular expression pattern supported by `grep` and related functions `grepl`, `regexpr`, `gregexpr`, `sub` and `gsub` as well as `strsplit`.
+**Regular expression** -  A pattern that describes a set of strings. Two types used in R; extended regular expressions(the default) and *Perl-like* regular expressions used by `perl = TRUE`. Also used is `fixed = TRUE` which can be considered tto use a *literal* regular expression.
+
+## **Extended Regular Expressions**
+Expressions used in the default mode: `grep`, `grepl`, `regexpr`, `gregexpr`, `sub`, `gsub`, `regexec` and `strsplit`.
+The building blocks are the regular expressions that match a single character. Most characters, including all letters and digits, are regular expresions that match themselves. Any metacharacter (\ | ( ) [ { ^ $ * + ?) with special meaning may be quoted by preceeding it with a backslash. The current implementation interprets \a as BEL, \e as ESC, \f as FF, \n as LF, \r as CR and \t as TAB. (Note that these will be interpreted by R's parser in literal character strings.)
+
+A *character class* is a list of characters enclosed between [ and ] which amtches any single character in that list; unless the first character of the list is the caret^, when it matches any character not in the list.For example, the regular expression [0123456789] matches any single digit, and [^abc] matches anything except the characters a, b or c. A range of characters may be specified by giving the first and last characters, separated by a hyphen. (Because their interpretation is locale- and implementation-dependent, character ranges are best avoided.) The only portable way to specify all ASCII letters is to list them all as the character class [ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]. (The current implementation uses numerical order of the encoding.) Certain named classes are predefined. Their interpretation depend  on the locale
+* [:alnum:] - Alphanumeric characters: [:alpha:] and [:digit:]
+* [:alpha:] - Alphabetic characters: [:lower:] and [:upper:]
+* [:blank:] - Blank characters(space and tab)se
+* [:cntrl:] - Control characters. In ASCII, these characters have octal codes 000 through 037, and 177(DEL)
+* [:digit:] - [0-9]
+* [:lower:] - lowercase characters
+* [:print:] - Printable characters: [:alnum:], [:punct:] and space
+* [:punct:] - Punctuation characters: ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~.
+* [:space:] - Space characters: tab, newline, vertical tab, form feed, carriage return, space and possibly other  
+  locale-dependent characters.
+* [:xdigit:] - Hexadecimal digits: 0 1 2 3 4 5 6 7 8 9 A B C D E F a b c d e f
+
+## **Example**
+[[:alnum:]] means [0-9A-Za-z], except the latter depends on the locale and the character encoding, whereas the former is independent of locale and character set
+*NB*: The brackets in these class names are part of the symbolic names and must be included in addition to the brackets delimiting the bracket list. Also, most metacharacters lose their special meaning inside a character class. To include a literal ], place it first in the list. To include a literal ^, place it anywhere but first. Finally to include a literal -, place it first or last(or, for perl = TRUE only, precede it with a backslash). (Only ^ - \ ] are special inside character classes.)
+The period . matches any single character. The symbol \w matches a 'word' character (a synonym for [[:alnum:]_], an extension) and \W is its negation ([^[:alnum:]_]). Symbols \d, \s, \D and \S denote the digit and space classes and their negations (these are all extensions).
+
+The caret ^ and the dollar sign $ are metacharacters that respectively match the empty string at the beginning and end of a line. The symbols \< and \> match the empty string at the beginning and end of a word. The symbol \b matches the empty string at either edge of a word, and \B matches the empty string provided it is not at an edge of a word. (The interpretation of 'word' depends on the locale and implementation: these are all extensions.)
+
+A regular expression may be followed by one of several repetition quantifiers:
+* ? - The preceding item is optional and will be matched at most once
+* * - The preceeding item will be matched zero or more times
+* + - The preceding item will be matched one or more times
+* {n} - The preceding item is matched exactly n times
+* {n,}  - The preceding item is matched n or more times
+* {n, m} - The preceding item is matched at least n times, but not more than m times.
+
+## **Some Practice**
+
+```{r}
+ipk <- function(pkg) {
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = TRUE)
+}
+list.of.pkg <- c("tidyverse", "repr", "stringr")
+ipk(list.of.pkg)
+```
+
+

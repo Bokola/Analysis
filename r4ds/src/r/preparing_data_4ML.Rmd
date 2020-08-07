@@ -1,0 +1,285 @@
+---
+title: "Preparing_data_4ML"
+author: "bokola"
+date: "February 16, 2019"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+Packages
+
+```{r packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+#setwd("C:\\Users\\bokola\\Google Drive\\Data")
+ipk <- function(pkg){
+  new.pkg <- list.of.pkg[!(list.of.pkg %in% installed.packages()[, "Package"])]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkg <- c("tidyverse", "repr", "magrittr")
+ipk(list.of.pkg)
+options(repr.plot.width = 4, repr.plot.height = 3.5)
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+hom.dir = ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+project.path = path.expand(file.path(hom.dir
+                                     ,"Analysis"
+                                     ,"r4ds")) %>% gsub("\\\\", "/", .)
+
+data.path = path.expand(file.path(hom.dir
+                                  ,"Google drive"
+                                  ,"Data"))
+scripts.path = path.expand(file.path(project.path
+                                     ,"src"
+                                     ,"r"))
+report.path = path.expand(file.path(project.path
+                                    ,"cache"
+                                    ,"doc"))
+if(!file.exists(project.path)){
+  if(dir.create(project.path, recursive = T))
+    stop("The project directory \"",
+         project.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         project.path,
+         "\"could not be created!")
+}
+if(!file.exists(data.path)){
+  if(dir.create(data.path, recursive = T))
+    stop("The project directory \"",
+         data.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         data.path,
+         "\"could not be created!")
+}
+if(!file.exists(report.path)){
+  if(dir.create(report.path, recursive = T))
+    stop("The project directory \"",
+         report.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         report.path,
+         "\"could not be created!")
+}
+if(!file.exists(scripts.path)){
+  if(dir.create(scripts.path, recursive = T))
+    stop("The project directory \"",
+         scripts.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         scripts.path,
+         "\"could not be created!")
+}
+
+auto_prices <- read.csv(file.path(data.path, "Automobile price data _Raw_.csv"),  stringsAsFactors = F, header = T)
+head(auto_prices, n =20); tail(auto_prices, n = 20)
+
+```
+
+# **Data Preparation for Machine Learning**
+
+**Data preparation** is a vital step in the machine learning pipeline. Just as visualization is necessary to understand the relationships in data, proper preparation or data munging is required to ensure machine learning models work optimally. 
+The process of data preparation is highly interactive and iterative. A typical process includes at least the following steps:
+1. **Visualization** of the dataset to understand the relationships and identify possible problems with the data.
+2. **Data cleaning and transformation** to address the problems identified. It many cases, step 1 is then repeated to verify that the cleaning and transformation had the desired effect. 
+3. **Construction and evaluation of a machine learning models**. Visualization of the results will often lead to understanding of further data preparation that is required; going back to step 1. 
+
+In this we explore the following: 
+*Recode character strings to eliminate characters that will not be processed correctly.
+*Find and treat missing values. 
+*Set correct data type of each column. 
+*Transform categorical features to create categories with more cases and coding likely to be useful in predicting the label.
+*Apply transformations to numeric features and the label to improve the distribution properties. 
+*Locate and treat duplicate cases. 
+
+## **Examples**
+As an example we begin by looking at the automotive data
+
+
+
+## **Treat missing values**
+Missing values are a common problem in data set. Failure to deal with missing values before training a machine learning model will lead to biased training at best, and in many cases actual failure. Many R models will not process arrays with missing values. 
+There are two problems that must be dealt with when treating missing values:
+1. First you must find the missing values. This can be difficult as there is no standard way missing values are coded. Some common possibilities for missing values are:
+  *Coded by some particular character string, or numeric value like -999. 
+  *A NULL value or numeric missing value such as a NaN. 
+2. You must determine how to treat the missing values:
+  *Remove features with substantial numbers of missing values. In many cases, such features are likely to have little information value. 
+  *Remove rows with missing values. If there are only a few rows with missing values it might be easier and more certain to simply remove them. 
+  *Impute values. Imputation can be done with simple algorithms such as replacing the missing values with the mean or median value. There are also complex statistical methods such as the expectation maximization (EM) or SMOTE algorithms. 
+  *Use nearest neighbor values. Alternatives for nearest neighbor values include, averaging, forward filling or backward filling. 
+
+Carefully observe the first few cases from the data frame and notice that missing values are coded with a '?' character. Execute the code in the cell below to identify the columns with missing values.
+```{r}
+#(auto_prices == '?')
+lapply(auto_prices, function(x) {any(x== '?')})
+```
+
+Execute the code in the cell below to display the data types of each column and a sample of the values.
+```{r}
+str(auto_prices)
+```
+
+Compare the columns with missing values to their data types. In all cases, the columns with missing values have a character type as a result of using the '?' code. As a result, some columns that should be numeric (bore, stroke, horsepower, peak.rpm, and price) are coded as character.
+
+The next question is how many missing values are in each of these character type columns? Execute the code in the cell below to display the counts of missing values. 
+```{r}
+for(col in names(auto_prices)) {
+  if(is.character(auto_prices[, col])) {
+    count <- sum(ifelse(auto_prices[, col] == '?', 1, 0))
+    cat(paste(col, as.character(count), '\n'))
+  }
+}
+```
+The `normalize.losses` column has a significant number of missing values and will be removed. Columns that should be numeric, but contain missing values, are processed in the following manner:
+The '?' values are replaced with R `NA` values.
+Rows containing `NA` values are removed with `complete.cases`. 
+Execute this code, noticing the resulting shape of the data frame. 
+
+```{r}
+# Drop column with too many missing value
+auto_prices[, 'normalized.losses'] = NULL
+# Remove rows with missing values, accounting for missing values codes as '?'
+cols <- c('price', 'bore', 'stroke', 'horsepower', 'peak.rpm')
+auto_prices[, cols] <- lapply(auto_prices[, cols], function(x) {ifelse(x == '?', NA, x)})
+auto_prices <-auto_prices[complete.cases(auto_prices[, cols]), ]
+dim(auto_prices)
+```
+The data set now contains 195 cases and 25 columns. 10 rows have been dropped by removing missing values. 
+
+## **Transform column data type**
+As has been previously noted, there are five columns in this dataset which do not have the correct type as a result of missing values. This is a common situation, as the methods used to automatically determine data type when loading files can fail when missing values are present. 
+
+The code in the cell below iterates over a list of columns setting them to numeric. Execute this code and observe the resulting types.
+```{r}
+auto_prices[, cols] <- lapply(auto_prices[, cols], as.numeric)
+str(auto_prices[, cols])
+```
+## **Feature engineering and transforming variables**
+In most cases, machine learning is not performed using raw features. Features are transformed, or combined to form new features in forms which are more predictive This process is known as **feature engineering**. In many cases, good feature engineering is more important than the details of the machine learning model used. It is often the case that good features can make even poor machine learning models work well, whereas, given poor features even the best machine learning model will produce poor results. Some common approaches to feature engineering include:
+  * **Aggregating categories** of categorical variables to reduce the number. Categorical features or labels with too many unique categories will limit the predictive power of a machine learning model. Aggregating categories can improve this situation, sometime greatly. However, one must be careful. It only makes sense to aggregate categories that are similar in the domain of the problem. Thus, domain expertise must be applied. 
+  * **Transforming numeric variables** to improve their distribution properties to make them more covariate with other variables. This process can be applied not only to features, but to labels for regression problems. Some common transformations include, **logarithmic** and **power** included squares and square roots. 
+ * **Compute new features** from two or more existing features. These new features are often referred to as interaction terms. An interaction occurs when the behavior of say, the produce of the values of two features, is significantly more predictive than the two features by themselves. Consider the probability of purchase for a luxury mens' shoe. This probability depends on the interaction of the user being a man and the buyer being wealthy. As another example, consider the number of expected riders on a bus route. This value will depend on the interaction between the time of day and if it is a holiday. 
+
+## **Aggregating categorical variables**
+When a dataset contains categorical variables these need to be investigated to ensure that each category has sufficient samples. It is commonly the case that some categories may have very few samples, or have so many similar categories as to be meaningless. 
+As a specific case, you will examine the number of cylinders in the cars. Execute the code in the cell below to print a frequency table for this variable and examine the result. 
+```{r}
+auto_prices %>%
+  select(num.of.cylinders) %>%
+  table() 
+  
+```
+Notice that there is only one car with three and twelve cylinders. There are only four cars with eight cylinders, and 10 cars with five cylinders. It is likely that all of these categories will not have statistically significant difference in predicting auto price. It is clear that these categories need to be aggregated. 
+
+The code in the cell below uses a list with named elements to recode the number of cylinder categories into a smaller number categories. Notice that `out` vector is defined in advance. Execute this code and examine the resulting frequency table.
+```{r}
+cylinder_categories <- c('three' = 'three_four', 'four' = 'three_four', 
+                    'five' = 'five_six', 'six' = 'five_six',
+                    'eight' = 'eight_twelve', 'twelve' = 'eight_twelve')
+out <- rep('i', length.out = nrow(auto_prices))
+i = 1
+for (x in auto_prices[, 'num.of.cylinders']) {
+  out[i] <- cylinder_categories[[x]]
+  i = i +1
+}
+auto_prices[, 'num.of.cylinders'] = out
+table(auto_prices[, 'num.of.cylinders'])
+```
+There are now three categories. One of these categories only has five members. However, it is likely that these autos will have different pricing from others.
+Next, execute the code in the cell below to make box plots of the new cylinder categories.
+```{r}
+ggplot(auto_prices, aes(num.of.cylinders, price)) +
+  geom_boxplot()
+```
+
+Indeed, the price range of these categories is distinctive. It is likely that these new categories will be useful in predicting the price of autos. 
+Now, execute the code in the cell below and examine the frequency table for the `body.style` feature.
+```{r}
+auto_prices %>% 
+  select(body.style) %>%
+  table()
+
+```
+
+Two of these categories have a limited number of cases. These categories can be aggregated to increase the number of cases using a similar approach as used for the number of cylinders. Execute the code in the cell below to aggregate these categories.
+```{r}
+body_cats = c('sedan' = 'sedan', 'hatchback' = 'hatchback', 'wagon' = 'wagon', 
+             'hardtop' = 'hardtop_convert', 'convertible' = 'hardtop_convert')
+
+out = rep('i', length.out = nrow(auto_prices))
+i = 1
+for(x in auto_prices[,'body.style']){
+    out[i] = body_cats[[x]]
+    i = i + 1
+}
+auto_prices[,'body.style'] = out
+
+table(auto_prices[,'body.style'])
+```
+To investigate if this aggregation of categories was a good idea, execute the code in the cell below to display a box plot. 
+Then, answer **Question 1** on the course page.
+```{r}
+ggplot(auto_prices, aes(body.style, price)) +
+  geom_boxplot()
+```
+The `hardtop_convert` category appers to have values distinct from other body style
+
+## **Transforming Numeric Variablee**
+Transformations are done to improve the performance of ML models by making relationships between variables more linear. In other cases transformations are done to make distributions closeer to normal, or at least more symmetric. These transformations include taking logarithms, exponents and power transformations.
+
+Here we transform the label `price`
+```{r}
+plot_hist <- function(df, col = 'price', bins = 10){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  bw <- (max(df[, col]) - min(df[, col])) / (bins+1)
+  p <- ggplot(df, aes_string(col)) +
+    geom_histogram(binwidth = bw, aes(y = ..density..),alpha = 0.5) +
+    geom_density(aes(y = ..density..), color = 'blue') +
+    geom_rug()
+  print(p)
+}
+plot_hist(auto_prices)
+```
+
+The distribution of auto price is both quite skewwed to the right and multi-modal. Given the skew and the fact that there are no values less than or equal to zero, a log transformation might be appropriate.
+
+The code in the cell below displays a histogram of the logarithm of prices. Execute this code and examine the result.
+```{r}
+auto_prices %<>%
+  mutate(log_price = log(price))
+plot_hist(auto_prices, col = 'log_price')
+```
+The distribution of the logarithm of price is more symmetric, but still shows some multi-modal tendency and skew. None-the-less, this is an improvement so we will use these values as our label.
+The next question is, how does this transformation change the relationship between the label and some of the features? To find out, execute the code in the cell below. 
+```{r}
+plot_scatter_sp <- function(df, cols, col_y = 'log_price', alpha = 1.0) {
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for(col in cols) {
+    p <- ggplot(df, aes_string(col, col_y)) +
+      geom_point(aes(shape = factor(fuel.type)), alpha = alpha) +
+      ggtitle(paste("Scatter plot of", col_y, 'vs.', col, '\n with shape by fuel type' ))
+    print(p)
+  
+  }
+}
+num_cols <- c('curb.weight', 'engine.size', 'horsepower', 'city.mpg')
+plot_scatter_sp(auto_prices, num_cols, alpha = 0.2)
+```
+Comparing the results to those obtained in the visualization lab, it does appear that the relationships between curb.weight and log_price and city.mpg and log_price are more linear. 
+The relationship with the log_price and categorical variables should likely also be investigated. It is also possible that some type of power transformation should be applied to, say horsepower or engine size. In the interest of brevity, these ideas are not pursued here. 
+Before proceeding, answer **Question 2** on the course page.
+```{r}
+
+# Let's save the dataframe to a csv file 
+# We will use this in the next module so that we don't have to re-do the steps above
+# You don't have to run this code as the csv file has been saved under the next module's folder
+write.csv(auto_prices, file = file.path(data.path, 'Auto_Prices_Preped.csv'), row.names = FALSE)
+```

@@ -1,0 +1,228 @@
+---
+title: "Animation"
+author: "bokola"
+date: "`r format(Sys.time(), '%b %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r paths, warning=FALSE, message=FALSE, results='hide'}
+# Set project path
+
+home.dir <- ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+m.project.path <- path.expand(file.path(home.dir
+                                        ,"Analysis"
+                                        ,"TidyTuesday"
+                                        ))
+
+m.project.path <- gsub("\\\\","/",m.project.path)
+if(!file.exists(m.project.path)) {
+  if(dir.create(m.project.path, recursive = TRUE))
+    stop("The project directory \""
+         ,m.project.path
+         ,"\"  has been created!\nPlease fill it with the relevant files and folders!")
+  else
+    stop("The project directory \""
+         ,m.project.path
+         ,"\"  could not be created!")
+}
+
+# Set relevant Directories
+
+# Reporting directory
+ report.location = file.path(m.project.path, "cache", "doc")
+ if(!file.exists(report.location)) {
+   if(dir.create(report.location, recursive = TRUE))
+     stop("The project directory \""
+          ,report.location
+          ,"\"  has been created!\nPlease fill it with the relevant files and folders!")
+   else
+     stop("The project directory \""
+          ,report.location
+          ,"\"  could not be created!")
+ }
+# scripts directory
+ 
+ scripts_location <- file.path(m.project.path, 'src', 'r')
+ if(!file.exists(scripts_location)) {
+   if(dir.create(scripts_location, recursive = T))
+     stop('The script directory \''
+          , scripts_location
+          , '\' has been created!\nPlease fill it with relevant files and folders!')
+   else
+     stop('The script directory \''
+          ,scripts_location
+          ,'\' could not be created!')
+ }
+```
+
+Animation is helpful when visualizing changes over time, changes over iterative/recursive techniques (like gradient descent or bellman equations), changes during a simulation.
+The key point is to highlight important changes in the data over the variable that is driving the animation
+
+```{r packages, results='hide', warning=FALSE, message=FALSE}
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% installed.packages()[, 'Package'])]
+  if(length(new.pkg)) install.packages(new.pkg, dep = T)
+  sapply(pkg, require, character.only = T)
+  
+}
+list.of.pkgs = c("animate", "gganimate", "plotly", "googlevis", "tidyverse", "plyr", "gapminder","animation", "rust", "datasauRus", "Hmisc", "geonames", "cowplot", "ggpubs", "ggthemes")
+ipk(list.of.pkgs)
+
+```
+Data
+
+```{r data, results='hide', warning=FALSE, message=FALSE}
+coast_vs_waste <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/coastal-population-vs-mismanaged-plastic.csv") %>% janitor::clean_names()
+mismanaged_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-mismanaged-plastic-waste-vs-gdp-per-capita.csv" ) %>% janitor::clean_names()
+waste_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-plastic-waste-vs-gdp-per-capita.csv") %>% janitor::clean_names() 
+waste_vs_gdp = waste_vs_gdp %>% dplyr::rename(., gdp_per_capita_ppp_constant_2011_international_rate = gdp_per_capita_ppp_constant_2011_international_constant_2011_international)
+plastic_data = merge(coast_vs_waste, waste_vs_gdp, all = T) %>% 
+  merge(., mismanaged_vs_gdp, all = T) %>% 
+  mutate(., decade = year - (year %% 10))
+data = plastic_data %>% 
+  ddply(., .(entity, decade), summarise,
+        population = mean(total_population_gapminder))
+```
+First is the `animate` library
+```{r, animate}
+desc = c("This is a super cool example of Gradient Descent")
+
+saveHTML({
+
+  f1 = function(x, y) x^2 + 3 * sin(y)
+  xx = grad.desc(f1, pi * c(-2, -2, 2, 2), c(-2 * pi, 2))
+ 
+ xx$persp(col = "lightblue", theta = 30, phi = 30)
+
+},title = "Demo of Gradient Descent", description = desc, verbose = FALSE)
+```
+`gganimate`
+```{r gganimate}
+library(datasauRus)
+
+ggplot(datasaurus_dozen, aes(x=x, y=y))+
+  geom_point()+
+  theme_minimal() +
+  transition_states(dataset, 3, 1) + 
+  ease_aes('cubic-in-out')
+```
+`plotly`
+```{r plotly}
+library(plotly)
+library(gapminder)
+
+p <- gapminder %>%
+  plot_ly(
+    x = ~gdpPercap, 
+    y = ~lifeExp, 
+    size = ~pop, 
+    color = ~continent, 
+    frame = ~year, 
+    text = ~country, 
+    hoverinfo = "text",
+    type = 'scatter',
+    mode = 'markers'
+  ) %>%
+  layout(
+    xaxis = list(
+      type = "log"
+    )
+  )
+p
+```
+Animated bar graphs. We use `ggplot2` and `gganimate` packages
+
+```{r animated_bars}
+library(tidyverse)
+library(ggthemes)
+library(animation)
+library(cowplot)
+library(ggpub)
+library(readxl)
+library(geonames)
+
+
+gif_file <- "~/Dropbox/infographics/general/south_america_infant_mortality.gif"
+x_space <- 0.16
+speed <- 0.12
+start_year <- 1900
+
+europe <- c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela")
+
+europe <- sort(europe, decreasing = TRUE)
+
+data <- plastic_data %>% 
+  subset(., !is.na(total))
+  filter(Entity %in% europe) 
+mortality %>% 
+  select(Entity) %>% 
+  distinct()
+
+
+tweet_list <- list()
+track_tweets <- 1
+
+max(mortality$Year)
+names(mortality)[4] <- "Mortality"
+
+max_value <- max(mortality$Mortality)
+
+breaks = seq(0,60, 10)
+labels <- str_c(breaks, "%")
+setwd("~/empty/")
+file.remove(dir("~/empty/"))
+tracker <- 1
+
+for (yy in 1900:2015){
+  yy_mortality <- mortality %>%
+    filter(Year == yy) 
+  
+  
+  
+  
+  gg <- yy_mortality %>%
+    rename(Country = Entity) %>% 
+    mutate(Country = factor(Country, levels = europe)) %>%
+    ggplot() +
+    geom_bar(aes(Country, Mortality), fill = "skyblue",  stat = "identity") +
+    coord_flip(clip= "off") +
+    theme_minimal(base_size = 6)+
+    labs(x = NULL, y = NULL) +
+    labs(caption = "Data source: Our World in Data", title = "The decline of infant mortality in South America")+
+    labs(subtitle = "Proportion of infants dying before the age of 5")+
+    geom_text(x = 13, y = max_value * 0.93, label = yy, size = 3.5) +
+    theme(panel.grid.major.y = element_blank())+
+    theme(panel.grid.minor.y = element_blank())+
+    theme(panel.grid.minor.x = element_blank())+
+    # geom_text(data = fuel_pc, aes(x = Fuel, y = fuel,  label = Percentage), hjust = 0)+
+    # geom_text(data = yy_rank, aes(x = Rank, y = -0.01 * max_value, label = Fuel), hjust = 1) +
+    scale_y_continuous(limits = c(0, max_value), labels = labels, breaks = breaks, expand = c(0,0)) +
+    theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm")) +
+    labs(fill = NULL) +
+    theme(legend.position = "none")+
+    theme(plot.title = element_text(face = "bold"))+
+    theme(plot.margin=grid::unit(c(1,1,1,1), "mm"))
+  gg
+  gg_file <- str_c(str_pad(tracker, width = 3, pad = 0), ".png")
+  
+  ggsave(gg_file, gg, width = 8, height = 8 * 0.8, units = "cm")
+  tracker <- tracker + 1
+}
+
+for (i in 1:10) {
+  tracker <- tracker + 1
+  gg_file <- str_c(str_pad(tracker, width = 3, pad = 0), ".png")
+  
+  ggsave(gg_file, gg, width = 8, height = 8 * 0.8, units = "cm")
+}
+
+
+# system(str_glue("convert -resize 80% -delay {100 * speed} -loop 0 *.png animation.gif"))
+system(str_glue("convert -delay {100 * speed} -loop 0 *.png animation.gif"))
+
+
+file.rename("animation.gif", gif_file)
+```
