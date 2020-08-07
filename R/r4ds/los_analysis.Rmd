@@ -22,38 +22,41 @@ output:
 
 ```{r setup , include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE,
+                      warning = FALSE,
+                      cache = FALSE,
                       fig.align = "center",
-                      fig.width = 6.5, 
-                      fig.height = 4, 
-                      dev = "png",
-                      cache = FALSE)
+                      fig.width = 6, 
+                      fig.asp = 0.618, 
+                      fig.show = "hold")
+
 options(tinytex.verbose = TRUE)
+options(dplyr.print_min = 6, dplyr.print_max = 6)
 ```
 
-This is an analysis focusing on understanding if there has been any changes in admission numbers in the neonatal wards across participating CIN sites. 
 
 # METHODS
 
-This study utilizes seanonal-trend decomposition to analyse trend in admission of neonates in select public hospitals in Kenya.
+The study utilizes routine admission data from participating Clinical Information Network (CIN) hospitals in Kenya. We report key descriptive population characteristics over time. 
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
 # Data retrieval and preparations
 rm(list = ls(all=T))
 
 
-rpkgs <- c("rlang", "tidyselect", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
-           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts")
+list.pkg <- c("rlang", "tidyselect", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
+           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr")
 
-if(any(!rpkgs %in% .packages(all.available = TRUE))){
-  rpkgs1<-rpkgs[(!rpkgs %in% .packages(all.available = TRUE))]
-  rpkgs1 <- rpkgs1[!rpkgs1 %in% "RedcapData"]
-  install.packages(rpkgs1,dep=TRUE,repos='http://cran.rstudio.com')
+ipk = function(pkg){
+  new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
+  if("practicalgg" %in% list.pkg){
+    remotes::install_github("wilkelab/practicalgg")
+  }
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
 }
-#Redcap development packages
-# if(!'RedcapData' %in% .packages(all.available = TRUE)){
-#   devtools::install_github('tjhubs/RedcapData',dep=TRUE,ref='v7fixed')
-# }
-lapply(rpkgs[(rpkgs %in% .packages(all.available = TRUE))], library, character.only = TRUE)
+
+ipk(list.pkg)
 
 #source(file.path(home.dir,"hsuApps", "universalFunctions", "modifyData.R"))
 

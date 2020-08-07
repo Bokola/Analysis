@@ -1,3 +1,4 @@
+options(shiny.maxRequestSize = 400 * 1024^2)
 ipk = function(pkg){
   new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
   
@@ -27,7 +28,7 @@ ipk = function(pkg){
 
 list.of.pkgs = c("gapminder", "ggforce", "openintro", "shiny", "shinyFeedback", 
                  "shinythemes", "tidyverse", "vroom", "waiter", "ggplot2", "tidyverse",
-                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts", "magrittr", "cowplot", "Cairo", "cairoDevice", "thematic", "shinyFeedback")
+                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts", "magrittr", "cowplot", "Cairo", "cairoDevice", "thematic", "shinyFeedback", "waiter")
 ipk(list.of.pkgs)
 
 home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("home"), Sys.getenv("USERPROFILE")) %>%
@@ -1118,3 +1119,288 @@ server = function(input, output, session) {
   output$result = renderText(round(data(), 2))
 }
 shinyApp(ui, server)
+
+# Waiter
+
+#  we add `use_waitress()` in the ui
+
+ui = fluidPage(
+  waiter::use_waitress(),
+  numericInput("steps", "How many steps?", 10),
+  actionButton("go", "go"),
+  textOutput("result")
+)
+
+# then replace Progress with Waitress
+
+server = function(input, output, session) {
+  data = reactive({
+    req(input$go)
+    
+    waitress = waiter::Waitress$new(max = input$steps)
+    on.exit(waitress$close())
+    
+    for (i in seq_len(input$steps)) {
+      Sys.sleep(0.5)
+      waitress$inc(1)
+    }
+    runif(1)
+  })
+  output$result = renderText(round(data(), 2))
+}
+shinyApp(ui, server)
+
+# spinners
+
+# use when not sure how long an operation will take to asure the user that something is happening
+# use `Waiter` in place of `Waitress`
+
+ui = fluidPage(
+  waiter::use_waiter(),
+  actionButton("go", "go"),
+  textOutput("result")
+)
+
+server = function(input, output, session) {
+  data = reactive({
+    req(input$go)
+    
+    waiter = waiter::Waiter$new()
+    waiter$show()
+    on.exit(waiter$hide())
+    
+    Sys.sleep(sample(5,1))
+    runif(1)
+  })
+  output$result = renderText(round(data(), 2))
+}
+shinyApp(ui, server)
+
+# like `Waitress` you can also use `Waiter` for specific outputs
+
+ui = fluidPage(
+  waiter::use_waiter(),
+  actionButton("go", "go"),
+  plotOutput("plot")
+)
+
+server = function(input, output, session) {
+  data = reactive({
+    req(input$go)
+    waiter::Waiter$new(id = "plot")$show()
+    
+    Sys.sleep(3)
+    data.frame(x = runif(50), y = runif(50))
+  })
+  output$plot = renderPlot(plot(data()), res = 96)
+}
+shinyApp(ui, server)
+
+# using shinycssloaders
+# it's a real deal
+
+library(shinycssloaders)
+
+ui = fluidPage(
+  actionButton("go", "go"),
+  withSpinner(plotOutput("plot"))
+)
+
+server = function(input, output, session){
+  data = reactive({
+    req(input$go)
+    Sys.sleep(3)
+    data.frame(x = runif(50), y = runif(50))
+  })
+  output$plot = renderPlot(plot(data()), res = 96)
+}
+shinyApp(ui, server)
+
+# Confiring and undoing
+
+# Explicit confirmation
+# uses a dialogue box with `modalDialog()`
+
+modal_confirm = modalDialog(
+  "Are you sure you want to continue?",
+  title = "Deleting files",
+  footer = tagList(
+    actionButton("cancel", "Cancel"),
+    actionButton("ok", "Delete", class = "btn btn-danger")
+  )
+)
+
+ui = fluidPage(
+  actionButton("delete", "Delete all files?")
+)
+
+server = function(input, output, session) {
+  observeEvent(input$delete, {
+    showModal(modal_confirm)
+  })
+  
+  observeEvent(input$ok, {
+    showNotification("Files deleted")
+    removeModal()
+  })
+  
+  observeEvent(input$cancel,
+               removeModal()
+               )
+}
+
+shinyApp(ui, server)
+
+#  undoing an action
+
+ui <- fluidPage(
+  textAreaInput("message", 
+                label = NULL, 
+                placeholder = "What's happening?",
+                rows = 3
+  ),
+  actionButton("tweet", "Tweet")
+)
+
+runLater = function(action, seconds = 3) {
+  observeEvent(
+    invalidateLater(seconds * 1000), action,
+    ignoreInit = TRUE,
+    once = TRUE,
+    ignoreNULL = FALSE,
+    autoDestroy = FALSE
+  )
+}
+
+server = function(input, output, session) {
+  waiting = NULL
+  last_message = NULL
+  
+  observeEvent(input$tweet, {
+    notification = glue::glue("Tweeted '{input$message}'")
+    last_message <<- input$message
+    updateTextAreaInput(session, "message", value = "")
+    
+    showNotification(
+      notification,
+      action = actionButton("undo", "Undo?"),
+      duration = NULL,
+      closeButton = FALSE,
+      id = "tweeted",
+      type = "warning"
+    )
+    
+    waiting<<- runLater({
+      cat("Actually sending tweet...\n")
+      removeNotification("tweeted")
+    })
+  })
+  observeEvent(input$undo, {
+    waiting$destroy()
+    showNotification("Tweet retracted", id = "tweeted")
+    updateTextAreaInput(session, "message", value = last_message)
+  })
+}
+
+shinyApp(ui, server)
+
+# 9. Uploads and downloads
+
+# uploads
+
+ui = fluidPage(
+  fileInput("file", NULL, accept = c(".docx", ".tsv", ".csv")),
+  numericInput("n", "Rows", value = 5, min = 1, step = 1),
+  tableOutput("head")
+)
+
+server = function(input, output, session) {
+  data = reactive({
+    req(input$file)
+    
+    ext = tools::file_ext(input$file$name)
+    
+    switch(ext,
+           docx  = officer::read_docx(),
+           csv = vroom::vroom(input$file$datapath, delim = ","),
+           tsv = vroom::vroom(input$data$datapath, delim = "\t"),
+           validate("Invalid file; Please upload a .docx or .csv or .tsv")
+      
+    )
+  })
+  output$head = renderTable({
+    head(data(), input$n)
+  })
+}
+shinyApp(ui, server)
+
+# Downloads
+#  a prototype looks like this
+# `filename` is a function with no arguments that returns a file name (as a string)
+# `content` should be a function with one argument, `file`, which is a path to save the file.
+ui = fluidPage(
+  downloadButton("download1"),
+  downloadLink("download2")
+)
+
+output$download = downloadHandler(
+  filename = function() {
+    paste0(input$dataset, ".csv")
+    
+  },
+  content = function(file) {
+    write.csv(data(), file)
+  }
+)
+
+# Downloading data
+
+home = ifelse(Sys.info()[["sysname"]] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE")) %>% gsub("\\\\", "/",.)
+
+temp = list.files(file.path(home, "Downloads"),pattern="*.csv")
+# dat = temp %>%
+#   sub("\\..*", "\\1", .) %>%
+#   gsub("-", "\\.",.) %>% tolower(.)
+list2env(
+  lapply(setNames(temp, tolower(make.names(gsub("\\..*", "", temp)))), function(x){
+    x =read.csv(file.path(home, "Downloads", x))
+    names(x) <- tolower(names(x))
+    
+    return(x)}),
+  
+  envir = .GlobalEnv)
+
+ui = fluidPage(
+  selectInput("dataset", "Pick a dataset", ls(.GlobalEnv)),
+  tableOutput("preview"),
+  downloadHandler("download", "Download .tsv")
+)
+
+server = function(input, output, session) {
+  data = reactive({
+    out = get(input$dataset, envir = .GlobalEnv)
+    
+    if (!is.data.frame(out)) {
+      validate(paste0("'", input$dataset, "' is not a data frame"))
+    }
+    out
+  })
+  
+  output$preview = renderTable({
+    head(data())
+  })
+  
+  output$download = downloadHandler(
+    filename = function() {
+      paste0(input$dataset, ".tsv")
+    },
+    
+    content = function(file) {
+      vroom::vroom_write(data(), file = file.path(home, "Downloads"))
+    }
+  )
+}
+shinyApp(ui, server)
+
+
+

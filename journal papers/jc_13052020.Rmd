@@ -1,0 +1,49 @@
+---
+title: "Understanding the complex seasonality of seasonal influenza A and B virus transmission: Evidence from six years of surveillance data in               Shanghai, China"
+author: "JC paper discussion by Basil Okola"
+date: "5/12/2020"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+ipk = function(pkg){
+  new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
+  if("practicalgg" %in% list.pkg){
+    remotes::install_github("wilkelab/practicalgg")
+  }
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  sapply(pkg, require, character.only = T)
+}
+list.pkg = c("xaringan", "xaringanthemer")
+             
+ipk(list.pkg)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+

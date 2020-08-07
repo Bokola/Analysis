@@ -89,7 +89,7 @@ daily_db_htn_register = daily_db_htn_register %>%
 #1. daily diabates and hypertension counts
 
 daily_summ = daily_db_htn_register %>%
-  select(sub_county,ht_cm, wt_kg, bmi_1, blood_pressure_diastolic,blood_pressure_systolic,blood_sugar_fbs, blood_sugar_rbs, nhif_y_n_int, age) %>%
+  select(sub_county,ht_cm, wt_kg, bmi_1, blood_pressure_diastolic,blood_pressure_systolic,blood_sugar_fbs, blood_sugar_rbs, nhif_y_n_int, age, ht_cm) %>%
   group_by(sub_county) %>%
   summarise_all(funs(min = min(., na.rm = T), 
                      q25 = quantile(., 0.25, na.rm = T), 
@@ -109,6 +109,30 @@ median = daily_db_htn_register %>%
                      median = median(., na.rm = ))) %>%
   mutate_if(is.numeric, ~round(.,2))
 median = median[, sort(colnames(median))] # sort colnames
+
+#overall
+
+overal_summ = daily_db_htn_register %>%
+  select(ht_cm, wt_kg, bmi_1, blood_pressure_diastolic,blood_pressure_systolic,blood_sugar_fbs, blood_sugar_rbs, nhif_y_n_int, age, ht_cm) %>%
+  #group_by(sub_county) %>%
+  summarise_all(funs(min = min(., na.rm = T), 
+                     q25 = quantile(., 0.25, na.rm = T), 
+                     #median = median(., na.rm = ), 
+                     q75 = quantile(., 0.75, na.rm = T ), 
+                     max = max(.,na.rm = T),
+                     mean = mean(.,na.rm = T, trim = .2), 
+                     sd = sd(.,na.rm = T),
+                     count = n())) %>%
+  mutate_if(is.numeric, ~round(.,2))
+overal_summ = overal_summ[, sort(colnames(overal_summ))] # sort colnames
+
+median_total = daily_db_htn_register %>%
+  select(ht_cm, wt_kg, bmi_1, blood_pressure_diastolic,blood_pressure_systolic,blood_sugar_fbs, blood_sugar_rbs, nhif_y_n_int, age) %>%
+  #group_by(sub_county) %>%
+  summarise_all(funs(
+    median = median(., na.rm = ))) %>%
+  mutate_if(is.numeric, ~round(.,2))
+median_total = median_total[, sort(colnames(median_total))] # sort colnames
 
 
 
@@ -494,4 +518,9 @@ write.csv(bmi_2, file = file.path(cache_dir, 'bmi.csv'), row.names = F)
 write.csv(htn, file = file.path(cache_dir, 'htn.csv'), row.names = F)
 write.csv(diabetes, file = file.path(cache_dir, 'diabetes.csv'), row.names = F)
 write.csv(gender, file = file.path(cache_dir, 'gender.csv'), row.names = F)
+write.csv(age_2, file = file.path(cache_dir, 'age.csv'), row.names = F)
+write.csv(median, file = file.path(cache_dir, "daily median.csv"), row.names = F)
+write.csv(daily_summ, file = file.path(cache_dir, "daily sum.csv"), row.names = F)
+write.csv(overal_summ, file = file.path(cache_dir, "overal sum.csv"), row.names = F)
+write.csv(median_total, file = file.path(cache_dir, "median total.csv"), row.names = F)
 cat("Data recoding complete ...!\n\n")

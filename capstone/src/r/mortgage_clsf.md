@@ -1,0 +1,451 @@
+**Executive Summary**
+=====================
+
+The objective is Predicting Mortgage Approvals From Government Data,
+taking into consideration the **demographics, location, property type,
+lender**, and other factors to predict whether a mortgage application
+was accepted or denied. It is a classification problem - A classifier is
+a machine learning model that separates the **label** into categories or
+**classes**. In other words, classification models are **supervised**
+machine learning models which predict a categorical label. We apply
+relevant skills to classify the label **`accepted`** - whether a
+mortgage application was accepted or declined using data obtained across
+the United States.
+
+We used a CatBoostclassifier model with 1000 iterations with 8
+cross-validations with an accuracy of 0.72.
+
+**Methodology**
+===============
+
+The section outlines data manipulation procedures, visualizations and
+model selection.
+
+**Description of Data**
+-----------------------
+
+Data consisted of 23 variables (21 possible features and 1 binary
+label(`accepted`) and 1 arbitrary identifier(`row_id`). Both training
+and test sets spanned 500000 records
+
+``` r
+knitr::opts_chunk$set(echo = TRUE)
+library(reticulate)
+use_virtualenv("r-reticulate")
+#knitr::opts_knit$set(root.dir = "C:\\Users\\bokola\\Google Drive\\Data")
+```
+
+``` r
+train_labels = read.csv("https://www.dropbox.com/s/qvq3hg3mnlowxql/train_labels.csv?raw=1", header = T)
+train_values = read.csv("https://www.dropbox.com/s/3l8eyc51iupjglf/train_values.csv?raw=1", header = T)
+test_values = read.csv("https://www.dropbox.com/s/2heyrfbq3cxvsdb/test_values.csv?raw=1", header = T) 
+train = merge(train_labels, train_values)
+
+# distribution of NAs across variables
+is_na = function(x) {
+  for (col in names(x)) {
+    #count = sum(which(x[,col] == "" | is.na(x[,col])))
+    #count = sum(which(is.na(x[,col])))
+    count = sum(is.na(x[,col]))
+    cat(paste(col, ":", as.character(count), '\n'))
+    
+  }
+}
+is_na(train)
+missing = c("applicant_income", "population", "minority_population_pct", "ffiecmedian_family_income", "tract_to_msa_md_income_pct", "number_of_owner.occupied_units", "number_of_1_to_4_family_units")
+# train[, missing] = ifelse(is.na(train[,missing]), median(train[,missing]), train[, missing])
+# train_fill = train[,missing]
+# mice(data = train_fill, m = 5, method = "pmm", maxit = 5, seed = 500)
+# train %<>% mutate_at(vars(applicant_income, tract_to_msa_md_income_pct), ~ifelse(is.na(.x), median(.x, na.rm = T), .x))
+# test_values%<>% mutate_at(vars(applicant_income, tract_to_msa_md_income_pct), ~ifelse(is.na(.x), median(.x, na.rm = T), .x))
+# dim(train) 
+# head(train)
+
+#Transformation
+cols = c('msa_md', 'state_code','county_code','lender','loan_type','property_type', 'loan_purpose', 'occupancy','preapproval','applicant_ethnicity','applicant_race', 'applicant_sex')
+train[,cols] = lapply(train[,cols], as.character)
+test_values[,cols] = lapply(train[,cols], as.character)
+#1. loan type
+loan_type= c('1' = 'Conventional', '2' = 'FHA-insured ', '3' = 'VA-guaranteed', "4" = 'FSA/RHS')
+property_type = c("1" = "One to four-family", "2" = "Manufactured housing", "3" = "Multifamily")
+loan_purpose = c("1" = "Home purchase", "2" = "Home improvement", "3" = "Refinancing")
+occupancy = c("1" = "Owner-occupied", "2" = "Not owner-occupied", "3" = "Not applicable")
+preapproval = c("1" = "requested", "2" = "not requeste", "3" = "not applicable")
+applicant_ethnicity = c("1" = "Hispanic or Latino", "2" = "Not Hispanic or Latino", "3" = "no information", "4" = "not applicable")#, "5" = "no co-applicant"
+applicant_race = c("1" = "American Indian/Alaska Native", "2" = "Asian", "3" = "Black/African American", "4" =  "Native Hawaiian", "5" = "White", "6" = "no information", "7" = "not applicable")#, "8" = "no co-applicant"
+applicant_sex = c("1" = "Male", "2" = "Female", "3" = "no information", "4" = "not applicable")
+
+# out = rep('i', length.out = nrow(train))
+# i=1
+# for (x in train[,'loan_type']) {
+#   out[i] = loan_type[[x]]
+#   i=i+1
+# }
+# train[,"loan_type"] = out
+
+for(var in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+  train[,var]=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+  #test_values[,var]=sapply(test_values[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+}
+a = list(train, test_values)
+
+# v = function(y){
+#   for(v in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+#   #train[,var]=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+#   y[,v]=sapply(y[,v],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+#   }
+# }
+
+for(v in c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex")){
+  #train[,var]=sapply(train[,var],function(x) get(v)[[x]],simplify = T,USE.NAMES = F)
+  test_values[,v]=sapply(test_values[,v],function(x) get(v)[[x]],simplify = T,USE.NAMES = F)
+}
+#train[,cols] = lapply(train[,cols], as.factor)
+#test_values[,cols] = lapply(train[,cols], as.factor)
+
+#,"loan_purpose", "occupancy", "preapproval","applicant_ethnicity","applicant_race", "applicant_sex"
+#ss=sapply(train[,var],function(x) get(var)[[x]],simplify = T,USE.NAMES = F)
+
+# for(col in names(train)) {
+#   if(is.character(train[, col])) {
+#     count <- sum(ifelse(train[, col] == '-1'|is.na(train[,col]), 1, 0))
+#     cat(paste(col, as.character(count), '\n'))
+#   }
+# }
+```
+
+There are a number of variables in the train and test sets with missing
+values: applicant\_income - 39948, population - 22465,
+minority\_population\_pct - 22466, ffiecmedian\_family\_income - 22440,
+tract\_to\_msa\_md\_income\_pct - 22514,
+number\_of\_owner.occupied\_units - 22565,
+number\_of\_1\_to\_4\_family\_units - 22530. The missing entries were
+recoded to -999 for numeric variables.
+
+**Data Recoding and Visualization**
+-----------------------------------
+
+Variable recoding and visualization are key steps that ensure every
+variable is of the desired class/type. Visualizaation is key to
+understand the distribution and separation of values by the two levels
+of a binary label.
+
+### **Data Recoding**
+
+Our data has a number of categorical featuers (`msa_md`,
+`state_code`,`county_code`,`lender`,`loan_type`,`property_type`,
+`loan_purpose`,
+`occupancy`,`preapproval`,`applicant_ethnicity`,`applicant_race`,
+`applicant_sex`) but which are read in as numeric. We begin by recoding
+such variables into the desired character class and explicitly supplying
+the categories in both train and test sets. We then visualize the
+separation of values between different levels of the label -
+`accepted(0,1)`.
+
+### **Data Visualization**
+
+1.  **Class separation by numeric variables**
+
+We explore the distinction of the distribution of values between the two
+levels of the label through boxplots.
+
+``` r
+ num_vars<-sapply(names(train),function(x) ifelse(is.numeric(train[,x]) & x !="row_id",x,NA))
+ num_vars<-na.omit(num_vars)
+
+ cat_vars<-sapply(names(train),function(x) ifelse(is.character(train[,x]),x,NA))
+ cat_vars<-na.omit(cat_vars)
+
+# cat_vars = function(x) {
+#   x = sapply(names(x), function(x) ifelse(is.factor(train[,x]),x,NA))
+#   x = na.omit(x)
+#   
+# } 
+
+#train[, numeric_vars(train)] = sapply(train[, numeric_vars(train)], scale)
+#test_values[, numeric_vars(test_values)] = sapply(test_values[, numeric_vars(test_values)], scale)
+#ss=apply(train[, sapply(train, is.numeric)],2, scale)
+train$accepted = as.factor(train$accepted)
+plot_box <- function(df, cols, col_x = 'accepted'){
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols){
+    p <- ggplot(df, aes_string(col_x, col)) + 
+        geom_boxplot() +
+        ggtitle(paste('Box plot of', col, '\n vs.', col_x))
+    print(p)
+     
+  }
+}
+
+num_var = c("loan_amount", "applicant_income", "population", "minority_population_pct", "ffiecmedian_family_income", "tract_to_msa_md_income_pct", "number_of_owner.occupied_units", "number_of_1_to_4_family_units")
+plot_box(train, num_var)
+```
+
+![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-1.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-2.png"|absolute_url}})!![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-3.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-4.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-5.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-6.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-7.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-numerics-8.png"|absolute_url}})
+
+From the plots, three variables - loan\_amount,
+minority\_population\_pct and tract\_to\_msa\_md\_income\_pct show clear
+separation of values between the two levels. Next we explore this
+separation by categorical variables.
+
+1.  **Class separation by categorical variables**
+
+We explore the distinction of the distribution of values between the two
+levels of the label through bar plots.
+
+``` r
+plot_bars = function(df, catcols){
+  options(repr.plot.width = 6, repr.plot.height = 5)
+  temp0 = df[df$accepted == 0,]
+  temp1 = df[df$accepted == 1,]
+  for(col in cat_cols){
+    p1 = ggplot(temp0, aes_string(col)) + 
+      geom_bar() + 
+      ggtitle(paste('Bar plot of \n', col, '\n for rejected loan applications')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    p2 = ggplot(temp1, aes_string(col)) + 
+      geom_bar() + 
+      ggtitle(paste('Bar plot of \n', col, '\n for approved loan applications')) + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    grid.arrange(p1, p2, nrow = 1)
+  }
+}
+cat_cols = c("loan_type","property_type","loan_purpose","occupancy", "preapproval", "applicant_ethnicity", "applicant_race", "applicant_sex", "co_applicant")
+plot_bars(train, cat_cols)
+```
+
+![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-1.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-2.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-3.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-4.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-5.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-6.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-7.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-8.png"|absolute_url}})![]({{"/images/mortgage_clsf_files/figure-markdown_github/Data%20viz-9.png"|absolute_url}})
+
+``` r
+rm(list = ls(all = T))
+```
+
+We observe the following:
+
+1.  Some features such as property\_type, loan\_purpose,
+    applicant\_ethnicity, applicant\_race and co\_applicant have an
+    almost significant different distribution of categories between the
+    label categories.
+
+2.  Others features such as preapproval, applicant\_sex, occupancy show
+    small differences, but these differences are unlikely to be
+    significant.
+
+Next we do feature engineering in readiness for modelling.
+
+**Feature Engineering**
+-----------------------
+
+Data preparation is an important step. We recoded loan\_amount and
+applicant\_income to categorical strings which help in distinguishing
+levels within the dataset and imputed missing numeric variables with
+means.
+
+Feature engineering and modelling were done in python
+
+**Model Building**
+------------------
+
+Modelling was done with python, selecting the CatBoostclassifier library
+for the classification. As earlier indicated we settled on 8
+cross-validations with 1000 iterations to minimize bias and variance of
+the model. The classification model was defined as:
+`model_cat = CatBoostClassifier(iterations=1000, depth=8, learning_rate=0.4, eval_metric='Accuracy', use_best_model=True, random_seed=2019)`
+and fitted as:
+`model_cat.fit(xtrain, ytrain, cat_features = category_index, eval_set = (xtest, ytest))`
+with best test of .72 and best iteration at 159
+
+``` python
+import pandas as pd
+import numpy as np
+from catboost import CatBoostClassifier as catclass
+#from google.colab import files
+import io
+
+
+
+from sklearn.model_selection import train_test_split
+from catboost import CatBoostClassifier, Pool, cv
+#from google.colab import drive
+
+#drive.mount("/content/gdrive", force_remount=True)
+
+import os
+#colab_path=[x[0]  for x in os.walk('/content/gdrive') if "Capstone Project" in x[0]];colab_path
+colab_path=[x[0]  for x in os.walk('C:/Users/bokola/Analysis') if "capstone" in x[0]];colab_path
+```
+
+``` python
+os.chdir(colab_path[3])
+
+train_values = pd.read_csv("https://www.dropbox.com/s/3l8eyc51iupjglf/train_values.csv?dl=1")
+test_values = pd.read_csv("https://www.dropbox.com/s/2heyrfbq3cxvsdb/test_values.csv?dl=1")
+train_labels = pd.read_csv("https://www.dropbox.com/s/qvq3hg3mnlowxql/train_labels.csv?dl=1")
+
+test_values.head(n=2)
+```
+
+``` python
+train_labels.head(n=2)
+```
+
+``` python
+train_values.head(n=2)
+
+#Make rows Strings
+```
+
+``` python
+train_values["row_id"]=train_values["row_id"].astype("object")
+test_values["row_id"]=test_values["row_id"].astype("object")
+train_labels["row_id"] = train_labels["row_id"].astype("object")
+
+train_values["co_applicant"]=train_values["co_applicant"].astype("int64")
+test_values["co_applicant"]=test_values["co_applicant"].astype("int64")
+
+#train_values["minority_population"]=train_values["minority_population_pct"]*train_values["population"]/100
+#test_values["minority_population"]=test_values["minority_population_pct"]*test_values["population"]/100
+
+#train_values["tract_to_msa_md_income"]=train_values["tract_to_msa_md_income_pct"]*train_values["ffiecmedian_family_income"]/100
+#test_values["tract_to_msa_md_income"]=test_values["tract_to_msa_md_income_pct"]*test_values["ffiecmedian_family_income"]/100
+
+#Select Numeric Columns
+numcols = ['population', 'minority_population_pct',
+       'ffiecmedian_family_income', 'tract_to_msa_md_income_pct',
+       'number_of_owner-occupied_units', 'number_of_1_to_4_family_units']
+
+numcols1 = ['loan_amount','applicant_income']
+
+for col in numcols1:
+  bins_train  = [train_values[col].min(), train_values[col].quantile(.50),train_values[col].quantile(.75), train_values[col].max()]
+  bins_test  = [test_values[col].min(), test_values[col].quantile(.50),test_values[col].quantile(.75), test_values[col].max()]
+
+  train_values[col] = pd.cut(train_values[col],bins_train, labels =["1","2","3"]).astype("category")
+
+  test_values[col] = pd.cut(test_values[col],bins_test, labels =["1","2","3"]).astype("category")
+
+test_values.head()
+```
+
+``` python
+train_values.head(n= 2)
+```
+
+``` python
+for col in numcols1:
+  train_values[col] = pd.to_numeric(train_values[col], errors='coerce')
+  test_values[col] =  pd.to_numeric(test_values[col], errors='coerce')
+
+#Replace Missing Values for numeric columns with mean of each
+for numcol in numcols:
+    train_values[numcol] = train_values[numcol].fillna(-999)
+
+    test_values[numcol] = test_values[numcol].fillna(-999)
+
+
+
+for numcol in numcols1:
+    train_values[numcol] = train_values[numcol].fillna(-1)
+
+    test_values[numcol] = test_values[numcol].fillna(-1)
+
+    #train_values[numcol] = train_values[numcol].cat.add_categories("-1").fillna("-1")
+    #test_values[numcol] = test_values[numcol].cat.add_categories("-1").fillna("-1")
+
+
+
+train_values.isnull().sum()[0:10]
+```
+
+``` python
+train_values.head(n=2)
+```
+
+``` python
+test_values.head(n=2)
+```
+
+``` python
+test_values_clean = test_values
+train_values_clean =train_values
+
+all_train = pd.merge(train_values_clean,train_labels, on="row_id", how="inner")
+
+y_labs = train_labels["accepted"]
+
+
+train_values_clean_1 = train_values_clean.loc[:, ~train_values_clean.columns.isin(['row_id'])]
+test_values_clean_1 = test_values_clean.loc[:, ~test_values_clean.columns.isin(['row_id'])]
+
+#Names of categorical columns in a list for looping on two datasets
+catcols = ['loan_type', 'property_type', 'loan_purpose', 'occupancy','preapproval', 'msa_md', 'state_code', 'county_code',
+       'applicant_ethnicity', 'applicant_race', 'lender','applicant_sex', 'co_applicant', 'loan_amount', 'applicant_income']
+
+category_index =  [train_values_clean_1.columns.get_loc(c) for c in catcols if c!= "accepted"]; category_index
+```
+
+``` python
+xtrain,xtest,ytrain,ytest = train_test_split(train_values_clean_1,y_labs,test_size=0.22)
+model_cat = CatBoostClassifier(iterations= 1000, depth=8, learning_rate=0.4,eval_metric='Accuracy',use_best_model=True, random_seed=1920)
+
+model_cat.fit(xtrain,ytrain,cat_features=category_index,eval_set=(xtest,ytest))
+```
+
+``` python
+pred = model_cat.predict(test_values_clean_1)
+
+import sklearn.metrics as metmod
+
+def score_model(probs, threshold):
+    return np.array([1 if x > threshold else 0 for x in probs[:,1]])
+
+def key_metrics(labels, probs, threshold):
+    scores = score_model(probs, threshold)
+    metrics = metmod.precision_recall_fscore_support(labels, scores)
+    conf = metmod.confusion_matrix(labels, scores)
+    print('                 Confusion matrix')
+    print('                 Score positive    Score negative')
+    print('Actual positive    {}'.format(conf[0,0]) + '             {}'.format(conf[0,1]))
+    print('Actual negative     {}'.format(conf[1,0]) + '             {}'.format(conf[1,1]))
+    print('')
+    print('Accuracy        {}'.format(round(metmod.accuracy_score(labels, scores), 2)))
+    print('AUC              {}'.format(round(metmod.roc_auc_score(labels, probs[:,1]), 2)))
+    print('Macro precision {}'.format(round(float((float(metrics[0][0]) + float(metrics[0][1]))/2.0), 2)))
+    print('Macro recall    {}'.format(round(float((float(metrics[1][0]) + float(metrics[1][1]))/2.0), 2)))
+    print(' ')
+    print('           Positive      Negative')
+    print('Num case   {}'.format(round(metrics[3][0], 2)) + '        {}'.format(round(metrics[3][1], 2)))
+    print('Precision  {}'.format(round(metrics[0][0], 2)) + '         {}'.format(round(metrics[0][1], 2)))
+    print('Recall      {}'.format(round(metrics[1][0],2)) + '        {}'.format(round(metrics[1][1], 2)))
+    print('F1         {}'.format(round(metrics[2][0], 2)) + '         {}' .format(round(metrics[2][1],2)))
+
+probabilities = model_cat.predict_proba(xtest)
+key_metrics(ytest, probabilities, 0.5)
+```
+
+``` python
+pred_df  = pd.DataFrame({'row_id':test_values.row_id ,'accepted': pred})
+pred_df['accepted'] = pred_df.accepted.astype('int64')
+
+
+pred_df.to_csv('predicted.csv', index=False)
+```
+
+**Results and Conclusions**
+===========================
+
+The model was able to correctly classify 72% of the accepted values, but
+there were discripancies with the supplied test values indicating that
+our model was overfitting. However, it offers a good starting point to
+build on and improve.
+
+                 Confusion matrix
+                 Score positive    Score negative
+
+Actual positive 36750 18402 Actual negative 12255 42593
+
+Accuracy 0.72 AUC 0.8 Macro precision 0.72 Macro recall 0.72
+
+           Positive      Negative
+
+Num case 55152 54848 Precision 0.75 0.7 Recall 0.67 0.78 F1 0.71 0.74

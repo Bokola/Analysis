@@ -1,0 +1,243 @@
+---
+title: "Tree maps in R"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  md_document:
+    #variant: markdown_github
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+Here I explore the possibility of creating a tree map with R using media franchise data from #tidytuesday. 
+Packages in use include `d3treeR`, `treemap` and `RColorBrewer`
+
+```{r packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+# Set project path and load packages
+cat("Installing packages", '\n')
+
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  if('d3treeR' %in% list.of.pkgs){
+    remotes::install_github("d3treeR/d3treeR")
+  }
+  if(!'patchwork' %in% .packages(all.available = TRUE)){
+    devtools::install_github("thomasp85/patchwork")
+  }
+  if(!'ReporteRsjars' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRsjars')
+  }
+  if(!'ReporteRs' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRs')
+  }
+ 
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs = c('dplyr', 'd3treeR', 'treemap', 'RColorBrewer', 'stringr')
+ipk(list.of.pkgs)
+```
+
+```{r paths, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+
+hom.dir = ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+project.path = path.expand(file.path(hom.dir
+                                     ,"Analysis"
+                                     ,"tidytuesday")) %>% gsub("\\\\", "/", .)
+
+data.path = path.expand(file.path(project.path
+                                  ,"data"))
+scripts.path = path.expand(file.path(project.path
+                                     ,"src"
+                                     ,"r"))
+report.path = path.expand(file.path(project.path
+                                    ,"plots"
+                                    ))
+if(!file.exists(project.path)){
+  if(dir.create(project.path, recursive = T))
+    stop("The project directory \"",
+         project.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         project.path,
+         "\"could not be created!")
+}
+if(!file.exists(data.path)){
+  if(dir.create(data.path, recursive = T))
+    stop("The project directory \"",
+         data.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         data.path,
+         "\"could not be created!")
+}
+if(!file.exists(report.path)){
+  if(dir.create(report.path, recursive = T))
+    stop("The project directory \"",
+         report.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         report.path,
+         "\"could not be created!")
+}
+if(!file.exists(scripts.path)){
+  if(dir.create(scripts.path, recursive = T))
+    stop("The project directory \"",
+         scripts.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         scripts.path,
+         "\"could not be created!")
+}
+```
+
+```{r data, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+
+data = readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-02/media_franchises.csv")
+
+data2 = data[!duplicated(data),]
+glimpse(data2)
+```
+
+```{r plots, warning=FALSE,echo=TRUE, message=FALSE}
+treemap(
+  data2,
+  index = c("revenue_category", "franchise"),
+  vSize = "revenue",
+  vColor = "revenue",
+  type = "value"
+)
+
+
+treemap(
+  data2,
+  index = c("revenue_category", "franchise"),
+  vSize = "revenue",
+  vColor = "revenue",
+  type = "index"
+)
+
+# create a new factor, bin from categorizing revenue
+
+data3 = data2 %>% 
+  arrange(revenue_category, revenue) %>% 
+  group_by(revenue_category) %>% 
+  mutate(bin = cut(revenue,
+                   breaks = c(-Inf, quantile(revenue, probs = seq(0.25, 0.75, 0.25)), Inf),
+         labels = c(1, 2, 3, 4)))
+
+# create a second new factor variable from bin and revenue_category
+
+data3$newbin = with(data3, interaction(revenue_category, bin))
+
+data3$newbin = factor(data3$newbin,as.character(unique(data3$newbin)))
+
+data3 %>% group_by(revenue_category, bin) %>% select(newbin)
+
+# extract the number of color needed and create the palette
+
+counts = data3 %>% group_by(revenue_category) %>%
+  summarise(n = n_distinct(bin)) %>%
+  pull(n)
+
+palette <- sapply(1:n_distinct(data3$revenue_category), 
+            function(i) brewer.pal(counts[i], 
+                                   c("Greys", "Reds", "Oranges", "RdYlBu", 
+                                     "Blues", "Purples", "PuRd", "Greens")[i])) %>% 
+           unlist()
+
+# replot the treemap 
+
+treemap(
+  data3,
+  index=c("revenue_category", "franchise"),
+  vSize="revenue",
+  vColor="newbin",
+  type="categorical",
+  position.legend	="none",
+  palette = palette
+)
+
+# replace unusual characters that might return errors from d3tree
+
+data3$franchise <- str_replace_all(data3$franchise, "[&]", "and")
+data3 <- data3 %>% mutate(franchise = 
+                          ifelse(is.na(str_match(franchise, "Jump Comics"))==FALSE, 
+                                 "ohonen Jump / Jump Comics", franchise))
+
+data3$revenue_category <- factor(data3$revenue_category)
+
+data3$revenue_category <- recode(data3$revenue_category, 
+                                `Merchandise, Licensing & Retail` = "Merchandise, Licensing and Retail")
+
+# Now it is ready 
+
+treenew <- treemap(
+  data3,
+  index=c("revenue_category", "franchise"),
+  vSize="revenue",
+  vColor="newbin",
+  type="categorical",
+  position.legend	="none",
+  palette = palette
+)
+
+d3tree(treenew, rootname = "Revenue by category")
+
+# Use style_widget fcuntion to change the style from https://github.com/d3treeR/d3treeR/issues/10#issuecomment-248098578
+
+style_widget <- function(hw=NULL, style="", addl_selector="") {
+  stopifnot(!is.null(hw), inherits(hw, "htmlwidget"))
+  
+  # use current id of htmlwidget if already specified
+  elementId <- hw$elementId
+  if(is.null(elementId)) {
+    # borrow htmlwidgets unique id creator
+    elementId <- sprintf(
+      'htmlwidget-%s',
+      htmlwidgets:::createWidgetId()
+    )
+    hw$elementId <- elementId
+  }
+  
+  htmlwidgets::prependContent(
+    hw,
+    htmltools::tags$style(
+      sprintf(
+        "#%s %s {%s}",
+        elementId,
+        addl_selector,
+        style
+      )
+    )
+  )
+}
+
+style_widget(
+  d3tree(treenew, rootname = "Revenue by category"),
+  addl_selector="text",
+  style="font-family:cursive; font-size:10px;"
+)
+
+style_widget(
+  d3tree2(treenew, rootname = "Revenue by category"),
+  addl_selector="text",
+  style="font-family:cursive; font-size:10px;"
+)
+
+style_widget(
+  d3tree3(treenew, rootname = "Revenue by category"),
+  addl_selector="text",
+  style="font-family:cursive; font-size:10px;"
+)
+
+```
+Pot made possible courtesy of https://github.com/zhiiiyang/tidytuesday/blob/master/2019-07-02_media-franchise/script.R
+

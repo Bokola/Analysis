@@ -1,0 +1,41 @@
+---
+title: "Busara evaluation"
+author: "xxx"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  md_document:
+    #variant: markdown_github
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+
+
+```{r packages, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs = c('plyr', 'dplyr', 'magrittr')
+ipk(list.of.pkgs)
+```
+Working Directories and data load:
+
+```{r paths, include=F}
+
+hom.dir = ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+project.path = path.expand(file.path(hom.dir
+                                     ,"Downloads"
+                                     ,"busaraproject")) %>% gsub("\\\\", "/", .)
+
+
+```

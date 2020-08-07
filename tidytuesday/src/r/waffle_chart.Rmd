@@ -1,0 +1,177 @@
+---
+title: "Mortgage Classification using CatBoostclassifier"
+author: "bokola"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  md_document:
+    #variant: markdown_github
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 3
+---
+
+Here I explore the possibility of creating a waffle chat with R using school diversity data from #tidytuesday. 
+Packages in use include `geofacet`, `ggplot2` and `tidyverse`
+
+```{r packages, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+# Set project path and load packages
+cat("Installing packages", '\n')
+
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  if('d3treeR' %in% list.of.pkgs){
+    remotes::install_github("d3treeR/d3treeR")
+  }
+  if(!'patchwork' %in% .packages(all.available = TRUE)){
+    devtools::install_github("thomasp85/patchwork")
+  }
+  if(!'ReporteRsjars' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRsjars')
+  }
+  if(!'ReporteRs' %in% .packages(all.available = TRUE)){
+    devtools::install_github('davidgohel/ReporteRs')
+  }
+ 
+  sapply(pkg, require, character.only = T)
+}
+list.of.pkgs = c('geofacet', 'ggplot2', 'tidyverse')
+ipk(list.of.pkgs)
+```
+
+```{r paths, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+
+hom.dir = ifelse(Sys.info()["sysname"] == "Windows", Sys.getenv("USERPROFILE"), Sys.getenv("HOME"))
+project.path = path.expand(file.path(hom.dir
+                                     ,"Analysis"
+                                     ,"tidytuesday")) %>% gsub("\\\\", "/", .)
+
+data.path = path.expand(file.path(project.path
+                                  ,"data"))
+scripts.path = path.expand(file.path(project.path
+                                     ,"src"
+                                     ,"r"))
+report.path = path.expand(file.path(project.path
+                                    ,"plots"
+                                    ))
+if(!file.exists(project.path)){
+  if(dir.create(project.path, recursive = T))
+    stop("The project directory \"",
+         project.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         project.path,
+         "\"could not be created!")
+}
+if(!file.exists(data.path)){
+  if(dir.create(data.path, recursive = T))
+    stop("The project directory \"",
+         data.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         data.path,
+         "\"could not be created!")
+}
+if(!file.exists(report.path)){
+  if(dir.create(report.path, recursive = T))
+    stop("The project directory \"",
+         report.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         report.path,
+         "\"could not be created!")
+}
+if(!file.exists(scripts.path)){
+  if(dir.create(scripts.path, recursive = T))
+    stop("The project directory \"",
+         scripts.path, "\"has been created!\nPlease fill it with relevant files and folders!")
+  else
+    stop("The project directory\"",
+         scripts.path,
+         "\"could not be created!")
+}
+```
+
+```{r paths, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
+df <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-24/school_diversity.csv")
+df = df %>%
+  mutate(., Multi = ifelse(is.na(Multi), 0, Multi))
+
+round_preserve_sum = function(vec){
+  temp = floor(vec)
+  digits = vec - floor(vec)
+  while(sum(temp) < 100){
+    temp[which.max(digits)] <- temp[which.max(digits)] + 1
+    digits[which.max(digits)] <- 0
+  }
+  return(temp)
+}
+
+for (group in c("Diverse", "Undiverse", "Extremely undiverse")) {
+  for (year in c("1994-1995", "2016-2017")) {
+    df2 <- df %>% mutate(Others = AIAN+Asian+Multi) %>%
+      group_by(ST, diverse, SCHOOL_YEAR) %>% 
+      summarise(White = mean(White),
+                Black = mean(Black), 
+                Hispanic = mean(Hispanic), 
+                AIAN = mean(AIAN),
+                Asian = mean(Asian),
+                Multi = mean(Multi)) %>% 
+      gather("race", "count", -ST, -diverse, -SCHOOL_YEAR) %>% 
+      filter(diverse==group & SCHOOL_YEAR==year) %>% 
+      ungroup() %>%
+      select(-diverse, -SCHOOL_YEAR) %>%
+      arrange(ST)
+    
+    df2$count <- unlist(lapply(1:length(unique(df2$ST)), 
+                               function(i) round_preserve_sum(df2$count[(i-1)*6 + 1:6])))
+    
+    df2[rep(row.names(df2), df2$count),] %>% 
+      do(cbind.data.frame(ST = .$ST, 
+                          race = .$race,
+                          head(expand.grid(x = 1:10, y = 1:10), nrow(.)), row.names = NULL)) %>%
+      mutate(race = fct_relevel(race, c("White", "Black", "Hispanic", 
+                                        "AIAN", 'Asian', 'Multi'))) %>%
+      ggplot()+
+        geom_tile(aes(x = x, y = y, fill = race), 
+                  color = '#F3F7F7', size = 0.5, alpha = 0.8) +
+        scale_fill_manual(
+        name = NULL,
+        values = c("#e31b1b", "#347fb8", "#4bb04a",  
+                   "#fd9069", '#f781bd', '#b2b5bc')
+        ) +
+      ggtitle(paste0("Population distribution by race/ethnicity\namong ", 
+                  tolower(group), " school districts\nduring ", year)) +
+      coord_equal() +
+      facet_geo(~ST) +
+      theme_void()+
+      theme(
+        legend.position = c(0.9, 0.2),
+        legend.justification = 'left',
+        legend.text = element_text(size = 12, margin = margin(t = 5)),
+        legend.direction = 'vertical',
+        legend.key.width = unit(5, 'pt'),
+        text = element_text(color = '#5D646F'),
+        strip.text = element_text(size = 12, hjust = 0,
+                                  margin = margin(l = 5)),
+        plot.title = element_text(size = 26, face = 'bold', margin = margin(b = 10)),
+        plot.subtitle = element_text(size = 18, margin = margin(b = 20)),
+        plot.caption = element_text(size = 12, margin = margin(t = 20)),
+        plot.background = element_rect(fill = '#F3F7F7'),
+        plot.margin = unit(c(1.5, 1.5, 1.5, 1.5), 'cm')
+      )
+    ggsave(paste0(here::here(), "/plots/",group, year,".png"), 
+           width = 8, height = 8, dpi = 300, type = "cairo")
+    }
+}
+
+
+```
+
+Plots made possible courtesy of https://github.com/zhiiiyang/tidytuesday/blob/master/2019-09-24_school-diversity/script.Rmd

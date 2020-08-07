@@ -21,7 +21,7 @@ ipk <- function(pkg){
   sapply(pkg, require, character.only = T)
   
 }
-list.of.pkg <- c("tidyverse", "repr", "kknn", "gridExtra", "GGally", "hexbin")
+list.of.pkg <- c("tidyverse", "repr", "kknn", "gridExtra", "GGally", "hexbin", "colorspace","colorblindr", "cowplot","dviz.supp")
 ipk(list.of.pkg)
 ```
 
@@ -183,6 +183,8 @@ plot_box <- function(df, cols, col_x = 'bad_credit'){
   for (col in cols){
     p <- ggplot(df, aes_string(col_x, col)) + 
         geom_boxplot() +
+        theme_dviz_open() +
+  theme(plot.margin = margin(3, 7, 3, 1.5))
         ggtitle(paste('Box plot of', col, '\n vs.', col_x))
     print(p)
      

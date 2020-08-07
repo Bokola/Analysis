@@ -278,9 +278,9 @@ sync(m74, m79)
 The **tmap** package is used to generatw thematic maps with great flexibility. Maps are created by using the `tm_shape()` function and adding layers with a `tm_*()` function. Moreover, we can create static or interactive maps by setting `tmap_mode("plot")` and `tmap_mode("view")`, respectively. For example, an interactive map of `SID74` can be created as follows:
 
 ```{r, warning=FALSE,results='hold', echo=TRUE, message=FALSE}
-library(tmap)
-tmap_mode("view")
-tm_shape(map) + tm_polygons("SID74")
+# library(tmap)
+# tmap_mode("view")
+# tm_shape(map) + tm_polygons("SID74")
 
 ```
 This package also allows to create visualizations with multiple shapes and layers, and specify different styles. To save maps created with **tmap**, we can use the `tmap_save()` function where we need to specify the name of the HTML file (`view` mode) or image (`plot` mode). Additional information about **tmap** can be seen in the package [link vignette](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html)
