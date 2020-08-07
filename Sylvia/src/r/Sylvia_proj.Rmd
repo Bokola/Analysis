@@ -46,12 +46,12 @@ We present descriptive summaries of key sample statistics. We compared baseline 
 knitr::opts_chunk$set(chunk_option1 = TRUE)
 
 rm(list = ls(all=T))
-browseURL("https://stats.idre.ucla.edu/r/dae/logit-regression/")
-browseURL("https://stackoverflow.com/questions/8161836/how-do-i-replace-na-values-with-zeros-in-an-r-dataframe")
-browseURL("https://stackoverflow.com/questions/15111629/create-summary-table-of-categorical-variables-of-different-lengths")
+# browseURL("https://stats.idre.ucla.edu/r/dae/logit-regression/")
+# browseURL("https://stackoverflow.com/questions/8161836/how-do-i-replace-na-values-with-zeros-in-an-r-dataframe")
+# browseURL("https://stackoverflow.com/questions/15111629/create-summary-table-of-categorical-variables-of-different-lengths")
 
-list.pkg <- c("plyr", "tidyr", "rlang", "tidydplyr::select", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo","RedcapData",
-           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr", "rsample", "tidymodels", "skimr","tibble", "gridExtra", "ggforce", "colorspace", "colorblindr","cowplot","dviz.supp", "gee", "lme4", "multcomp")
+list.pkg <- c("plyr", "tidyr", "rlang", "tidydplyr::select", "gWidgets","RGtk2","gWidgetsRGtk2","data.table","RCurl","zoo",
+           "devtools", "ReporteRs","stringr", "dplyr","grid","ggplot2","zoo", "lubridate", "digest", "janitor", "gt", "ts", "magrittr", "rsample", "tidymodels", "skimr","tibble", "gridExtra", "ggforce", "colorspace", "colorblindr","cowplot","dviz.supp", "gee", "lme4", "multcomp","logistf")
 
 ipk = function(pkg){
   new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
@@ -772,7 +772,7 @@ col = c("osa_binary", "wet_bed", "allergic_rhinitis_diag", "asthma_diag", "antia
 # })
 # }
 
-logistic_glm <-glm(psq_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+hospital+bmi_cat, data = data)
+logistic_glm <-glm(psq_binary ~ allergic_rhinitis_diag+asthma_diag+height+`birth weight`+age_cat+sex+hospital+bmi_cat, data = (data))
 
 # summary(logistic_glm)
 estimates = tidy(logistic_glm)
@@ -838,15 +838,43 @@ library(glmnet)
 # coef(cvfit, s = "lambda.min")
 c = c("osa_binary", "allergic_rhinitis_diag", "asthma_diag", "antiacids", "wet_bed")
 lapply(data[,c], table)
+data_yes_out = data_yes_out %>%
+  mutate(wet_bed = ifelse(is.na(wet_bed), "No", wet_bed))
 model_data = data_yes_out %>%
   mutate_if(is.character, as.factor)
+model_data$age_cat = data$age_cat
+model_data$bmi_cat = data$bmi_cat
 model_data$age = data$age
 model_data$bmi = data$bmi
 model_data$`birth weight` = data$`birth weight`
 model_data$sub_id = data$sub_id
 model_data$psq_b_binary = data$psq_b_binary
+model_data = filter(model_data, psq_binary == "Yes")
+model_data$psq_b_binary = factor(model_data$psq_b_binary, labels = c("No", "Yes"))
+
 psq_gee2 <- tryCatch(gee(psq_b_binary  ~ age+osa_binary+allergic_rhinitis_diag+asthma_diag+`birth weight`+antiacids+bmi#+wet_bed
                 , data = model_data, family = "binomial", id = sub_id, corstr = "exchangeable", scale.fix = TRUE,scale.value = 1), error = function(e) NA)
+
+relevel(model_data$psq_b_binary, ref = "No")
+
+logistic_glm <-glm(psq_b_binary ~ allergic_rhinitis_diag+asthma_diag+osa_binary+ steroid_nasal_spray + `birth weight`+age_cat+wet_bed+bmi_cat, data = model_data, family = binomial("logit"))
+
+# summary(logistic_glm)
+estimates = tidy(logistic_glm)
+ci = confint.default(logistic_glm)
+interval = tidy(ci)
+names(interval) = c("term", "`2.5 %`", "`97.5 %`")
+estimates = estimates %>%
+  left_join(interval)
+kable(estimates)
+
+odds = exp(cbind(OR = coef(logistic_glm), confint(logistic_glm))) %>% tidy() %>% as.data.frame(.)
+
+names(odds) = c("term", "OR", "2.5%", "97.5%")
+
+odds = odds %>%
+  mutate(., `97.5%` = ifelse(is.na(`2.5%`), NA_integer_, `97.5%`)) %>%
+mutate_if(is.numeric, ~round(., 4))
 
 
 cols = col = c("osa_binary", "wet_bed", "allergic_rhinitis_diag", "asthma_diag", "antiacids", "smoking")
@@ -946,6 +974,33 @@ addTitle(., value = 'TABLE 1. variable importance') %>%
 addFlexTable(., flextable = var_coef)
 
 writeDoc(doc, file = file.path(cache_dir, paste('variable importance.docx')))
+
+tab_estimate = estimates %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+tab_estimate[,1] = parLeft()
+
+tab_odds = odds %>% vanilla.table(.) %>% 
+  setZebraStyle(., odd = '#eeeeee', even = 'white')
+tab_odds[,1] = parLeft()  
+
+doc = docx() %>%
+
+  # Add spaces to center the cover page
+  addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+  
+
+addSection(., landscape = T)%>% # Change Orientation of the page
+addTitle(., value = 'TABLE 1. Logistic regression coefficients') %>%
+addFlexTable(., flextable = tab_estimate) %>%
+addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>% addParagraph(., c("\n")) %>%
+addTitle(., value = 'TABLE 1. Odds') %>%
+addFlexTable(., flextable = tab_odds) %>%
+  addSection(., landscape = FALSE) %>%
+
+writeDoc(doc, file = file.path(cache_dir, paste('logistic.docx')))
+
+
+
 ```
 
 ```{r coef, fig.cap= "Estimates of gee of PSQ score after operation"}
