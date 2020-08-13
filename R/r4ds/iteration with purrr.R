@@ -117,3 +117,108 @@ col_summ(mtcars, median)
 
 # The Map Functions
 
+u = c(10,-10,100, 0)
+map(u, rnorm, n=10)
+map_dbl(mtcars, mean)
+map_lgl(mtcars, is.numeric)
+map_chr(mtcars, class)
+
+z = list(x = 1:2, y = 7:10)
+map_int(z, length)
+
+# shortcuts
+models = mtcars %>%
+  split(.$cyl) %>%
+  map(~lm(mpg ~ wt, data = .))
+
+models %>%
+  map(summary) %>%
+  map_dbl(~.$r.squared)
+
+# or simply
+
+models %>%
+  map(summary) %>%
+  map_dbl("r.squared")
+
+# you can use an integer to select elements by position
+
+x = list(list(1,2,3), list(4,5,6), list(7,8,9))
+x %>% map_dbl(2)
+
+# Dealing with failure: safely(), possibly(), quietly()
+x = list(1, 10, "a")
+y = x %>% map(safely(log))
+str(y)
+
+y = y %>% transpose()
+str(y)
+
+is_ok = y$error %>% map_lgl(is.null)
+x[!is_ok]
+
+y$result[is_ok] %>% flatten_dbl()
+
+x <- list(1, 10, "a")
+x %>% map_dbl(possibly(log, NA_real_))
+
+x <- list(1, -1)
+x %>% map(quietly(log)) %>% str()
+
+# Mapping over Multiple Arguments
+mu = list(5, 10, -3)
+sigma = list(1, 5, 10)
+seq_along(mu) %>%
+  map(~rnorm(5, mu[[.]], sigma[[.]])) %>%
+  str()
+# or precisely
+
+map2(mu, sigma,rnorm, n = 5) %>% str()
+
+# for more a list of arguments - pmap()
+
+n = list(1,3,5)
+args1 = list(n, mu, sigma)
+args1 %>%
+  pmap(rnorm) %>%
+  str()
+# Invoking different functions
+
+f = c("runif", "rnorm", "rpois")
+params = list(
+  list(min = -1, max = 1),
+  list(sd = 5),
+  list(lambda = 10)
+)
+invoke_map(f, params, n = 5) %>% str()
+
+# Walk - function side effects other than the result
+
+x = list(1, "a", 3)
+x %>% walk(print)
+
+# pwalk and walk2 
+library(ggplot2)
+ plots = mtcars %>%
+   split(.$cyl) %>%
+   map(~ggplot(., aes(mpg, wt)) + geom_point())
+ paths = stringr::str_c(names(plots), ".pdf")
+ 
+ pwalk(list(paths, plots), ggsave, path = file.path(home, "Downloads"))
+ 
+ # Reduce and Accumulate
+ 
+ dfs <- list(
+   age = tibble(name = "John", age = 30),
+   sex = tibble(name = c("John", "Mary"), sex = c("M", "F")),
+   trt = tibble(name = "Mary", treatment = "A")
+ )
+dfs %>% reduce(full_join)
+
+vs <- list(
+  c(1, 3, 5, 6, 10),
+  c(1, 2, 3, 7, 8, 10),
+  c(1, 2, 3, 4, 8, 9, 10)
+)
+vs %>%
+  reduce(intersect)
