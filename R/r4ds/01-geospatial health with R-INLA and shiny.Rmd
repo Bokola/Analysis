@@ -53,7 +53,7 @@ ipk = function(pkg){
   sapply(pkg, require, character.only = T)
 }
 list.of.pkgs = c('sf', 'viridis', 'geoR', 'cholera', 'rgdal', "leaflet", "mapview","DT", "tmap", "ggplot2", "tidyverse",
-                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts")
+                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts", "cowplot")
 ipk(list.of.pkgs)
 
 home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("home"), Sys.getenv("USERPROFILE"))

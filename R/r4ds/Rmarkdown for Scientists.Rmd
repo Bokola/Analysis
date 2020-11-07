@@ -173,7 +173,7 @@ output:
 You’ll notice that this creates some folders called “FILENAME_files” - you can control the specific name of the folder by setting fig.path like so: <br>
 
 ```
-knitr::opts_chunk$set(fig.path = "figs)
+knitr::opts_chunk$set(fig.path = "figs")
 
 ```
 

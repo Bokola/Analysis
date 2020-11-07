@@ -1,4 +1,13 @@
-library(tidyverse)
+ipk = function(pkg){
+  new.pkg = list.of.pks[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
+  suppressPackageStartupMessages(sapply(pkg, library, character.only = TRUE))
+}
+
+list.of.pkgs = c('tidyverse', 'magrittr', 'nycflights13')
+ipk(list.of.pks)
+
+
 df = tibble(
   a = rnorm(10),
   b = rnorm(10),

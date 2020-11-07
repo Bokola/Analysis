@@ -1,0 +1,47 @@
+---
+title: "Linear Models"
+author: "Basil Okola"
+date: "26/10/2020"
+output:
+  html_document:
+    keep_md: yes
+  bookdown::html_document2:
+    keep_md: yes
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup , include=FALSE}
+home = ifelse(Sys.info()[["sysname"]] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE"))
+home = gsub("\\\\", "/",home)
+
+data_dir = file.path(home, "Google Drive", "MSc. Stats Hasselt", "y1 sem1", "Linear models")
+fig_dir = file.path(home, "Google Drive", "MSc. Stats Hasselt", "y1 sem1", "Linear models")
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      # base_dir = "figures/",
+                      fig.path = "figures/",
+                      fig.align = "center",
+                      fig.width = 6.5, 
+                      fig.height = 4, 
+                      dev = "png",
+                      cache = FALSE)
+options(tinytex.verbose = TRUE)
+options(width = 100)
+```
+
+```{r packages echo=FALSE, message=FALSE, warning=FALSE, results="asis"}
+knitr::opts_chunk$set(chunk_option1 = TRUE)
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
+  suppressPackageStartupMessages({sapply(pkg, require, character.only = TRUE )})
+}
+
+list.of.pkgs = c("tidyverse", "magrittr", "BiocStyle", "knitr", "rmarkdown", "bookdown",
+                 "e1071", "lattice", "mvtnorm", "dslabs", "NHANES", "remotes")
+ipk(list.of.pkgs)
+
+remotes::install_github("Athanasiamo/uiothemes")
+```
