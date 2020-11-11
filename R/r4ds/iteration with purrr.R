@@ -1,11 +1,11 @@
 ipk = function(pkg){
-  new.pkg = list.of.pks[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
   if(length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
   suppressPackageStartupMessages(sapply(pkg, library, character.only = TRUE))
 }
 
 list.of.pkgs = c('tidyverse', 'magrittr', 'nycflights13')
-ipk(list.of.pks)
+ipk(list.of.pkgs)
 
 
 df = tibble(
@@ -67,7 +67,9 @@ cumsum(x)
 
 # a loop that prints 'Alice and the Camel'
 
-animal = c("Alice the Camel has one hump", "Ruby the Rabbit has two ears", "Sally the Sloth has three toes", "Felix the fox has four legs", "Lilly the Ladybug has five spots", "Andy the Ant has six legs", "Larry the Lizard has seven stripes", "Sammy the Spider has eight legs")
+animal = c("Alice the Camel has one hump", "Ruby the Rabbit has two ears", "Sally the Sloth has three toes", 
+           "Felix the fox has four legs", "Lilly the Ladybug has five spots", "Andy the Ant has six legs",
+           "Larry the Lizard has seven stripes", "Sammy the Spider has eight legs")
 out = vector("character", length(animal))
 
 for(i in seq_along(animal)) {
@@ -83,7 +85,15 @@ for(i in seq_along(animal)) {
     writeLines()
 }
 
+add_to_vector <- function(n) {
+  output <- vector("integer", 0)
+  for (i in seq_len(n)) {
+    output <- c(output, i)
+  }
+  output
+}
 
+add_to_vector(100)
 # reading in multiple files into 1
 
 home = ifelse(Sys.info()[["sysname"]] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE")) %>% gsub("\\\\", "/",.)
@@ -123,6 +133,8 @@ col_summ = function(df, fun) {
   out
 }
 col_summ(mtcars, median)
+
+
 
 # The Map Functions
 
@@ -231,3 +243,63 @@ vs <- list(
 )
 vs %>%
   reduce(intersect)
+
+
+
+# mapping over two vectors ------------------------------------------------
+
+mu = list(5, 10, -3) ; sigma = list(1, 5, 10)
+map2(mu, sigma, rnorm, n = 5) %>% str()
+
+# pmap for more than 2 arguments ------------------------------------------
+
+n = list(1, 3, 5)
+args1 = list(n, mu, sigma)
+args1 %>%
+  pmap(rnorm) %>% str()
+
+
+
+# predicate functions -----------------------------------------------------
+# keep & discard
+iris %>%
+  keep(is.factor) %>% str()
+
+iris %>%
+  discard(is.factor) %>% str()
+# some & every
+x = list(1:5, letters, list(10))
+x %>% some(is_character)
+x %>% every(is_vector)
+
+# detect & detect_index
+
+x = sample(10)
+x %>% detect(~ . > 5)
+x %>% detect_index(~ . > 5)
+
+# head_while & tail_while
+
+x %>% head_while(~ . > 5)
+x %>% tail_while(~ . > 5)
+
+# invoking different functions --------------------------------------------
+
+f = c("runif", "rnorm", "rpois")
+param = list(
+  list(min = -1, max = 1),
+  list(sd = 5),
+  list(lambda = 10)
+)
+
+invoke_map(f, param, n = 5) %>% str()
+# with a tibble
+
+sim <- tribble(
+  ~f, ~params,
+  "runif", list(min = -1, max = 1),
+  "rnorm", list(sd = 5),
+  "rpois", list(lambda = 10)
+)
+sim %>%
+  mutate(sim = invoke_map(f, params, n = 10))
