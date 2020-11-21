@@ -1,0 +1,43 @@
+---
+output:
+  bookdown::pdf_document2: default
+  pdf_document: default
+tables: yes
+---
+
+## Referencing tables and figures
+
+- set output to bookdown options
+- for tables do not set chunk name - set it in caption with `\\label{tab:chunk_name}`
+- these labels must be unique
+- use `format = pandoc`
+- With `format='pandoc'` you need to enter the \label command in the caption.
+- ref tables with \ref{tab:label_name} and
+- figures with \@ref(fig:chunk_name)
+
+
+```{r , results='markup'}
+tab <- head(iris)
+knitr::kable(tab, 
+  format='pandoc', 
+  digits = 3, 
+  caption = "estimates and respective confidence intervals for a model incluiding the fastfood dummy variable\\label{tab:lat_table}"
+  )
+```
+
+```{r, results='markup'}
+tab <- head(iris)
+knitr::kable(tab, 
+  format='pandoc', 
+  digits = 3, 
+  caption = "estimates and respective confidence intervals for a model incluiding the fastfood dummy variable\\label{tab:pandoc_table}"
+  )
+```
+
+```{r plot, fig.cap= "plot", results="markup"}
+plot(iris$Sepal.Length)
+```
+
+Table \ref{tab:pandoc_table} was done using Pandoc,
+and Figure \@ref(fig:plot) is done with base R
+
