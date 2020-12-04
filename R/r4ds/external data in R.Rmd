@@ -1,0 +1,416 @@
+---
+title: "External data in R"
+author: "  \nBasil Okola"
+date: "`r Sys.Date()`"
+output:
+  bookdown::pdf_document2: default
+  pdf_document: default
+  bookdown::word_document2: default
+  html_document:
+    df_print: paged
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: yes
+header-includes: \usepackage{amsmath}
+#bibliography: citation.bib
+---
+
+```{r, child="_setup.Rmd"}
+
+```
+
+
+```{r opts, include=FALSE}
+home = ifelse(Sys.info()[["sysname"]] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE"))
+home = gsub("\\\\", "/",home)
+
+data_dir = file.path(home, "Google Drive (basil.okola@student.uhasselt.be)", "MSc. Stats Hasselt", 
+                     "y1 sem1", "Linear models")
+fig_dir = file.path(home, "Google Drive (basil.okola@student.uhasselt.be)", "MSc. Stats Hasselt", 
+                    "y1 sem1", "Linear models")
+```
+
+
+```{r packages, include=FALSE, echo=FALSE}
+ipk = function(pkg){
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = TRUE)
+  suppressPackageStartupMessages({sapply(pkg, require, character.only = TRUE)})
+}
+
+list.of.pkgs = c("tidyverse", "magrittr", "rvest", "httr", "jsonlite", "DBI", "config", "vaultr", "dbplyr")
+ipk(list.of.pkgs)
+
+```
+
+\newpage
+
+# Web scraping
+
+## rvest package
+
+Harvest/scrape data from web:
+
+- `read_html()`: collects data from the webpage
+- `html_nodes()`: extract the relevant pieces
+- `html_text()`: extract tags of the relevant piece
+- `html_attributes()`: extract attributes of the relevant piece
+
+**Read HTML code**
+
+```{r, warning=FALSE, message=FALSE}
+url = 'https://www.imdb.com/title/tt6723592/'
+# reading the html code from website
+webpage = read_html(url)
+# using the html tag
+castWithTag = html_nodes(webpage, "div")
+length(castWithTag)
+# using the id attribute, note the '#'
+castWithId_node = html_nodes(webpage, "#titleCast")
+html_text(castWithId_node)
+# using the class attribute: note the '.'
+castWithClass_node = html_nodes(webpage, ".cast_list")
+html_text(castWithClass_node)
+# using a more detailed attribute
+cast = html_nodes(webpage, ".primary_photo + td a")
+html_text(cast)
+```
+
+**Extracting a table**
+
+```{r, message=FALSE, warning=FALSE}
+allTables = html_table(webpage, "table", header = FALSE)
+castTable = html_table(webpage, ".cast_list", header = FALSE)[[1]]
+head(castTable)
+```
+
+
+**Attributes of an element**
+```{r, message=FALSE, warning=FALSE}
+html_attrs(castWithClass_node)
+html_attr(cast, "href")
+```
+
+# API Requests
+
+R packages: `httr` and `jsonlite`
+
+## httr
+
+- create the request with GET() function
+- input is a url, which specifies the address of the server
+
+- Example: current number of people in space
+
+```{r, warning=FALSE, message=FALSE}
+res = GET("http://api.open-notify.org/astros.json")
+res
+```
+
+**JSON Format**
+JSON = JavaScript Object Notation
+
+## jsonlite
+
+- The `jsonlite` package provides parser and generator functions: `fromJSON()`, `toJSON()`
+
+- `fromJSON()`:
+  - Input is a JSON string, URL, JSON file
+  - Retruns a list of data.frames
+
+- `toJSON()`:
+  - input is any object
+  - returns a JSON string
+  
+### fromJSON
+
+- convert the raw unicode of the GET request into a JSON string
+
+```{r, warning=F, message=F}
+rawToChar(res$content)
+```
+
+- convert the JSON format to a list of data.frames
+
+```{r, message=F, warning=F}
+data = fromJSON(rawToChar(res$content))
+data
+```
+
+- Read directly from a url e.g github page <br>
+
+```{r, warning=F, message=F}
+data <- fromJSON("https://api.github.com/users/hadley/orgs")
+class(data)
+```
+
+### toJSON
+
+- write a data.frame to a JSON format
+
+```{r, warning=F, message=F}
+jsonData = toJSON(data)
+head(jsonData)
+```
+
+- and back from the JSON format to data.frame
+
+```{r, warning=F, message=F}
+backAgain = fromJSON(jsonData)
+class(backAgain)
+identical(data, backAgain)
+```
+## API with query parameters
+
+- query param: longitude, latitude
+
+```{r, message=F, warning=F}
+res = GET("http://api.open-notify.org/iss-pass.json",
+query = list(lat = 40.7, lon = -74))
+res
+
+```
+
+# Databases
+
+## Connecting
+
+- Find a [DBI compliant package] (https://cran.r-project.org/web/views/Databases.html) that implements the driver <br>
+- After you are finished using the connection, you should always disconnect.<br>
+
+```{r, warning=F, message=F}
+conn = dbConnect(
+  dbname = file.path(home, 'Downloads', 'chinook.db'),
+  drv = RSQLite::SQLite()
+)
+
+# DBI::dbDisconnect(conn)
+```
+
+### connecting with credentials
+
+```{r, eval=F, message=F, warning=F}
+connn <- DBI::dbConnect(
+user = "oa",
+dbname = "oaDB",
+password = "oaPassword",
+host = "oaHost",
+port = "1111",
+drv = RPostgres::Postgres())
+DBI::dbDisconnect(connn)
+```
+
+- Credentials are sensitive data
+- better not hard-code credentials
+- A solution is the use of environment variables
+
+- interactively set environment variables
+
+```{r, warning=F, message=F}
+Sys.setenv("DB_USER" = "bokola")
+Sys.getenv('DB_USER')
+```
+
+- Save environment variables permanently by setting them in the .Renviron file:
+  - Loaded at the beginning of a session
+  - Overruled by setting the environment variable with `Sys.setenv`
+
+`usethis::edit_r_environ()`
+
+DB_USER = "myNewUser"
+
+- Or use your IDE (Rstudio, Architect,…) to specify them on startup of a session
+
+### Connect with Environment Variables
+
+
+```{r, eval=FALSE}
+connectDB = function(
+  user = Sys.getenv('DB_USER'),
+  dbname = file.path(home, 'Downloads', 'chinook.db'),
+  password = Sys.getenv("DB_PASSWORD"),
+  host = Sys.getenv("DB_HOST", "localhost"),
+  port = Sys.getenv("DB_PORT", "5432"),
+  drv = RSQLite::SQLite()
+){
+  args = as.list(environment())
+  do.call(dbConnect, args)
+}
+conn = connectDB()
+```
+
+### Credential managing packages
+
+`config`, `vaultr`
+
+## Retrieving data
+
+DBI: dbReadTable(), dbListFields(), dbListTables()
+
+
+```{r, warning=FALSE, message=FALSE}
+dbListTables(conn)
+dbListFields(conn, "Artists")
+dbReadTable(conn, "Artists") %>% head(3)
+```
+
+## dbplyr
+
+- For basic queries, a good option is the `dbplyr` package
+- No SQL knowledge required and learn some SQL while using the package
+
+```{r, warning=FALSE, message=FALSE}
+Artists = tbl(conn, "Artists")
+Artists %>%
+  filter(Name %in% "AC/DC") %>%
+  show_query()
+```
+
+## DBI: dbGetQuery
+
+- Assemble your SQL queries and pass these to dbGetQuery()
+- Best use: only for SHOW and SELECT statements
+
+```{r, warning=FALSE, message=FALSE}
+dbGetQuery(conn, "select * from artists limit 3")
+
+```
+
+## Compaarison: Where to do the data wrangling
+
+Example: selecting 3 most expensive tracks
+
+```{r}
+# base r
+
+df = dbReadTable(conn, "tracks")
+df = df[order(df$UnitPrice, decreasing = TRUE),]
+df[1:3,]
+```
+
+```{r}
+# data.table
+df = dbReadTable(conn, "tracks")
+DT = data.table::data.table(df)
+DT[order(-UnitPrice)][1:3]
+```
+
+```{r}
+# dplyr
+df = dbReadTable(conn, "tracks") %>%
+  arrange(desc(UnitPrice)) %>%
+  head(n = 3)
+df
+```
+
+```{r}
+# SQL
+df = dbGetQuery(conn, "select * from tracks order by UnitPrice desc limit 3")
+df
+```
+
+## DBI functions
+
+- provide data to database using `dbExecute()` and/or `dbAppendTable()`
+- Prefer not to use dbWriteTable(), since this can overwrite the schema. Use instead a proper database
+management tool in setting up new tables.
+
+```{r}
+dbAppendTable(
+  conn = conn,
+  name = "Artists",
+  value = data.frame(ArtistId = "876", Name = "newBand")
+)
+```
+
+```{r}
+dbExecute(conn,
+          "insert into Artists (Name) VALUES ('newBandnewName');")
+```
+
+```{r}
+dbExecute(conn,
+          "delete from Artists where name = 'newBand';")
+```
+
+## More DBI functions
+
+- Other DBI functions that can be used to store/update/delete data
+- `dbExecute()` should be preferred
+
+```{r, eval=F}
+dbAppendTable(
+  conn = conn,
+  name = "Artists",
+  value = data.frame(
+ArtistId = c("867", "868", "869"),
+Name = c("newBand1", "newBand2","newBand3"))
+)
+```
+
+
+Using parametarized query multiple times
+
+```{r}
+res = dbSendStatement(conn, "delete from Artists where Name = $band;")
+dbBind(res, list(band = 'newBand'))
+dbGetRowsAffected(res)
+dbClearResult(res)
+```
+
+## How do I assemble queries
+
+Avoid using sprintf() and paste() as much as possible!
+
+```{r}
+res = DBI::dbExecute( # Same for dbSendQuery, dbGetQuery
+  conn = conn,
+  statement = "delete from Artists where Name = $1;",
+  params = 'newBand'
+)
+
+myQuery = DBI::sqlInterpolate(
+  conn = conn,
+  sql = "delete from Artists where Name = ?name;",
+  name = "newBand"
+)
+
+myQuery = glue::glue_sql(
+  .con = conn,
+  "delete from Artists where Name in ({names*})",
+  names = c("newBand", "newBand2") # 1 placeholder, variable length argument!
+)
+
+print(myQuery)
+res = dbExecute(conn, myQuery)
+```
+
+## Single connection vs pooling
+
+
+[pool](https://cran.r-project.org/web/packages/pool/index.html) is a package that manages your connections
+
+
+```{r, eval=FALSE}
+pool <- pool::dbPool(
+user = "oa",
+dbname = "oaDB",
+password = "oaPassword",
+host = "oaHost",
+port = "1111",
+drv = RPostgres::Postgres())
+conn <- poolCheckout(pool)
+## some code using the connection
+poolReturn(conn)
+pool::poolClose(pool)
+```
+
+
+
+
+
+
+

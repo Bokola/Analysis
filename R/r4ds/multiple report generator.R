@@ -26,10 +26,12 @@ ipk(list.of.pkgs)
 
 
 student = c("Meseret Assefa", "Endale Alemayu", "Kedir Adem", "Basil Okola")
+all = paste(student, collapse  = "_")
+student = c(student, all)
 
 for(a in student) {
-  rmarkdown::render(input = file.path(data_dir, "lmo_assign.Rmd"),
+  rmarkdown::render(input = file.path(data_dir, "lmo_assign_introduction_citation_included.Rmd"),
                     output_format = bookdown::pdf_document2(),
-                    output_file = paste0(a, ".docx"),
+                    output_file = paste0(a, ".pdf"),
                     output_dir = file.path(data_dir, "figures"))
 }
