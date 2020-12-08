@@ -1,0 +1,6 @@
+section,in_resume,title,loc,institution,start,end,description
+education,TRUE,MSc. Statistics and Data Science,"Hasselt, Belgium",Hasselt University,2020,2022,A two-year graduate degree program in Statistics and Data Science (Biostatistics track)
+education,TRUE,"B.S., Applied Statistocs","Kisumu, Kenya",Maseno University,2012,2015,A four-year undergraduate program in statistics
+work experience,TRUE,Data Manager,"Nairobi, Kenya",,,,
+internship,FALSE,,,,,,
+Awards,TRUE,,,,,,

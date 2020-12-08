@@ -1,0 +1,133 @@
+---
+title: "webpage with distill"
+author: "  \nBasil Okola - from Thomas Mock"
+date: "`r Sys.Date()`"
+output:
+  bookdown::pdf_document2: default
+  pdf_document: default
+  bookdown::word_document2: default
+  html_document:
+    df_print: paged
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: yes
+---
+
+```{r, child="_setup.Rmd"}
+
+```
+
+```{r dir}
+home = ifelse(Sys.info()[["sysname"]] == "Linux", Sys.getenv("HOME"), Sys.getenv("USERPROFILE"))
+home = gsub("\\\\", "/",home)
+
+dir = file.path(home, "Analysis", "Distill websites")
+```
+
+
+# Step 1: Install distill
+
+```{r, eval=FALSE}
+install.packages("distill")
+```
+
+# Step 2: New project from distill blog
+
+```{r, results="hide"}
+distill::create_blog(dir = dir, title = "More into data.table")
+
+```
+
+
+This creates a home-directory titled whatever you passed for the dir argument above. It contains the `_site.yml`, the `about.rmd` file, the `index.rmd` file and two folders: `_posts` and `_sites`. You should change the dir and title arguments to whatever you want your site to be named. <br>
+
+While you’re welcome to explore _site I consider it something you SHOULD NOT edit by hand and it will commonly get overridden by rebuilding posts or the whole site. _site is essentially where the built site lives as final HTML and other supporting files. The _posts folder on the other hand contains all the raw RMDs you will use to create posts.<br>
+
+# Step 3: Preview
+
+At this point the website is technically  built! You can preview the site by going to:
+
+_site -> index.html
+
+The index.html is essentially the home page for your blog. You can navigate from there in either the Rstudio viewer or send it to a web browser just like a normal webpage
+
+Note: you can also use the Build Website button in RStudio to pull up the whole website. This will re-knit and build the entire site from scratch.
+
+
+# Step 4: _site.yml
+
+The `_site.yml` is where you control overall details about your blog such as the name, title, description, and the navbar. 
+
+You can add new 'tabs' by changing the `_site.yml` file, where the default has a navbar with the site name on the left and a "Home" and "About" Tab on the right.
+
+
+```{r, eval=FALSE}
+name: "demo-distill"
+title: "Demo Distill"
+description: |
+  Demo Distill
+output_dir: "_site"
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+    - text: "About"
+      href: about.html
+output: distill::distill_article
+
+
+
+```
+
+# Step 5: Example blog post
+
+Navigate to `_posts -> welcome -> welcome.rmd`. This is the default "hello world" example that comes with your distill. Note that you can delete that folder completely to drop it from the site, but let's use it as a practice ground first
+
+This is still just a RMarkdown file, but it has a specific YAML header, that contains a title, a description, author, date, and outputs to `distill::distill_article()`
+
+Try adding some more text, code, or other content to this blog post and then knit it! It will generate and show the final output in the RStudio viewer
+
+
+# Step 6: New post
+
+To create a new post, you can run the following command:
+`distill::create_post("title of post")`. Two things to note:
+
+1. draft argument: this prevents the post from being included in the site build until you turn it to FALSE. This is useful if you're working on a blogpost over time, or want to come back to finish it later.
+
+2. date_prefix: this adds a date like 2020-08-01-blog-post to the front of whatever your blog-post name is. This is useful as it also creates a folder structure that sorts properly, and prevents name clashes.
+
+
+Whenever you run the create_post() command it will generate a new folder and the basic RMarkdown doc to get started with the arguments you passed.
+
+```{r, eval=FALSE}
+create_post(
+  title, # mandatory
+  author = "auto",
+  slug = "auto", # generates a website slug (URL)
+  date_prefix = TRUE, # adds date for sorting
+  draft = FALSE, 
+  edit = interactive()
+)
+```
+
+
+Note that a nice overview of the Blog Post Workflow is covered at the [distill site](https://rstudio.github.io/distill/blog_workflow.html). This includes collaborating via Git Branches (or using them as previews). I push to my main branch all the time since I’m working solo <br>
+
+
+# Step 7: Add to Git
+
+Push your added folders and files to github. 
+
+
+# Step 8: Netlify
+
+Once we get our files to github, we are ready to deploy via Netlify
+
+You'll need to create an account at netlify if you do not have one already
+
+
+

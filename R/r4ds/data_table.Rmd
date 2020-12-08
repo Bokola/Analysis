@@ -130,6 +130,8 @@ expand.grid(pos = c("interior", "middle", "exterior"),
 dose = c(100, 150),
 type = c("WT","KO"))
 ```
+
+
 ---
 Data table syntax is of the form `DT[i, j, by]`
 
@@ -148,15 +150,23 @@ Data table syntax is of the form `DT[i, j, by]`
 
 ---
 ## Just looking
+
 ```{r}
 irisDT = as.data.table(iris)
 tables() # show loaded tables
 ```
+
+
+
 Sorting / ordering rows
 
-`setorder(data.table, ...)`
+setorder(data.table, ...)
 
 `-`: to sort a variable in descending order
+
+---
+
+
 ```{r}
 setorder(irisDT, Sepal.Length, Sepal.Width)
 irisDT
@@ -167,6 +177,8 @@ irisDT
 setorder(irisDT, -Species, Sepal.Width)
 irisDT
 ```
+
+
 ---
 
 ## Removing information
@@ -362,14 +374,14 @@ y[x, on = .(id), nomatch = 0]
 ### full join - merge
 
 ```{r}
-merge(x = x, y = y, by = "id", all = TRUE)
+merge.data.table(x = x, y = y, by = "id", all = TRUE)
 ```
 
 
 ### left join - merge
 
 ```{r}
-merge(x = x, y = y, by = "id", all.x = TRUE)
+merge.data.table(x = x, y = y, by = "id", all.x = TRUE)
 ```
 #### left join - data.table
 
@@ -381,7 +393,7 @@ y[x, on = .(id)]
 ### right join - merge
 
 ```{r}
-merge(x = x, y = y, by = "id", all.y = T)
+data.table::merge.data.table(x = x, y = y, by = "id", all.y = T)
 ```
 
 ### right jpin - data.table
@@ -486,6 +498,8 @@ irisUnited[1:5]
 irisSeparated = irisUnited[, c('Sepal.Length', 'Sepal.Width') := tstrsplit(Sepal.Length.Width, "/")]
 irisSeparated[1:5]
 ```
+
+
 ---
 
 # Hands-on session
@@ -611,6 +625,7 @@ irisDT[, .SD[1L]]
 irisDT[, .SD[1L], by = Species]
 irisDT[, .SD[1L], by = Species, .SDcols = c("Petal.Length", "Petal.Width")]
 ```
+
 ---
 
 `.SD`: Subset of Data - select top entries (in each group)
@@ -621,6 +636,7 @@ irisDT[, .SD[which.max(Sepal.Length)], by = Species, .SDcols = c("Sepal.Length",
 ```
 
 ---
+
 # Multiple if else statements
 
 ```{r}
