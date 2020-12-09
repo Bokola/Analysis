@@ -7,7 +7,7 @@ params:
     value: true
 output:
   pagedown::html_resume:
-    css: ['dd_cv.css', 'resume']
+    css: ['dd_cv.css', 'custom.css',  'resume']
     self_contained: true
 ---
 
@@ -55,7 +55,7 @@ Aside
 
 ```{r, results="asis"}
 if(params$pdf_mode){
-  cat("[<i class='fas fa-search'></i> View this CV online](https://github.com/Bokola/Analysis/blob/master\n/CV%20with%20R/cv_Basil Owiti Okola.html)")
+  cat("[<i class='fas fa-search'></i> View this CV online](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
 } else {
   cat("[<i class='fas fa-download'></i> Download a PDF of this CV](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
 }
@@ -70,12 +70,22 @@ CV %>% print_contact_info()
 
 
 
-Language Skills {#skills}
+Technical Skills {#skills}
 --------------------------------------------------------------------------------
 
-```{r}
-CV %>% print_skill_bars()
-```
+- Proficient:
+
+  - R
+  - Python
+  - Git and Github
+  - Bash
+
+- Working knowledge:
+
+  - Arango
+  - Graphql
+  - SQL 
+  - SAS 
 
 
 
@@ -86,8 +96,7 @@ Main
 Basil Owiti Okola {#title}
 --------------------------------------------------------------------------------
 
-Leveraging statistical, programming and analytic skills in managing, analyzing data and communicating key findings that inform 
-policy makers in their day-today decisions
+Basil is a graduate student pursuing MSc. Statistics and Data Science and has previously held roles as a data manager and analyst. He seeks to leverage statistical, programming and analytic skills in managing, analyzing data and communicating key findings that inform policy makers in their day-today decisions.
 
 ```{r}
 # Note the special double pipe so we modify the CV object in place
@@ -122,3 +131,13 @@ Internships {data-icon=chalkboard-teacher}
 CV %<>% print_section('Internship')
 ```
 
+::: aside
+
+
+Made with the R packages: `pagedown` and `datadrivencv`.
+
+The source code is available on [github](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R).
+
+Last updated on `r Sys.Date()`.
+
+:::

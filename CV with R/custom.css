@@ -1,0 +1,47 @@
+
+* {
+  /* Override default right margins for document*/
+  --pagedjs-margin-right: 0.2in;
+  --pagedjs-margin-left: 0.2in;
+  --pagedjs-margin-top: 0.25in;
+  --pagedjs-margin-bottom: 0.35in;
+
+}
+
+  /*Adjust padding and height on side sections*/
+.aside {
+  height: 95%;
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+}
+
+
+[data-id="contact"] ul {
+padding-top: .75rem;
+padding-bottom: .8rem;
+}
+
+[data-id="skills"] ul {
+padding-bottom: .2rem;
+}
+
+
+ /* Add image border*/
+img {
+  border-radius:100px;
+    /*margin-bottom: 0.2in;*/
+}
+
+ /* add square bullet points to side bar*/
+ul li ul li {
+    margin-left: 1rem;
+    list-style-type: square;
+    line-height: 1.3;
+}
+
+ /* Adjust location of disclaimer*/
+.aside .level2 {
+  margin-top: 0.25in;
+}
+
+}
