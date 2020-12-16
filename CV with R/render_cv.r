@@ -29,3 +29,4 @@ rmarkdown::render("cv.rmd",
 pagedown::chrome_print(input = tmp_html_cv_loc,
                        output = "CV_Basil Owiti Okola.pdf")
 
+

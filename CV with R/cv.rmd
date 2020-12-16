@@ -54,11 +54,11 @@ Aside
 
 
 ```{r, results="asis"}
-if(params$pdf_mode){
-  cat("[<i class='fas fa-search'></i> View this CV online](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
-} else {
-  cat("[<i class='fas fa-download'></i> Download a PDF of this CV](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
-}
+# if(params$pdf_mode){
+#   cat("[<i class='fas fa-search'></i> View this CV online](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
+# } else {
+#   cat("[<i class='fas fa-download'></i> Download a PDF of this CV](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R/cv_Basil Owiti Okola.pdf)")
+# }
 ```
 
 Contact {#contact}
@@ -78,7 +78,8 @@ Technical Skills {#skills}
   - R
   - Python
   - Git and Github
-  - Bash
+  - Linux
+  - Redcap
 
 - Working knowledge:
 
@@ -86,6 +87,29 @@ Technical Skills {#skills}
   - Graphql
   - SQL 
   - SAS 
+
+Referees {}
+--------------------------------------------------------------------------------
+
+1 Dr. Emelda Okiro<br>
+Lead | Population Health<br>
+KEMRI-Wellcome Trust Research Programme - CGMRC <br>
+Cell: +254 706 714 143 / +254 727 885 817 
+Email: EOkiro@kemri-wellcome.org <br>
+
+2 Dr. Peter Macharia <br>
+Postdoc Researcher| Population Health <br>
+KEMRI-Wellcome Trust Research Programme - CGMRC <br> 
+Cell: +254 723 122 000 <br>
+Email: PMacharia@kemri-wellcome.org <br>
+
+3 Mike English<br>
+Prof. International Child Health<br>
+University of Oxford, &
+Wellcome Trust Senior Research Fellow <br>
+KEMRI-Wellcome Trust Research Programme <br>
+Email: MEnglish@kemri-wellcome.org <br>
+
 
 
 
@@ -131,13 +155,4 @@ Internships {data-icon=chalkboard-teacher}
 CV %<>% print_section('Internship')
 ```
 
-::: aside
 
-
-Made with the R packages: `pagedown` and `datadrivencv`.
-
-The source code is available on [github](https://github.com/Bokola/Analysis/blob/master/CV%20with%20R).
-
-Last updated on `r Sys.Date()`.
-
-:::
