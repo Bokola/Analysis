@@ -568,7 +568,7 @@ ipk = function(pkg){
   if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
   sapply(pkg, require, character.only = T)
 }
-list.pkg = c("tidyverse", "cowplot") 
+list.pkg = c("tidyverse", "cowplot","colorspace") 
 #ggrepel for geom_text_repel()
 #cowplot for theme_minimal_hgrid()
 #colorspace for darken()
@@ -578,7 +578,7 @@ The dataset is provided as `practicalgg::happy`. Let's look at its table form an
 
 ```{r}
 data_health = practicalgg::happy %>%
-  select(age, health) %>%
+  dplyr::select(age, health) %>%
   na.omit() %>%
   mutate(health = fct_rev(health)) # revert factor order
 data_health

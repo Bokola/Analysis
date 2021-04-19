@@ -1,0 +1,107 @@
+---
+title: "RunniRng SAS from Rstudio"
+author: "Basil Okola"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  bookdown::pdf_document2: default
+  pdf_document: default
+  bookdown::word_document2: default
+  fig_caption: yes
+  word_document: default
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: true
+header-includes: \usepackage{amsmath}
+#bibliography: citation.bib SAS from Rstudio
+---
+
+```{r setup, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+```
+
+Prerequisite: Install [SASmarkdown package](https://cran.r-project.org/web/packages/SASmarkdown/)
+
+```{r}
+ipk = function(pkg) {
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,  repos = 'http://cran.us.r-project.org')
+  suppressPackageStartupMessages({
+    sapply(pkg, require, character.only = TRUE)
+  })
+}
+
+list.of.pkgs = c(
+  "SASmarkdown", "distill"
+)
+ipk(list.of.pkgs)
+```
+
+
+## Display current `knitr` engine
+
+```{r}
+knitr::opts_chunk$get()$engine
+knitr::opts_chunk$get()$engine.path
+knitr::opts_chunk$get()$engine.opts
+```
+
+## Set up the SAS engine
+
+1. You should have SAS locally installed
+2. You also have the `SASmarkdown` package installed and loaded
+3. Find the location of the executable SAS file. Mine is located at 
+`C:\Program Files\SASHome\SASFoundation\9.4\sas.exe`
+4. Set up your `knitr` options as follows, inside R chunk
+
+```{r}
+library(SASmarkdown)
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+sasopts <- "-nosplash -linesize 75"
+# knitr::opts_chunk$set(engine="sashtml", engine.path=saspath, 
+#         engine.opts=sasopts, comment=NA)
+knitr::opts_chunk$set(engine="sas", engine.path=saspath, 
+        engine.opts=sasopts, comment=NA)
+
+# run these commands to convince yourself that
+# within this knitr session the engine changed.
+knitr::opts_chunk$get()$engine
+knitr::opts_chunk$get()$engine.path
+knitr::opts_chunk$get()$engine.opts
+```
+
+## Knit to pdf or doc files
+
+If you want to knit to pdf or doc, change the engine to `engine="sas"`. This will not use ODS output from SAS.
+
+Following R codes are provided for reference but no executed here.
+
+```{r, eval=FALSE}
+# saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+# sasopts <- "-nosplash -linesize 75"
+# knitr::opts_chunk$set(engine="sas", engine.path=saspath, 
+#         engine.opts=sasopts, comment=NA)
+
+```
+
+## Try some `sas` code
+
+```{sas}
+proc means data=sashelp.class;
+run;
+```
+
+## Even more SAS code
+
+```{sas}
+proc corr data = sashelp.class plots = matrix;
+run;
+```
+
+
+

@@ -1,0 +1,84 @@
+---
+title: "Untitled"
+author: "Bokola"
+date: "3/13/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+<!-- ```{r setup, include=FALSE} -->
+<!-- knitr::opts_chunk$set(echo = TRUE) -->
+<!-- ``` -->
+
+
+```{r}
+ipk = function(pkg) {
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,  repos = 'http://cran.us.r-project.org')
+  suppressPackageStartupMessages({
+    sapply(pkg, require, character.only = TRUE)
+  })
+}
+
+list.of.pkgs = c(
+  "SASmarkdown", "distill"
+)
+ipk(list.of.pkgs)
+```
+
+
+## Display current `knitr` engine
+
+```{r}
+knitr::opts_chunk$get()$engine
+knitr::opts_chunk$get()$engine.path
+knitr::opts_chunk$get()$engine.opts
+```
+
+## Set up the SAS engine
+
+1. You should have SAS locally installed
+2. You also have the `SASmarkdown` package installed and loaded
+3. Find the location of the executable SAS file. Mine is located at 
+`C:\Program Files\SASHome\SASFoundation\9.4\sas.exe`
+4. Set up your `knitr` options as follows, inside R chunk
+
+```{r}
+library(SASmarkdown)
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+sasopts <- "-nosplash -linesize 75"
+# knitr::opts_chunk$set(engine="sashtml", engine.path=saspath, 
+#         engine.opts=sasopts, comment=NA)
+knitr::opts_chunk$set(engine="sas", engine.path=saspath, 
+        engine.opts=sasopts, comment=NA)
+
+# run these commands to convince yourself that
+# within this knitr session the engine changed.
+knitr::opts_chunk$get()$engine
+knitr::opts_chunk$get()$engine.path
+knitr::opts_chunk$get()$engine.opts
+```
+
+## Knit to pdf or doc files
+
+If you want to knit to pdf or doc, change the engine to `engine="sas"`. This will not use ODS output from SAS.
+
+Following R codes are provided for reference but no executed here.
+
+
+
+## Try some `sas` code
+
+```{sas}
+proc means data=sashelp.class;
+run;
+```
+
+## Even more SAS code
+
+```{sas}
+proc corr data = sashelp.class plots = matrix;
+run;
+```

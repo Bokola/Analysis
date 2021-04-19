@@ -613,7 +613,7 @@ stormsDTNew <- na.omit(stormsDT, cols = numericCols)
 characterCols <- sapply(stormsDTNew, is.character)
 characterCols <- names(characterCols)[characterCols]
 colsOfInterest <- c("ts_diameter", "hu_diameter")
-stormsDTNew[, lapply(.SD, mean), .SDcols = colsOfInterest, by = characterCols]
+# stormsDTNew[, lapply(.SD, mean), .SDcols = colsOfInterest, by = characterCols]
 ```
 
 ---
