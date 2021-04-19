@@ -28,7 +28,10 @@ ipk = function(pkg){
 
 list.of.pkgs = c("gapminder", "ggforce", "openintro", "shiny", "shinyFeedback", 
                  "shinythemes", "tidyverse", "vroom", "waiter", "ggplot2", "tidyverse",
-                 "RColorBrewer", "INLA", "SpatialEpi", "spdep", "rnaturalearth", "flexdashboard", "DT", "dygraphs", "wbstats", "shiny", "xts", "magrittr", "cowplot", "Cairo", "cairoDevice", "thematic", "shinyFeedback", "waiter")
+                 "RColorBrewer", "INLA", #"SpatialEpi", "spdep",
+                 "rnaturalearth", "flexdashboard", 
+                 "DT", "dygraphs", "wbstats", "shiny", "xts", "magrittr", "cowplot", "Cairo", "cairoDevice", 
+                 "thematic", "shinyFeedback")
 ipk(list.of.pkgs)
 
 home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("home"), Sys.getenv("USERPROFILE")) %>%
