@@ -1,0 +1,262 @@
+---
+title: 'GLM: Generalized Linear Models'
+author: "Project Assignment"
+date: "`r format(Sys.Date(), '%b %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  bookdown::pdf_document2: default
+  pdf_document: default
+  bookdown::word_document2: default
+  fig_caption: yes
+  word_document: default
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: yes
+header-includes: \usepackage{amsmath}
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+```{r setup, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+```{r}
+ipk = function(pkg) {
+  new.pkg = list.pkg[!(list.pkg %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE, repos = 'https://cran.us.r-project.org')
+  ddpcr::quiet(sapply(pkg, require, character.only = TRUE))
+}
+list.pkg = c('magrittr',
+             'tidyverse',
+             'rvest',
+             'knitr',
+             'httr',
+             'jsonlite')
+
+ipk(list.pkg)
+```
+# Web scraping in R
+
+
+## HTML Data structure
+
+Web pages are styles with CSS files: cascade style sheets that determine layout of the webpage.
+CSS selectors can be used to look for HTML elements of interest. One such is the [SelectorGadget google chrome extension](https://selectorgadget.com/). You need to install it to your browser before proceeding.
+
+To use it open the page 
+
+1. Click on the element you want to select. SelectorGadget will make a first guess at what css selector you want. It's    likely to be bad since it only has one example to learn from, but it's a start. Elements that match the selector      will be highlighted in yellow.
+
+2. Click on elements that shouldn't be selected. They will turn red. Click on elements that should be selected. They     will turn green.
+
+3. Iterate until only the elements you want are selected. SelectorGadget isn't perfect and sometimes won't be able to    find a useful css selector. Sometimes starting from a different element helps. More at [tidyverse/rvest](https://rvest.tidyverse.org/articles/selectorgadget.html)
+
+For example, if we want the actors listed on the IMDB movie page, e.g. [The Shawshank Redemption](https://www.imdb.com/title/tt0111161/?ref_=adv_li_tt)
+
+
+HTML tags can be passed to functions to retrieve the web page elements of interest.
+
+## `rvest`
+
+For scrapping (harvesting) data fro the web in a structured format that can be used in further analysis.
+
+### rvest functions
+
+- `read_html()`: collects data from the webpage
+- `html_nodes()`: extract the relevant pieces
+- `html_text()`: extract tags of the relevant piece
+- `html_attributes()`: extract attributes of the relevant piece
+
+```{r}
+# specify url 
+url = 'https://www.imdb.com/title/tt0111161/'
+# reading the html code from the 
+webpage = read_html(url)
+webpage
+```
+
+Once we have determined the CSS selector, we use it to extract the information we want
+
+```{r}
+cast = html_nodes(webpage, ".primary_photo+ td a")
+length(cast)
+cast[1:2]
+```
+
+Finally, we extract the text from the selected HTML nodes.
+
+```{r}
+html_text(cast, trim = T)
+```
+
+#### Extracting a table
+
+```{r}
+all_tables = html_table(webpage, "table", header = FALSE)
+casttable = html_table(webpage, ".cast_list", header = F)[[1]]
+head(casttable)
+```
+
+
+#### Attributes of an element
+
+If say we are also interested in extracting the links to the actor's pages, we can acces html attributes of the selected nodes using `html_attrs( )`.
+
+```{r}
+cast_attrs = html_attrs(cast)
+cast_attrs[1:2]
+```
+
+As we can see there's only one attribute called `href` which contains relative url to the actor's page. We can extract it using `html_attr()`, indicating the name of the attribute of interest. Relative urls can be turned into absolute urls using `url_absolute()`.
+
+```{r}
+cast_rel_urls = html_attr(cast, "href")
+length(cast_rel_urls)
+cast_rel_urls[1:2]
+cast_abs_urls = html_attr(cast, "href") %>%
+  url_absolute(url)
+cast_abs_urls[1:2]
+```
+
+
+## Making API Requests in R
+
+- Application Program Interface: Places where a computer interacts with another, or with itself:
+  - the client requests data, the server provide data.
+- Applicable R packages: `httr` and `jsonlite`
+
+### `httr`
+
+- Create request with `GET()` function. Input is a url which specifies the address of the server.
+
+- Example: current number of people in space
+
+```{r}
+res = GET('http://api.open-notify.org/astros.json')
+res
+```
+
+#### JSON Format
+
+- Different formats to share data on the internet
+- Currently, JavaScript Object notation is being widely adopted
+
+
+
+[
+{
+"name": "Miguel",
+"student_id": 1,
+"exam_1": 85,
+"exam_2": 86
+},
+{
+"name": "Sofia",
+"student_id": 2,
+"exam_1": 94,
+"exam_2": 93
+
+### jsonlite
+
+- Several organizations provide a JSON API or a web service
+- The `jsonlite` package provides parser and generator functions:
+    - `fromJSON()`   
+    - `toJSON()`
+
+- `fromJSON()`:
+  - Input is a JSON string, URL, JSON file
+  - Returns a list of data.frames
+
+- `toJSON()`:
+  - Input is any object
+  - Returns a JSON string
+
+
+#### `fromJSON()`
+
+- convert the raw Unicode of the GET request into a JSON string
+
+```{r}
+rawToChar(res$content)
+```
+
+- convert the JSON format to a list of data.frames
+
+```{r}
+data = fromJSON(rawToChar(res$content))
+data
+```
+
+Read directly from a url
+
+- for example: read from a github page
+
+
+```{r}
+data <- fromJSON("https://api.github.com/users/hadley/orgs")
+class(data)
+names(data)
+```
+
+
+#### `toJSON()`
+
+- Write a dataframe to JSON format
+
+```{r}
+jsondata = toJSON(data)
+head(jsondata)
+```
+
+And back from JSON format to dataframe
+
+```{r}
+backagain = fromJSON(jsondata)
+identical(data, backagain)
+```
+
+
+#### API with Query Parameters
+
+- When is the ISS was going to pass over a given location on earth?
+
+**The ISS and the Brooklynn Bridge**
+
+- Query parameters:
+  - longitude
+  - latitude
+- Combine with the original URL
+
+```{r}
+res = GET("http://api.open-notify.org/iss-pass.json",
+query = list(lat = 40.7, lon = -74))
+res
+```
+
+
+```{r}
+data = fromJSON(rawToChar(res$content))
+data$response
+```
+
+
+- Check the documentation of the API you are using
+  - required and optional parameters
+  - authentication
+
+- Not every API works with query parameters
+  - Note the “?{var}=” construction in the URL of the ISS
+  - Study the URL before building your function
+
+
+
