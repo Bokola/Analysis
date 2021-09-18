@@ -22,5 +22,10 @@ ggplot(concussion_subjects, aes(x = volume)) +
   geom_density()
 
 plot_normal_likelihood(y = concussion_subjects$volume, sigma = 0.5)
-plot_normal_normal(mean = 6.5, sd = 0.4, sigma = 0.5,
-                   y_bar = 5.735, n = 25)
+plot_normal_normal(
+  mean = 6.5,
+  sd = 0.4,
+  sigma = 0.5,
+  y_bar = 5.735,
+  n = 25
+)
