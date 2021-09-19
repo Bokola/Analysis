@@ -1,3 +1,6 @@
+# site to the book
+browseURL("https://www.bayesrulesbook.com/chapter-6.html")
+# packages
 ipk <- function(pkg){
   new.pkg <- list.pkg[!(list.pkg %in% .packages(all.available = T))]
   if(length(new.pkg)) 
@@ -79,6 +82,7 @@ post_sample <- sample_n(grid_data, size = 10000,
                         weight = posterior, replace = TRUE)
 # Histogram of the grid simulation with posterior pdf 
 ggplot(post_sample, aes(x = lambda_grid)) + 
+  # geom_density(fill = "blue") + # if you want density instead of histogram
   geom_histogram(aes(y = ..density..), color = "white") + 
   stat_function(fun = dgamma, args = list(13, 3)) + 
   lims(x = c(0, 15))
@@ -156,3 +160,38 @@ mcmc_hist(gp_sim, pars = "lambda") +
 mcmc_dens(gp_sim, pars = "lambda") + 
   yaxis_text(TRUE) + 
   ylab("density")
+
+
+# MCMC Diagnostics --------------------------------------------------------
+
+# 1. Visualizations: trace plots and parallel chains
+mcmc_trace(bb_sim, pars = "pi")
+
+# Density plots of individual chains
+mcmc_dens_overlay(bb_sim, pars = "pi") + 
+  ylab("density")
+
+# we observe that these four chains produce nearly indistinguishable posterior approximations. 
+# This provides evidence that our simulation is stable and sufficiently long 
+# - running the chains for more iterations likely wouldn't produce drastically different 
+# or improved posterior approximations
+
+# 2 Calculating effective sample size and correlation
+# Calculate the effective sample size ratio
+neff_ratio(bb_sim, pars = c("pi"))
+
+# autocorrelation (acf)
+mcmc_trace(bb_sim, pars = "pi")
+mcmc_acf(bb_sim, pars = "pi")
+
+# thinned simulation
+# Simulate a thinned MCMC sample
+thinned_sim <- stan(model_code = bb_model, data = list(Y = 9), 
+                    chains = 4, iter = 5000*2, seed = 84735, thin = 10)
+
+# Check out the results
+mcmc_trace(thinned_sim, pars = "pi")
+mcmc_acf(thinned_sim, pars = "pi")
+
+# calculating r-hat
+rhat(bb_sim, pars = "pi")
