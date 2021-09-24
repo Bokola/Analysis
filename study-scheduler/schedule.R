@@ -65,7 +65,7 @@ paletteer::paletteer_d("ggsci::green_material", n = 6) %>%
   scales::show_col()
 
 # add rownames
-row.names(study_schedule) <- c("0330 - 0600", "0800 - 10000", "1015 - 1215",
+row.names(study_schedule) <- c("0330 - 0600", "0800 - 1000", "1015 - 1215",
                                "1315 - 1515", "1530 - 1730", "1900 - 2100")
 study_schedule <- study_schedule %>% tibble::rownames_to_column()
 names(study_schedule)[1]  <- "Time"
@@ -140,5 +140,5 @@ out <- study_schedule %>% gt() %>% cols_label(.list = col_for_list) %>%
     
   )
 # save the gt object
-gtsave(data = out, filename = file.path(data_dir, "out.tex"))
-gtsave(data = out, filename = file.path(data_dir, "out.html"), inline_css = T)
+gtsave(data = out, filename = file.path(data_dir, paste0("study schedule_",format(Sys.Date(), "%b-%Y"), ".tex")))
+gtsave(data = out, filename = file.path(data_dir, paste0("study schedule_",format(Sys.Date(), "%b-%Y"), ".html")), inline_css = T)
