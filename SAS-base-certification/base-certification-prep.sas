@@ -69,3 +69,157 @@ run;
 
 proc print data = cert.class;
 run;
+
+* Chap 11: Do loops;
+* Using Explicit OUTPUT statements;
+data work.earn;
+	Value = 2000;
+	do year = 1 to 20;
+		interest = value * 0.075;
+		value + interest;
+		output; * creates an obs for each iteration of the do loop;
+	end;
+run;
+
+proc print data = work.earn;
+run;
+* Nesting Do loops;
+/* compute value of one-year investment that earns 7.5% annual interst
+compounded monthly */
+
+data cert.earn;
+	capital = 2000;
+	do month = 1 to 12;
+		interest = capital * (0.075 / 12);
+		capital + interest;
+		output;
+	end;
+run;
+
+proc print data = cert.earn;
+run;
+
+/* Assume that the same amount of capital is to be added
+to the investment each year for 20 years */
+
+data cert.earn2;
+	do year = 1 to 20;
+		capital = 2000;
+		do month =1 to 12;
+			interest = capital * (.075/ 12);
+			capital + interest;
+			output;
+		end;
+	end;
+run;
+
+proc print data = cert.earn2;
+run;
+
+/* Iteratively processing observations from a data set */
+* Suppose you want to compare how much each CD earns at
+maturity with an investment of $5,000;
+
+data cert.compare (drop = i);
+	input Type $ 1-7 AnnualRate Months;
+    Investment = 5000;
+    do i = 1 to Months;
+    	Investment + (AnnualRate/12)*Investment;
+	end;
+    *format Investment dollar8.2;
+    DATALINES;
+03Month  0.01980  3
+06Month  0.02230  6
+09Month  0.02230  9
+12Month  0.02470 12
+18Month  0.02470 18
+24Month  0.02570 24
+36Month  0.02720 36
+48Month  0.02960 48
+60Month  0.03445 60
+
+;
+run;
+proc print data = cert.compare;
+run;
+
+* conditionally executing do loops;
+/* do untill - when expression evaluates to true, the do loop stops*/
+/* Assume you want to know how many years it takes to earn
+$50,000 if you deposit $2,000 each year into an account that 
+earns 10% interest */
+data work.invest;
+	do until (capital >= 50000);
+		capital+2000;
+		capital + capital * .10;
+		year+1;
+	end;
+run;
+
+proc print data = work.invest;
+run;
+
+/* do while expression - stops if the expression evaluates to false */
+data work.invest2;
+	do while (capital <= 50000);
+		capital+2000;
+		capital + capital*0.10;
+		year+1;
+	end;
+run;
+
+proc print data = work.invest2;
+run;
+
+/* Suppose you also want to limit the number of years you invest
+your capital to 10 years */
+
+data work.invest;
+	do year = 1 to 10 until (capital >=50000);
+		capital+2000;
+		capital+capital*.10;
+	end;
+run;
+
+proc print data = work.invest;
+run;
+
+data simple;
+length date $15;
+input date;
+cards; 
+10/08/2021
+12/08/20
+;
+run;
+/* get contents of a library */
+proc contents data = cert._ALL_ nods; * nods suppresses printing of details;
+run;
+
+
+/* chapter 12: formats and informats */
+
+data simple2;
+	set simple;
+	date2 = input(strip(date), MMDDYY10.);
+	format date2 MMDDYY10.;
+	run;
+
+proc print data = simple2;
+run;
+
+* defining user formats - specify library;
+proc format library =cert;
+value gender
+1 = 'Male'
+2 = 'Female';
+value agegroup
+13 -< 20 = 'Teen'
+20 -< 65 = 'Adult'
+65 - HIGH = 'Senior';
+value $col
+'W' = 'Moon White'
+'B' = 'Sky Blue'
+'Y' = 'Sunburst Yellow'
+'G' = 'Rain Cloud Gray';
+run;
