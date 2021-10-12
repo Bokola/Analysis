@@ -223,3 +223,98 @@ value $col
 'Y' = 'Sunburst Yellow'
 'G' = 'Rain Cloud Gray';
 run;
+
+/* displaying user defined formats */
+proc format library = cert fmtlib;
+run;
+
+/* chap 14: SAS date formats and informats */
+* sas stores date valus as numeric count of days since Jan 1, 1960;
+data tempdate;
+date = input("2018/12/15", YYMMDD10.);
+run;
+
+proc print data = tempdate;
+run;
+
+/* INTCK function for interval of values calculation */
+data intck;
+week = intck('week', '31dec2017'd, '01jan2018'd);
+months = intck('month', '31dec2017'd, '01jan2018'd);
+years = intck('year',  '31dec2017'd, '01jan2018'd);
+run;
+
+proc print data = intck;
+run;
+
+/* INTNX function for multiples of a given date/time */
+data intnx;
+targetyear = intnx('year', '20Jul18'd, 3);
+targetmonth = intnx('semiyear', '01Jan18'd, 1);
+run;
+proc print data = intnx noobs;
+run;
+
+* with the alignment argument;
+/*
+BEGINNING Alias: B
+MIDDLE Alias: M
+END Alias: E
+SAME Alias: SAMEDAY or S
+*/
+data intnxalign;
+Monthb=intnx('month','01jan2018'd,5,'b');
+Monthm=intnx('month','01jan2018'd,5,'m');
+Monthe=intnx('month','01jan2018'd,5,'e');
+format monthb monthm monthe worddate12.; * format as Jun 1, 2018 for example;
+run;
+
+proc print data = intnxalign noobs;
+run;
+/*
+These INTNX statements count five months from January,
+but the returned value depends on whether alignment specifies
+the beginning, middle, or end day of the resulting month */
+
+/*DATDIF and YRDIF Functions */
+
+data _null_;
+x=yrdif('16feb2016'd,'16jun2018'd,'30/360');
+put x; * print x to console;
+run;
+
+/* TEXT manipulation functions */
+
+/* find nth character using SCAN */
+data _null_;
+s = "this is a sentence";
+x = scan(s, 4, " ");
+put x;
+run;
+
+/* find a pattern with substr */
+data _null_;
+s = "this is a sentence";
+x = substr(s, 1, 4);
+put x;
+run;
+
+/* find and replace with substr 
+syntax: substr(char, from, n) = "whatever" 
+*/
+data substr;
+s = "this is a sentence";
+run;
+
+data _null_;
+set substr;
+substr(s, 1, 4) = "";
+put s;
+run;
+
+/* search char value by index function */
+data _null_;
+set substr;
+this = index(s, "this");
+put this;
+run;
