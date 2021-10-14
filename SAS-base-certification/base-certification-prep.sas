@@ -318,3 +318,157 @@ set substr;
 this = index(s, "this");
 put this;
 run;
+
+/* chap15: proc means and proc freq */
+*output statement;
+/* You can use the NOPRINT option in the PROC MEANS statement
+to suppress the default report */
+proc means data = cert.compare;
+var investment;
+class type;
+output out = work.investment_by_type
+mean = avgInv
+min = minInv;
+run;
+
+%let title = investments by type;
+proc print data = work.investment_by_type ;
+	title1 "&title";
+run;
+
+* proc freq;
+proc freq data = cert.compare;
+run;
+* suppress display of cumulative freq using nocum option;
+proc freq data = cert.compare;
+tables annualrate / nocum;
+run;
+
+/* chap16: Creating output */
+* (a) HTML output with ods html;
+%let lib = C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\base-guide-practice-data\cert;
+%let out = out.html;
+%let filepath = &lib.&out; * combine two macro objects to extend path variable;
+%put &filepath; * print to log;
+%let toc = \toc.html;
+%let frame = \frame.html;
+%put "&lib&toc";
+
+*ods html body = %sysfunc(quote(&lib));
+
+/* specifications. However, it is simpler to specify the path
+once in the PATH= option and to specify URL=NONE.*/
+ods html path = "&lib" file = "&out" (url = none); *using the two macros to specify path and file;
+proc print data = cert.compare;
+run;
+ods html close;
+ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+/* creating html output with table of contents */
+* you need only specify path once on the ods statement;
+ods html path = "&lib" file = "data.html"
+	contents = "&toc"
+	frame = "&frame";
+proc print data = cert.compare;
+	label AnnualRate = "Annual interest rate";
+run;
+proc freq data = cert.compare;
+	tables annualrate;
+run;
+ods html close;
+
+ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+
+* Adding URLs = Uniform Resource locater;
+/* creating html output with table of contents */
+* you need only specify path once on the ods statement;
+ods html path = "&lib" file = "data.html" (url = 'data.html')
+	contents = "&toc" (url = 'toc.html')
+	frame = "&frame";
+proc print data = cert.compare;
+	label AnnualRate = "Annual interest rate";
+run;
+proc freq data = cert.compare;
+	tables annualrate;
+run;
+ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+ods html close;
+
+/* change output style */
+
+* list all sas style templates;
+proc template;
+	list styles/store=sashelp.tmplmst;
+run;
+
+* do not enclose style name in quotation marks;
+
+* you need only specify path once on the ods statement;
+ods html path = "&lib" file = "data.html"  (url = none) style = Word
+	contents = "&toc"
+	frame = "&frame";
+proc print data = cert.compare;
+	label AnnualRate = "Annual interest rate";
+run;
+proc freq data = cert.compare;
+	tables annualrate;
+run;
+ods html close;
+
+ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+
+/* PDF output with ODS PDF */
+%let sample = \sample.pdf;
+%let sampleTOC = \sample_with_TOC
+ods html close;
+ods pdf file = "&lib&sample"; * using macros to specify file path;
+proc freq data = sashelp.cars;
+	tables origin*type;
+run;
+ods pdf close;
+
+/* creating printable table of contents with contents = yes option */
+ods html close;
+title "create a Table of Contents";
+options nodate;
+ods pdf file = "&lib&sampleTOC" contents = yes bookmarklist = hide style = journal;
+proc freq data=sashelp.cars;
+	tables origin*type;
+run;
+proc print data=sashelp.cars (obs = 15);
+run;
+ods pdf close;
+ods html path = "%qsysfunc(pathname(work))";
+
+/* RTF / word output with ODS RTF */
+%let rtf = SampleRTF;
+title ;
+ods html close;
+ods rtf file = "lib&rtf" style = journal;
+proc freq data = sashelp.cars;
+	tables origin*type;
+run;
+ods rtf close;
+ods html path = "%qsysfunc(pathname(work))";
+
+
+proc contents data = sashelp.cars;
+run;
+proc sort data = sashelp.cars out = cert.cars;
+by make;
+run;
+
+/* EXCEL output with ODS excel */
+
+* customizing your excel output;
+%let xlsx = \excelsheet.xlsx;
+ods excel file = "&lib&xlsx";
+	options (sheet_interval = "bygroup" /*creates new worksheet for each bygroup */
+		suppress_bylines = 'yes' /* suppresses the by lines for each by group */
+		sheet_label = 'Make' /* customizes the worksheet label */
+		embedded_titles='yes');
+title 'Weight by Make'; /* embeds the title that is created by title statement */
+proc means data = cert.cars;
+	by make;
+	var weight;
+run;
+ods excel close;
