@@ -1,5 +1,6 @@
 libname cert "C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\cert\input";
 libname results "C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\cert\output";
+ods html;
 /*
 1.
 
@@ -299,3 +300,115 @@ produce results different than intended.
 Correct the errors, run the program, and then use the results to
 answer the next 3 questions.
 */
+
+data out;
+	length chol_status $32;
+	set cert.input44 (drop=bp_status weight_status smoking_status);;
+	*if cholesterol =. then chol_status = " ";
+	if cholesterol < 200  and cholesterol > . then chol_status='Safe';
+	else if cholesterol <= 239 and cholesterol > . then chol_status='High-Borderline';
+	else if cholesterol >= 240 and cholesterol > . then chol_status='High';
+	
+run;
+
+data out2;
+	length chol_status $32;
+	set cert.input44 (drop=bp_status weight_status smoking_status);;
+	if cholesterol =. then delete;
+	if cholesterol < 200 then chol_status='Safe';
+	else if cholesterol <= 239 then chol_status='High-Borderline';
+	else if cholesterol >= 240 then chol_status='High';
+	
+run;
+
+
+proc contents data=out;
+run;
+
+proc freq data = out; 
+	table chol_status;
+run;
+
+/* Open the existing program, program48.sas from folder cert\errors.
+At any time, you may save your corrected program as program48 in cert\programs.
+
+This program is intended to:
+Create 3 groups for Cvar: A-G is Group=1; H-N is Group=2; O-Z is Group=3 .
+All variations of the variable should be in the same group, i.e. “A” and “a”
+should be in Group=1.
+Calculate the average of X and Y by Group.
+There are multiple errors in the program. These may be syntax errors, logic errors, or problems with the program structure. Logic errors might not produce messages in the log, but will cause the program to produce results different than intended.
+
+Correct the errors, run the program, and then use the results to answer the
+next 2 questions.
+*/
+
+data groups (drop = y);
+set cert.input48;
+if upcase(cvar) in ('A','B','C','D','E','F','G') then group=1;
+else if upcase(cvar) in ('H','I','J','K','L','M','N') then group=2;
+else if upcase(cvar) in ('O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z')
+then group=3;
+yy = input(y, comma10.);
+run;
+
+data groups2; *(drop = yy) ;
+	set groups;
+	y = yy;
+	drop yy;
+run;
+
+/* Calculate the average of X and Y by Group */
+/* What is the average of X and Y for Group 2? */
+
+proc contents data = groups2;
+run;
+
+proc print data = groups (obs = 5);
+run;
+
+proc means data=groups2 mean maxdec=2;
+class group;
+var x y;
+run;
+
+data sasuser.one;
+   x=1;
+   y=27;
+   output one;
+run;
+
+proc print data = sasuser.one;
+run;
+
+
+ data WORK.NEW;
+     year=2011;
+     amount=5000;
+     do i=1 to 5;
+        year=year+1;
+        do qtr=1 to 4;
+           amount=amount*1.1;
+        end;
+     end;
+  run;
+  proc print data=WORK.NEW noobs;
+  run;
+
+  data work.look;
+   x=2;
+   if x=1 then y=100;
+   if x=2 then y=200;
+   if x=3 then y=300;
+   else y=27;
+run;
+
+proc print data = look;
+run;
+
+data work.test;
+   type='SQL'; 
+   if type='SAS' then description='SAS Program';
+   else description='other';
+   length description 8; 
+run;

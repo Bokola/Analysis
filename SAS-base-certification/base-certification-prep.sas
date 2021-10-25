@@ -1,7 +1,7 @@
 * base SAS certification;
 * verify code that reads data;
 libname cert 'C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\base-guide-practice-data\cert';
-options obs=5;
+*options obs=5;
 proc import datafile = 'C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\base-guide-practice-data\cert\boot.csv'
 dbms = csv
 out = shoes
@@ -43,12 +43,15 @@ data excelout.HighStress;
 run;
 
 * Chap5: Identifying and correcting SAS language errors;
-proc import datafile = 'C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\SAS\base-guide-practice-data\cert\class.txt'
-	dbms=dlm
-	out = cert.class
+proc import datafile = 'C:\Users\basil\Google Drive (basil.okola@student.uhasselt.be)\MSc. Stats Hasselt\y2 sem1\LDA\project continuous\data\renal.txt';
+	*dbms=tab;
+	out = cert.renal
 replace;
 delimiter ='09'x; *tab separator in ascii form;
 getnames = yes;
+run;
+
+proc print data = cert.renal (obs = 10);
 run;
 
 
@@ -153,6 +156,7 @@ data work.invest;
 		capital+2000;
 		capital + capital * .10;
 		year+1;
+		output;
 	end;
 run;
 
@@ -202,7 +206,7 @@ run;
 data simple2;
 	set simple;
 	date2 = input(strip(date), MMDDYY10.);
-	format date2 MMDDYY10.;
+	*format date2 MMDDYY10.;
 	run;
 
 proc print data = simple2;
@@ -223,6 +227,7 @@ value $col
 'Y' = 'Sunburst Yellow'
 'G' = 'Rain Cloud Gray';
 run;
+options fmtsearch =(cert); * set where to look for formats;
 
 /* displaying user defined formats */
 proc format library = cert fmtlib;
@@ -323,7 +328,7 @@ run;
 *output statement;
 /* You can use the NOPRINT option in the PROC MEANS statement
 to suppress the default report */
-proc means data = cert.compare;
+proc means data = cert.compare maxdec = 2;
 var investment;
 class type;
 output out = work.investment_by_type
@@ -362,7 +367,7 @@ ods html path = "&lib" file = "&out" (url = none); *using the two macros to spec
 proc print data = cert.compare;
 run;
 ods html close;
-ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+ods html;* path = "%qsysfunc(pathname(work))"; * get html output to default work library;
 /* creating html output with table of contents */
 * you need only specify path once on the ods statement;
 ods html path = "&lib" file = "data.html"
@@ -376,7 +381,7 @@ proc freq data = cert.compare;
 run;
 ods html close;
 
-ods html path = "%qsysfunc(pathname(work))"; * get html output to default work library;
+ods html;* path = "%qsysfunc(pathname(work))"; * get html output to default work library;
 
 * Adding URLs = Uniform Resource locater;
 /* creating html output with table of contents */
