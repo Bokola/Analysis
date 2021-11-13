@@ -1,0 +1,28 @@
+---
+title: "setup"
+author: "Bokola"
+date: "12/4/2020"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,
+                      include = TRUE,
+                      # base_dir = "figures/",
+                      fig.path = "figures/",
+                      fig.align = "center",
+                      fig.width = 6.5, 
+                      fig.height = 4, 
+                      dev = "png",
+                      cache = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      results = "markup")
+options(tinytex.verbose = TRUE)
+options(width = 600)
+# options(scipen = 999)
+
+```
+

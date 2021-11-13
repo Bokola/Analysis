@@ -1,0 +1,40 @@
+---
+title: "Project learning from Data: Sociodemographic, Health And Behavioral Factors Associated with Total Bone Mineral Density."
+author: "Basil Okola, Ba Tuan Vu, Evan Massango, Ömer Sercik"
+date: "December 23rd, 2020"
+output:
+  bookdown::pdf_document2: default
+  bookdown::word_document2: default
+  pdf_document: default
+  word_document: default
+  fig_caption: yes
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: yes
+header-includes: \usepackage{amsmath}
+bibliography: citation.bib
+csl: biomed-central.csl
+---
+
+
+# Introduction 
+
+Bone mineral density is a measure of the amount of minerals – especially calcium in the bones. It’s a pointer for identifying individuals at risk of osteoporosis (loosely translated as porous bones), a special interest group being women and older adults. Testing for bone mineral density uses dual-energy X-ray absorptiometry (DXA). DXA uses two X-ray beams at different energy levels to calculate BMD(Rajesh K Jain 2017). Low bone mass is a serious public health problem due to associated bone fractures and resultant morbidities in aging adults (Behzad Heidari and Rabei 2017). The cost of treating resulting fractures in the USA alone has been projected to be about US$25.3 billion in 2025 (Y.Du 2017). Identifying associated risks can therefore help prevent progress of osteoporosis to development of fractures thereby offering both economic relief to the populations at risks while maintaining a generally healthier population.<br>
+
+## Factors associated with bone mineral density
+
+In their paper looking at associated factors of bone mineral density and osteoporosis, Behzad and colleagues found a positive association with age and body mass index [@behzad2016dxxfactors]. Total bone mineral density  reduced with increasing age while heavy weight and obese subjects reported higher bone mineral density when compared to low weight subjects [@suea]. However, when they controlled for other factors like diabetes, effects of age were no longer significant. A number of studies have suggested that a relationship may exist between socio-economic status and bone mineral density. These involve some known and preventable behavioral factors such as BMI, physical exercise, cigarette smoking, calcium intake, alcohol consumption and menopausal hormone therapy [@ydu2017socio]. 
+
+While assessing the association of socio-economic factors with bone mineral density Y.Du et al. found that after controlling for age, positive linear relationship was only found between (1) education and hip BMD, income and spine BMD in non-Hispanic white men, (2) between education and hip BMD in non-Hispanic Asian men and (3) between education and both hip and spine BMD in non-Hispanic black women [@ydu2017socio]. Another study that assessed the association of physical activity and BMD found that cortisol hormone is released in high quantities when one is very active physically and this contributes to bone breakdown and bone mineral density lowering [@dennison]. Behavioral factors like drinking and smoking have also been explored. A meta-analysis on the effects of smoking on bone mineral density [@kenneth] found smokers to generally have lower bone mineral density when compared to non-smokers. Another study that explored the effect of drug abuse on bone mineral density [@mitsuyo] only discussed these effects in a general way and did not have conclusive results. The quality of a person's diet has also been found to influence total bone mineral density. Intake of milk is one source of calcium and frequent consumers of milk have been found to have higher total bone mineral density content [@eysteinsdottir]. Social and behavioral factors may have an association with total bone mineral density, but can never exhaustively explain this association without taking into account an individuals genetic makeup [@harris]. While reported results from published literature may vary subject to the cross-sectional population of subjects involved, they are great pointers to factors associated with total bone mineral density.
+
+
+Additional resources:
+
+```{r}
+browseURL("https://bookdown.org/yihui/rmarkdown-cookbook/bibliography.html")
+browseURL("https://www.zotero.org/styles?q=biomed%20ce")
+```
+

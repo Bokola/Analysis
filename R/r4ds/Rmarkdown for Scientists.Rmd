@@ -44,23 +44,24 @@ options(tinytex.verbose = TRUE)
 
 ```{r, library, warning=FALSE,results='hide', echo=FALSE, message=FALSE}
 browseURL('https://rmd4sci.njtierney.com/')
+# usethis::use_course("bit.ly/rmd4sci-materials")
 ipk = function(pkg){
   new.pkg = list.pkg[!(list.pkg %in% installed.packages()[, "Package"])]
 
-  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
+  if(length(new.pkg)) install.packages(new.pkg, dependencies = T, repos = 'https://cran.us.r-project.org')
   sapply(pkg, require, character.only = T)
 }
-list.pkg = c("tidyverse", "ggforce", "cowplot", "remotes",  "magrittr", "readr") 
+list.pkg = c("tidyverse", "ggforce", "cowplot", "remotes",  "magrittr", "readr", "Gapminder") 
 #ggforce for geom_arc_bar()
 #cowplot for theme_map()
 ipk(list.pkg)
 
-home = ifelse(Sys.info()['sysname'] == 'Linux', Sys.getenv('HOME'), Sys.getenv('USERPROFILE')) %>%
-  gsub('\\\\', '/',.) %>% file.path(., "Analysis", "Rmarkdown for Scientists")
-
-if(!exists(home)){
-  dir.create(home, recursive = T)
-}
+# home = ifelse(Sys.info()['sysname'] == 'Linux', Sys.getenv('HOME'), Sys.getenv('USERPROFILE')) %>%
+#   gsub('\\\\', '/',.) %>% file.path(., "Analysis", "Rmarkdown for Scientists")
+# 
+# if(!exists(home)){
+#   dir.create(home, recursive = T)
+# }
 
 # usethis::use_course("bit.ly/rmd4sci-materials", destdir = home)
 # render(file.Rmd, output_format = html_document(toc = TRUE, toc_depth = 2))
@@ -82,7 +83,7 @@ scale_01 <- function(x){
 
 ```{r read-data, message=FALSE, include=TRUE}
 
-gap<- read_csv(file.path(home, "data", "gapminder.csv"))
+gap<- gapminder::gapminder
 
 ```
 

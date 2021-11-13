@@ -156,6 +156,10 @@ ymd("2015-01-01") + months(0:11)
 # in the current year
 floor_date(today(), unit = "year") + months(0:11)
 
+# last day of month
+date.end.month <- ceiling_date(Sys.Date(), "month") - 1
+date.end.month
+
 
 # time zones --------------------------------------------------------------
 

@@ -3,13 +3,13 @@ title: "RunniRng SAS from Rstudio"
 author: "Basil Okola"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
+  word_document: default
+  bookdown::pdf_document2: default
   html_document:
     df_print: paged
-  bookdown::pdf_document2: default
-  pdf_document: default
   bookdown::word_document2: default
   fig_caption: yes
-  word_document: default
+  pdf_document: default
 tables: yes
 fontsize: 14pt
 mainfont: Arial

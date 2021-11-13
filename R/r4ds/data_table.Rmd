@@ -298,9 +298,10 @@ irisDT[, .(meanSepalLength = mean(Sepal.Length),
            meanPetalLength = mean(Petal.Length),
            meanPetalWidth = mean(Petal.Width))]
 ```
+
 ```{r}
-irisDT[, .(nSamples = .N, nSpecies = uniqueN(Species))
-       ]
+
+irisDT[, .(nSamples = .N, nSpecies = uniqueN(Species))]
 ```
 ---
 
@@ -368,7 +369,9 @@ y = c(8, 14, 19, 2, 4)))
 
 ```{r}
 y[x, on = .(id), nomatch = 0]
+
 ```
+
 ---
 
 ### full join - merge

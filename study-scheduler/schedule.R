@@ -125,10 +125,10 @@ schedule <- function(core_courses, side_study, core_weight, side_weight){
     tab_source_note("@okola_owiti | data: 2021 - 2022 MSc Statistics courses ") %>%
     tab_header(
       title = md("**2021 - 2022 Study Schedule**"),
-      subtitle = "Sep - Oct 2021"
+      subtitle = format(Sys.Date(), "%b %Y")
       
     )
-  return(study_schedule)
+  return(out)
 
 }
 
@@ -152,16 +152,25 @@ side_sep_wt <- c(0.25, 0.25, 0.2, 0.15, 0.15)
 
 core_sep_wt <- c(0.3, 0.25, 0.2, 0.25)
 
+# OCT & Nov 2021
+core_nov <- c("CPS", "Bayesian\nData Analysis", 
+          "Computer\nIntensive Methods", "LDA", "AMT", "capita\nselecta")
+side_nov <- c("Bayes\nrules book", "Advanced\nSAS", "Advanced\nR", "SQL","Designing Data\nIntensive applications")
+side_nov_wt <- c(0.25, 0.25, 0.2, 0.15, 0.15)
+
+core_nov_wt <- c(0.2, 0.2, 0.15, 0.2, 0.15, 0.1)
+
 # call the function
 
-oct_schedule <- schedule(core_courses = core_sep, side_study = side_sep, core_weight = core_sep_wt, side_weight = side_sep_wt)
+nov_schedule <- schedule(core_courses = core_nov, side_study = side_nov, core_weight = core_nov_wt,
+                         side_weight = side_nov_wt)
 
 # save the gt object
-gtsave(data = oct_schedule, filename = file.path(data_dir, paste0(
+gtsave(data = nov_schedule, filename = file.path(data_dir, paste0(
   "study schedule_", format(Sys.Date(), "%b-%Y"), ".tex"
 )))
 gtsave(
-  data = oct_schedule,
+  data = nov_schedule,
   filename = file.path(data_dir, paste0(
     "study schedule_", format(Sys.Date(), "%b-%Y"), ".html"
   )),
