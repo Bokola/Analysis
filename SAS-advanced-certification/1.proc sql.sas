@@ -198,3 +198,76 @@ proc sql;
 		where jobcode ? 'NA'
 		order by salary;
 quit; 
+
+/* chap2: creating and managing tables */
+
+/*a) create blank table*/
+
+proc sql;
+	create table discount
+		(Destination char(3),
+		BeginDate num format=date9.,
+		EndDate num format=date9.,
+		Discount num);
+quit;
+
+/* b) using LIKE clause - columns but no rows*/
+proc sql;
+	create table flightdelays2
+	like d.flightdelays;
+quit;
+/* c) using AS keyword - to create a table from query */
+proc sql;
+	create table ticketagents as
+		select lastname, firstname,
+			jobcode, salary
+		from d.payrollmaster, d.staffmaster
+		where payrollmaster.empid = staffmaster.empid /* an inner join */
+			and jobcode contains 'TA';
+quit;
+
+* describe a table's structure with describe table statement;
+
+proc sql;
+	describe table ticketagents;
+quit;
+
+/* INSERT statement */
+	* insert by column name by using set;
+proc sql;
+	insert into discount
+		set destination = 'LHR',
+			begindate = '05MAR2018'd,
+			discount = .33
+		set destination = 'CPH',
+			begindate = '03MAR2018'd,
+			discount = .15;
+quit;
+
+	* insert using values clause;
+
+proc sql;
+	insert into discount(destination,
+			begindate, enddate, discount)
+		values ('LHR', '01MAR2018'd, '05MAR2018'd, .33)
+		values ('CPH', '03MAR2018'd, '10MAR2018'd, .15);
+quit;
+
+	* insert using rows copied from a query result;
+proc sql;
+	create table payrollchanges2
+		like d.payrollmaster;
+quit;
+
+proc sql;
+	insert into payrollchanges2
+		select *
+			from d.payrollmaster
+			where empid in ('1919', '1350', '1401');
+quit;
+
+/* using Dictionary tables */
+
+proc sql;
+	describe table dictionary.tables; * for tables;
+run;
