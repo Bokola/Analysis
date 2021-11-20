@@ -271,3 +271,155 @@ quit;
 proc sql;
 	describe table dictionary.tables; * for tables;
 run;
+
+/* chap3: Joining tables */
+
+* a) cartesian product;
+proc sql;
+	select *
+		from d.one, d.two;
+quit;
+*b) inner join with from clause;
+proc sql;
+	select *
+		from d.one inner join d.two
+			on one.x = two.x;
+quit;
+* eliminating duplicate columns - specify just one of the colums
+in the select statement;
+proc sql;
+	select one.x, a, b
+		from d.one inner join d.two
+		on one.x = two.x;
+quit;
+
+* alternative with asterisk (*);
+proc sql;
+	select one.*, b
+		from d.one inner join d.two
+		on one.x = two.x;
+quit;
+* renaming column by using column alias;
+proc sql;
+	select one.x as ID, two.x, a,b
+		from d.one inner join d.two
+		on one.x = two.x;
+quit;
+* specify a table alias with table.column-name */;
+proc sql;
+	select staffmaster.empid, lastname, firstname, jobcode
+		from d.staffmaster  as s inner join d.payrollmaster as p
+		on s.empid = p.empid;
+quit;
+
+* Suppose you want to create a report where the name is displayed 
+with first initial and last name (R.Long), JobCode, and ages of 
+all employees who live in New York. The report also should be sorted by
+JobCode and Age;
+
+proc sql;
+	describe table d.payrollmaster, d.staffmaster;
+quit;
+
+proc sql outobs = 15;
+	title 'New York Employess';
+	select substr(firstname,1,1) || '.' || lastname
+		as Name,
+		jobcode,
+		int((today() - dateofbirth) / 365.25)
+		as Age
+		from d.payrollmaster as p inner join
+			d.staffmaster as s
+		on p.empid = s.empid
+		where state = 'NY'
+		order by 2, 3;
+quit;
+
+* inner join with summary functions ;
+* summarizes columns for New York employees 
+in each job code: number of employees and
+average age;
+proc sql outobs = 15;
+	title "Average age of New York Employess";
+	select jobcode, count(distinct p.empid) as Employees,
+		avg(int(today() - dateofbirth)/ 365.25) 
+		format = 4.1 as AvgAge
+		from d.payrollmaster as p inner join 
+			d.staffmaster as s
+			on p.empid = s.empid
+		where state = "NY"
+		group by jobcode
+		order by jobcode desc;
+quit;
+
+/* natural join */
+
+proc sql;
+	select *
+		from d.schedule natural join 
+			d.courses ;
+quit;
+
+/* outer join */
+/* a) left join */
+proc sql;
+	select *
+		from d.one left join
+			d.two
+			on one.x = two.x;
+quit;
+
+* elimiating duplicate colums - using table.column;
+proc sql;
+	select one.x, a, b
+		from d.one left join d.two
+			on one.x = two.x;
+quit;
+
+/* b) right join */
+proc sql;
+	select *
+		from d.one right join d.two
+		on one.x = two.x;
+quit;
+	
+/* c) full join */
+
+proc sql;
+	select *
+		from d.one full join d.two
+		on one.x = two.x;
+quit;
+
+/* complex outer join */
+
+/* Suppose you want to list all of an airline's 
+flights that were scheduled for March, along with
+any available corresponding delay information.
+Each flight is identified by both a flight date
+and a flight number. Your output should display 
+the following data: flight date, flight number, 
+destination, and length of delay in minutes */
+
+proc sql;
+	select m.date,
+		m. flightnumber label= 'Flight Number',
+		m.destination label = "Left",
+		f.destination label = "Right",
+		delay label = "Delay in minutes"
+		from d.marchflights as m left join 
+			d.flightdelays as f
+			on m.date = f.date
+			and m.flightnumber = f.flightnumber
+		order by delay;
+quit;
+
+/* coalesce function - overlays columns presenting 
+results similar to merge data step*/
+proc sql;
+	select coalesce(three.x, four.x)
+		as x, a, b
+		from d.three full join
+		d.four
+		on three.x = four.x;
+quit;
