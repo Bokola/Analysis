@@ -403,7 +403,7 @@ destination, and length of delay in minutes */
 
 proc sql;
 	select m.date,
-		m. flightnumber label= 'Flight Number',
+		m.flightnumber label= 'Flight Number',
 		m.destination label = "Left",
 		f.destination label = "Right",
 		delay label = "Delay in minutes"
@@ -422,4 +422,244 @@ proc sql;
 		from d.three full join
 		d.four
 		on three.x = four.x;
+quit;
+
+/* chap4 - set operators */
+* except - rows in table 1 and not in table 2;
+
+proc sql;
+	select *
+		from d.stress17 union
+	select * 
+		from d.stress18;
+quit;
+
+* you can use multiple set operators;
+proc sql;
+	select * 
+		from d.mechanicslevel1
+	outer union
+	select *
+		from d.mechanicslevel2
+	outer union
+	select *
+		from d.mechanicslevel3;
+quit;
+
+* using all to select both duplicates and unique in first table;
+proc sql;
+	select *
+		from d.col1 except all
+	select *
+		from d.col2;
+quit;
+* using CORR to
+	- display only columns having same name
+	- all unique rows in the first table that do not appear in the
+	second;
+
+proc sql;
+	select * 
+		from d.col1 except corr
+	select * 
+		from d.col2;
+quit;
+
+*all and corr together selects unique and duplicate
+rows in table 1 and only display common columns;
+proc sql;
+	select * 
+		from d.col1 except all corr
+	select * 
+		from d.col2;
+quit;
+
+/* intersect */
+proc sql;
+	select *
+		from d.col1 intersect
+	select *
+		from d.col2;
+quit;
+/* union */
+proc sql;
+	select *
+		from d.col1 union
+	select *
+		from d.col2;
+quit;
+
+proc sql;
+	select sum(pointsearned) format = comma12.
+			label 'Total points earned',
+			sum(pointsused) format = comma12.
+			label = 'Total points used',
+			sum(milestraveled) format = comma12.
+			label 'Total Miles traveled'
+		from d.frequentflyers;
+quit;
+/* print in rows using union */
+proc sql;
+	select 'Total points earned:',
+			sum(pointsearned) format = comma12.
+		from d.frequentflyers union
+	select 'Total points traveled:',
+			sum(milestraveled) format = comma12.
+		from d.frequentflyers union
+	select 'Total points used:',
+			sum(pointsused) format = comma12.
+		from d.frequentflyers;
+quit;
+
+/* outer union */
+proc sql;
+	select *
+		from d.col1 outer union
+	select * 
+		from d.col2;
+quit;
+
+* overlay common colums with corr;
+proc sql;
+	select *
+		from d.col1 outer union corr
+	select * 
+		from d.col2;
+quit;
+
+/* chap 5: subqueries/ nested queries */
+* jobcodes with a salary less thatn company average;
+proc sql;
+	select jobcode, avg(salary) as avgsalary
+		format = dollar11.2
+		from d.payrollmaster
+		group by jobcode
+		having avg(salary) > (select avg(salary)
+		from d.payrollmaster);
+quit;
+*query that lists the names and addresses of all employees who have birthdays
+in February. This query selects data from two different tables:
+employee names and addresses in the table Certadv.Staffmaster
+employee birth dates in the table Certadv.Payrollmaster;
+proc sql outobs = 10;
+	describe table d.staffmaster, d.payrollmaster;
+quit;
+proc sql;
+	select empid, firstname, lastname, city, state
+		from d.staffmaster
+		where empid in 
+		(select empid from d.payrollmaster
+			where month(dateofbirth) = 2);
+
+quit;
+
+* identify any flight attendants at level 1 or level 2 who are older
+than any of the flight attendants at level 3;
+proc sql;
+	select empid, jobcode, dateofbirth
+		from d.payrollmaster
+			where jobcode in ('FA1', 'FA2') and
+				dateofbirth < any
+				(select dateofbirth 
+					from d.payrollmaster
+						where jobcode = 'FA3')
+	order dateofbirth desc;
+quit;
+
+* faster alternative is to use max;
+proc sql;
+	select empid, jobcode, dateofbirth
+		from d.payrollmaster
+			where jobcode in ('FA1', 'FA2') and
+				dateofbirth < 
+				(select max(dateofbirth) 
+					from d.payrollmaster
+						where jobcode = 'FA3')
+	order dateofbirth desc;
+quit;
+* using all to get level 1 & 2 older than all level 3;
+proc sql;
+	select empid, jobcode, dateofbirth
+		from d.payrollmaster
+			where jobcode in ('FA1', 'FA2') and
+				dateofbirth < all
+				(select dateofbirth
+					from d.payrollmaster
+						where jobcode = 'FA3')
+	order dateofbirth desc;
+quit;
+* min option;
+proc sql;
+	select empid, jobcode, dateofbirth
+		from d.payrollmaster
+			where jobcode in ('FA1', 'FA2') and
+				dateofbirth < 
+				(select min(dateofbirth) 
+					from d.payrollmaster
+						where jobcode = 'FA3')
+	order dateofbirth desc;
+quit;
+
+/* nested subqueries */
+proc sql;
+	describe table d.supervisors, d.staffmaster;
+quit;
+* displays the names of all navigators who are also managers;
+proc sql;
+	select lastname, firstname
+		from d.staffmaster
+			where 'NA' = 
+			(select jobcategory from d.supervisors
+				where staffmaster.empid = supervisors.empid);
+quit;
+/* EXISTS and NOT EXISTS conditional operaators */
+* list by name the flight attendants who have not been scheduled;
+proc sql;
+	select lastname, firstname
+		from d.flightattendants
+			where not exists
+				(select * from d.flightschedule
+					where flightattendants.empid = 
+					flightschedule.empid);
+
+quit;
+
+/* creating views */
+proc sql;
+	create view d.faview as
+		select lastname, firstname,
+			int(today() - dateofbirth) / 365.25 as Age,
+			substr(jobcode, 3,1) as Level,
+			salary
+		from d.payrollmaster, d.staffmaster
+		where jobcode contains 'FA' and
+			staffmaster.empid = payrollmaster.empid;
+quit;
+
+/* using the view */
+proc sql;
+	select *
+		from d.faview;
+quit;
+ /* describe view */
+proc sql;
+	describe view d.faview;
+quit;
+/* updating views */
+proc sql;
+	create view d.raisev as
+		select empid, jobcode,
+			salary format= dollar12.,
+			salary/12 as MonthlySalary format=dollar12.
+			from d.payrollmaster;
+quit;
+
+proc sql;
+	update d.raisev
+		set salary = salary * 1.20
+		where jobcode = 'PT3';
+quit;
+/* drop view */
+proc sql;
+	drop view d.raisev;
 quit;
