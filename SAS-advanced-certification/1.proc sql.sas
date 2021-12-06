@@ -2,6 +2,7 @@
 %let output = C:\Users\basil\Analysis\SAS-advanced-certification\output;
 
 libname d "&data";
+libname dd "&data";
 libname o "&output";
 /* select statement */
 *  creates a new column bonus;
@@ -662,4 +663,101 @@ quit;
 /* drop view */
 proc sql;
 	drop view d.raisev;
+quit;
+
+
+/* chap 6: creating data driven macro variables */
+
+/* into clause */
+proc sql noprint;
+	select avg(salary)
+		into: avgsal
+		from d.payrollmaster;
+quit;
+
+* use;
+
+title "salaries above: %left(%qsysfunc(putn(&avgsal, dollar16.)))";
+proc sql;
+	select empid, jobcode, salary, dateofhire
+		from d.payrollmaster
+		where salary > &avgsal and dateofhire > '01JAN2015'd;
+quit;
+
+* show value of macro with %put;
+%put avgsalary = &avgsal;
+
+*or;
+%put &=avgsal;
+
+* remove leading/trailing spaces;
+proc sql;
+	select min(pointsearned)
+		into: minmiles trimmed
+		from d.frequentflyers;
+quit;
+%put &=minmiles;
+* Concatenating Values in Macro Variables;
+proc sql;
+	select distinct location into: sites separated by ' '
+		from d.schedule;
+quit;
+* applying a format character and numeric variable;
+
+* Suppose you have census data, Certadv.Census. You are asked to create a 
+report that finds the states where the estimated population for 2018 is greater than 
+the average census population in April 2010. You are also asked to find the difference
+between the census data and the population estimate for 2018 where the population
+estimate for 2018 is greater than 10 million.;
+
+proc sql;
+	select avg(census_Apr2010) as n_format,
+		avg(census_Apr2010) as format format=comma16.
+		into: censusavg2010,
+			: censusavg2010_format
+		from d.census;
+quit;
+
+proc sql;
+	select state format = $upcase23. as state
+		into: statelist separated by ','
+		from d.census
+		where popest_apr2018 > &censusavg2010 and popest_apr2018 > 10000000
+		order by state;
+quit;
+%put &=statelist;
+
+* The following example produces a query result using the macro variables created above;
+title "States with Population Estimates Above AVG: &censusavg2010_format";
+footnote "&statelist";
+proc sql;
+	select strip(state) format=$upcase23. as State,
+		census_apr2010 format=comma12.,
+		popest_apr2018 format = comma12.,
+		(popest_apr2018 - census_apr2010) format = comma12. as Percentage
+		from d.census
+		where popest_apr2018 > &censusavg2010 and popest_apr2018 > 10000000
+		order by State;
+quit;
+title;
+footnote;
+
+* fedSQL;
+libname ddd v9 "&data"; *always specify libname prior to fedsql statement;
+proc fedsql;
+	select state, census_apr2010, popest_apr2018
+		from ddd.census
+		order by state
+		limit 10; *fedsql uses limit in place for outobs;
+	quit;
+* fedsql does not support format = , use put instead;
+
+libname ddd v9 "&data"; *always specify libname prior to fedsql statement;
+proc fedsql;
+	select salesrep,
+		put(Sales1 , dollar10.2) as Sales1,
+		put(Sales2, dollar10.2) as Sales2,
+		put(Sales3, dollar10.2) as Sales3,
+		put(Sales4, dollar10.2) as Sales4
+		from ddd.qsales;
 quit;
