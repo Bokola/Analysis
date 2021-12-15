@@ -195,3 +195,175 @@ var student_name paid;
 title1 "Roster for Course &crs";
 title2 "Taught by &&teach&crs";
 run;
+
+/* chap9: Working with macro programs */
+%let dat = sashelp.cars;
+%macro printit;
+	proc print data = &dat (obs = 5);
+		title "Listing of &dat data set";
+	run;
+	%mend printit;
+	%printit *no need for semi-colon;
+
+* macros with positional arguments;
+%macro printdsn(dsn);
+	proc print data = &dsn;
+	title "Listing of %upcase(&dsn) data set";
+	run;
+%mend printdsn;
+
+%printdsn(d.schedule)
+
+* Example: Using Keyword Parameters to Create Macro Variables;
+%macro printdsn(dsn = d.schedule, vars = course_code teacher);
+	proc print data = &dsn;
+	var &vars;
+	title "Listing of %upcase(&dsn) data set";
+	run;
+%mend printdsn;
+*run with default values;
+%printdsn()
+* run with set of position arguments;
+%printdsn(vars=teacher course_code begin_date, dsn=d.schedule)
+*Example: Using Mixed Parameters to Create Macro Variables;
+*You can use a combination of positional and keyword parameters
+to create the macro variables in the Printdsn macro definition;
+%macro printdsn(dsn, vars=course_title course_code days);
+	proc print data=&dsn;
+		var &vars;
+	title "Listin g of %upcase(&dsn) data set";
+	run;
+%mend;
+%printdsn(d.schedule, vars=teacher location begin_date)
+*EXAMPLE: USING %GLOBAL STATEMENT;
+%macro printdsn;
+	%global dsn vars;
+	%let dsn=d.courses;
+	%let vars=course_title course_code days;
+	proc print data=&dsn;
+		var &vars;
+	title "Listin g of &dsn data set";
+	run;
+%mend printdsn;
+%printdsn
+* Note: You use the %SYMDEL statement to delete a macro variable 
+	from the global symbol table;
+%symdel dsn;
+* debug macro with mprint option;
+%macro prtlast;
+	proc print data = &syslast (obs = 5);
+		title "Llisting of &syslast dataset";
+	run;
+%mend prtlast;
+
+data sales;
+	price_code = 1;
+run;
+options mprint;
+%prtlast
+* conditional execution;
+*Example: Using %IF-%THEN, %DO-%END with IF-THEN Statements;
+data sports;
+	set sashelp.cars;
+	where lowcase(type) = "sports";
+	avgMPG = mean(mpg_city, mpg_highway);
+run;
+%if &syserr ne 0 %then %do;
+	%put Error: The rest of the program will not run;
+%end;
+%else %do;
+title "SPorts Cars";
+proc print data = sports noobs;
+	var make model avgmpg msrp;
+run;
+%end;
+* Example: Controlling Text Copied to the Input Stack;
+/*
+%macro choice(status);
+	data fees;
+		set d.all;
+		%if &status = PAID %then %do;
+			where paid = "Y";
+			keep student_name course_code begin_date totalfee;
+		%end;
+		%else %do;
+			where paid = "N";
+			keep student_name course_code
+				begin_date totalfee latechg;
+				latechg = fee * .10;
+		%end;
+		if location = 'Boston' then totalfee = fee * 1.06;
+		else if location = 'Seattle' then totalfee = fee * 1.025;
+		else if location = "Dallas" then totalfee = fee * 1.05;
+	run;
+	%mend choice
+options mprint mlogic;
+%choice(PAID)
+*/
+* EXAMPLE: USING MLOGIC SYSTEM OPTION;
+data sales;
+	price_code = 1;
+run;
+options nomprint mlogic;
+%prtlast
+
+* iterative processing;
+* Example: Using the %DO Statement;
+proc sql;
+	select teacher 
+		into: teach1-
+		from d.schedule;
+run;
+
+%macro putloop;
+	%local i;
+	%do i=1 %to &sqlobs
+		%put TEACH&i is &teach&i;
+	%end;
+%mend;
+%putloop
+option nomprint nomlogic nosymbolgen;
+proc sql noprint;
+select teacher
+into :teach1-
+from d.schedule;
+run;
+%macro putloop;
+	%local i;
+	%do i=1 %to &sqlobs;
+		%put TEACH&i is &&teach&i;
+	%end;
+%mend;
+%putloop
+/*data _null_;
+       set d.schedule end=no_more;
+       call symput('teach'||left(_n_),(trim(teacher)));
+       if no_more then call symput('count',_n_);
+    run;
+
+    %macro putloop;
+       %local i;
+       %do i=1 %to &count;
+          %put TEACH&i is &&teach&i;
+       %end;
+    %mend putloop;
+
+    %putloop
+proc sql feedback;
+	select * from d.schedule;
+quit;
+*/
+
+* Example: Generating Complete Steps;
+*Suppose you want to generate a roster for each of the 18 
+classes that you have. You can use a %DO statement to
+create a loop that creates a roster for each class;
+%macro rosters;
+	%do class=1 %to 6;
+		title "Rosters for class #&class";
+		proc print data = d.schedule;
+		where course_number = &class;
+	run;
+	%end;
+	%mend;
+%rosters;
