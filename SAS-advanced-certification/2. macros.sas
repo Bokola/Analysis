@@ -1,3 +1,4 @@
+%let home = C:\Users\basil\Analysis\SAS-advanced-certification;
 %let data = C:\Users\basil\Analysis\SAS-advanced-certification\data;
 %let output = C:\Users\basil\Analysis\SAS-advanced-certification\output;
 
@@ -367,3 +368,143 @@ create a loop that creates a roster for each class;
 	%end;
 	%mend;
 %rosters;
+
+/* chap 10: Advanced macro techniques */
+
+* %include statement to store macr definitions externaly;
+%macro prtlast;
+%if &syslast ne _NULL_ %then %do;
+	proc print data = &syslast (obs = 5);
+	title "Listing of &syslast data set";
+run;
+%end;
+%else
+	%put No data set has been created yet.;
+%mend;
+filename prtlast "C:\Users\basil\Analysis\SAS-advanced-certification\prtlast.sas";
+*%let f = \prtlast.sas;
+option nosymbolgen nomprint;
+%include prtlast/source2;
+* you need to create the file first;
+proc sort data = d.courses out = work.bydays;
+	by days;
+run;
+%prtlast
+* EXAMPLE: ACCESSING AUTOCALL MACROS;
+options mautosource sasautos = ("&home", sasautos);
+%prtlast
+* To see what SASAUTOS is set to, run the following statements;
+%put %sysfunc(getoption(sasautos));
+%put %sysfunc(pathname(sasautos));
+* data driven macro calls using dosuble function in data step;
+%macro delayreport(empid);
+	title "Flight delays for Employee &empid";
+	proc sql;
+		select delaycategory, count(*) as count
+			from d.flightdelays d
+			inner join
+			d.flightschedule s
+			on s.date = d.date and s.flightnumber = d.flightnumber
+			where empid = "&empid"
+			group by delaycategory;
+		quit;
+	title;
+	%mend;
+proc print data = d.flightschedule (obs = 5) noobs;
+run;
+* The DOSUBL function uses the value found in EmpID concatenated between
+	'%DelayReport (' and ')' to generate a valid macro call;
+data _null_;
+	set d.flightcrewnew;
+	rc = dosubl(cats('%DelayReport(', empid, ')'));
+run;
+
+/* chap 11: Defining and processing arrays */
+proc print data = d.patdata (obs = 5) noobs;
+run;
+
+data highcounts;
+	set d.patdata;
+	array health[5] weight -- bp;
+	do i = 1 to 5;
+		if health[i] = "High" then highcount+1;
+	end;
+	run;
+
+proc print noobs;
+run;
+* can above be done for each patient name;
+
+* Example: Assigning Initial Values to Arrays;
+data report (drop = i);
+	set d.qsales;
+	array sale[4] sales1-sales4;
+	array goal[4] (9000 9300 9600 9900); /* initial values */
+	array achieved[4];
+	do i = 1 to 4;
+		achieved[i] = 100 * sale[i] / goal[i];
+	end;
+run;
+proc print data = report noobs;
+run;
+* example temporary array elements: rotate data;
+proc print data = d.qtrsales (obs = 5) noobs;
+run;
+
+data yrsales;
+	set d.qtrsales;
+	array Yr[4] salesq1-salesq4;
+	do quarter = 1 to 4;
+		sales= Yr[quarter];
+		output;
+	end;
+run;
+proc print data = yrsales (obs =10);
+run;
+
+* two dim arrays;
+* Suppose you have the Certadv.StCoup data set, which contains unique data about
+a store’s most recent customer order. You are asked to create a coupon value
+for each of the store’s customers. Customers will receive coupons ranging 
+from 10% to 40% off their next purchase based on the type and size of their
+last order;
+proc print data = d.stcoup  (obs = 4) noobs;
+run;
+
+data customercoupons;
+	array cpnvalue[3,4] _temporary_ (.10, .15, .20, .25,
+									.30, .40, .10, .15,
+									.20, .25, .15, .10);
+	set d.stcoup (keep = customerid ordertype quantity);
+	couponvalue = cpnvalue[ordertype, quantity];
+	format couponvalue percent10.;
+run;
+title "Coupon for October 2019";
+proc print data = customercoupons;
+run;
+title;
+* Example: Creating a Two-Dimensional Array to Perform Table Lookup;
+* Suppose you are asked to combine two SAS data sets, Certadv.US_Goals and
+Certadv.US_Sales, and find the difference between the quarterly sales amount
+and the quarterly goal;
+proc print data = d.us_sales (obs = 4) noobs;
+run;
+proc print data = d.us_goals (obs = 4) noobs;
+run;
+data diffsales;
+	array yrsales[2014:2018, 4] _temporary_;
+	if _N_ = 1 then do yr = 2014 to 2018;
+		set d.us_sales;
+		array qtrsal[4] salesq1-salesq4;
+		do qtr = 1 to 4;
+			yrsales[yr, qtr] = qtrsal[qtr];
+		end;
+	end;
+	set d.us_goals;
+	sales = yrsales[year, qtrnum];
+	difference = sales - goal;
+	drop yr qtr salesq1 - salesq4;
+run;
+proc print data = diffsales;
+	format goal sales difference dollar14.2;
+run;
