@@ -2,7 +2,6 @@
 %let data = C:\Users\basil\Analysis\SAS-advanced-certification\data;
 %let output = C:\Users\basil\Analysis\SAS-advanced-certification\output;
 
-libname _all_ clear;
 libname d "&data";
 *libname dd "&data";
 libname o "&output";
@@ -507,4 +506,278 @@ data diffsales;
 run;
 proc print data = diffsales;
 	format goal sales difference dollar14.2;
+run;
+/* chap12: Processing data using hash objects */
+
+* example: hash object called States;
+data _null_;
+declare hash States();
+run;
+* example: reading the data for the hash object from a table;
+data _null_;
+declare hash States (dataset: 'work.population_usstates
+					(where = (Statepop2017>20000000))');
+run;
+* example: to allow duplicate key values. set multidata
+argument to YES;
+data _null_;
+	declare hash ContName(MULTIDATA:'Yes');
+run;
+* Example: Defining a Hash Object;
+data report;
+	set d.ctcities (keep = code city name);
+	if _N_ = 1 then do; /*1 */
+		declare hash airports (dataset: "d.ctcities"); /* 2 */
+		airports.definekey("code"); /* 3 */
+		airports.definedata("city", "name"); /* 4 */
+		airports.definedone(); /* 5*/
+	end;
+/* 1
+When _N_ is equal to 1, the code
+declares and defines the hash object only for the first DATA step
+iteration. This statement is never executed, but it makes a place
+in the PDV for every column that is in the table. Without this logic,
+the statements that are associated with the hash object are all executable.
+Hash object memory is not released and reused each time. You can potentially
+run out of memory if you have a lot of data to load into the hash
+object.
+2
+The DECLARE statement declares a hash object named Airports. 
+The DATASET argument refers to the Certadv.CtCities
+data set that contains the values to be loaded.
+3
+The DEFINEKEY method defines Code
+as the key component .
+4
+The DEFINEDATA method defines City
+and Name as the data c omponents.
+5
+The DEFINEDONE method loads the
+Certadv.CtCities data set into the hash object.
+	*/
+
+
+* find key values in hash objects with FIND method;
+proc print data = report (obs = 5);
+run;
+data _null_;
+rc = airports.find(key:code);
+run;
+* Hash object processing;
+data countrycode
+	drop rc;
+	length continentname $30;
+	if _n_ = 1 then do;
+		call missing (continentname);
+		declare hash contname();
+		contname.definekey('continentid');
+		contname.definedata('continentname');
+		contname.definedone();
+		contname.add(key: 91, data : 'North America');
+		contname.add(key: 93, data : 'Europe');
+		contname.add(key: 94, data : 'Africa');
+		contname.add(key: 95, data : 'Asia');
+		contname.add(key: 96, data : 'Australia/Pacific');
+	end;
+	set d.country
+		(keep = continentid country countryname);
+	rc = contname.find();
+run;
+proc print data = countrycode noobs;
+run;
+* Example: Using the Hash Iterator Object;
+
+* Suppose you need to identify which two customers ordered the most and least
+expensive items. You can use the hash iterator object to retrieve the data
+in either ascending or descending key order to efficiently identify these
+four customers;
+
+data topbottom;
+	drop i;
+	if _N_ = 1 then do;
+		if 0 then set d.orderfact (keep = customerid productid totalretailprice);
+		declare hash customer(dataset: 'd.orderfact', ordered: 'descending');
+		customer.definekey('totalretailprice', 'customerid');
+		customer.definedata('totalretailprice', 'customerid', 'productid');
+		customer.definedone();
+		declare hiter c('customer');
+	end;
+		c.first();
+		do i=1 to 2;
+			output topbottom;
+			c.next();
+		end;
+		c.last();
+		do i =1 to 2;
+			output topbottom;
+			c.prev();
+		end;
+		stop;
+	run;
+proc print data = topbottom;
+run;
+/* chap 13: Using SAS utility procedures */
+
+* Example: Using the PICTURE Statement;
+proc format;
+	picture rainamt
+		0-2='9.99 slight'
+		2<-4='9.99 moderate'
+		4<-<10='9.99 heavy'
+		other = '9.99 check value';
+run;
+
+proc print data = d.rain;
+	format amount rainamt.;
+run;
+*Creating Custom Date, Time, and Datetime Formats Using Directives;
+proc format;
+	picture mydate (default = 10)
+		low-high = '%0d-%3b%Y' (datatype = date);
+		* low high keyword used to include all values;
+run;
+
+proc print data = d.empdata
+	(keep = division hiredate lastname obs  = 5);
+	format hiredate mydate.;
+run;
+* picture statement with digit selectors;
+* multiplier option;
+proc format;
+	picture discount low-high = '009.0%' (multiplier = 10);
+run;
+data customerdiscount;
+	set d.grocery;
+	format customdiscount discount.;
+run;
+proc print data = customerdiscount noobs;
+run;
+* prefix option;
+proc format;
+	picture newprice low-high = '000, 009.99' (prefix = '$');
+run;
+data newprice;
+	set work.customerdiscount;
+	newprice = Price - (Price * (CustomDiscount* 0.01));
+	format newprice newprice. customdiscount discount.;
+run;
+proc print data = newprice noobs;
+run;
+* EXAMPLE: CREATING A CUSTOM PERCENT FORMAT;
+proc format;
+	picture discount low-high = '009.0%' (multiplier = 10);
+	picture newprice low-high = '000, 009.99' (prefix = '$');
+	picture diff (round) low-high = '000, 009.99' (prefix = '$');
+
+run;
+data newpricetot;
+	set d.grocery;
+	newprice = price - (price*(customdiscount * 0.01));
+	difference = price - newprice;
+	format customdiscount discount. newprice newprice. difference diff.;
+run;
+proc print data = newpricetot (obs = 10) noobs;
+run;
+* EXAMPLE: CREATING A CUSTOM NUMERIC FORMAT FOR LARGE NUMBERS;
+proc format;
+	picture dollar_KM (round default=7)
+	low-<1000='009' (prefix= '$' multiplier=1)
+	1000-<1000000='009.9K' (prefix='$' multiplier=.01)
+	1000000-high='009.9M' (prefix='$' multiplier=.00001);
+run;
+proc print data=d.values noobs;
+	format MultiValues 12.5
+		FormattedValues dollar_KM.;
+run;
+/* Chap 12: Creating functions with PROC FCMP */
+* Example: Creating a Custom Character Function with One Argument;
+proc fcmp outlib = d.functions.dev; /* 1 */
+	function reversename(lastfirst $) $ 40; /* 2 */
+		first= scan(lastfirst,2, ','); /* 3 */
+		last = scan(lastfirst,1,','); 
+	return(catx(' ', first, last));  /* 4 */
+	endsub; /* 5 */
+run;
+
+/* 
+The FCMP procedure enables you
+to create a custo m function. The OUTLIB= option specifies Certadv.Functions
+as the table in which the Dev package is stored. The Dev package is
+a collection of routines that have unique names.
+2
+The FUNCTION statement specifies
+the function name as ReverseName. ReverseName is a custom function
+that has one character argument named LastFirst and it returns a charact er
+value with a length of 40. If a return value type and length are not
+specified, the default is numeric with a length of 8.
+3
+The body of the function consists
+of DATA step s yntax. The assignment statement creates two new variables,
+First and Last, that are created using the SCAN function. The new
+variable First uses the SCAN function to return the second word fr om
+the LastFirst variable and the Last variable returns the first word
+from the LastFirst variable.
+4
+The RETURN statement specifies
+the value of Rev erseName. The RETURN statement defines the value returned
+by the function. It uses the CATX function to concatenate the first
+and last variable values created within the function definition separ ated
+by a space.
+5
+The ENDSUB statement ends the
+function.
+*/
+
+* using the function;
+options cmplib = d.functions; /* 1 */
+data baseball;
+	set d.baseball;
+	player = reversename(name);
+	keep name team player;
+run;
+/* The CMPLIB= option specifies the
+Certadv.Function s table for SAS to search for a package that contains
+the desired function. */
+proc print data = baseball(obs = 5) noobs;
+run;
+* Example: Creating a Custom Numeric Function with One Argument;
+proc fcmp outlib=d.functions.dat; /* 1 */
+	function MyQuarter(month); /* 2 */
+		if month in(2,3,4) then myqtr=1; /* 3 */
+		else if month in(5,6,7) then myqtr=2;
+		else if month in (8,9,10) then myqtr= 3;
+		else myqtr=4;
+	return(myqtr); /* 4 */
+	endsub; /* 5 */
+run;
+options cmplib=d.functions; /* 6 */
+data work.dates; /* 7 */
+	do Dates='15JAN2019'd to '31DEC2019'd by 30;
+		MonNum=month(Dates);
+		FiscalQuarter=MyQuarter(MonNum); /* 8 */
+		output;
+	end;
+run;
+proc print data=dates; /* 9 */
+format Dates mmddyy10.;
+run;
+* Example: Creating a Custom Character Function with Multiple Arguments;
+proc fcmp outlib=d.functions.dev; /* 1 */
+	function ReverseName(lastfirst $, pos $) $ 40; /* 2 */
+		First=scan(lastfirst,2,','); /* 3 */
+		Last=scan(lastfirst,1,',');
+		if substr(pos,2,1)='F' then
+			return(catx(' ','Outfield er',First,Last));
+		else if substr(pos,2,1)='B' then
+			return(catx(' ','Baseman',First,Last));
+		else return(catx(' ',pos,First,Last));
+	endsub; /* 4 */
+quit;
+options cmplib=d.functions; /* 5 */
+data work.baseball; /* 6 */
+	set d.baseball;
+	Player=reversename(Name,Position); /* 7 */
+	keep Name Team Position Player;
+run;
+proc print data=baseball;
 run;
