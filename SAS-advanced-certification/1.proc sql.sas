@@ -4,6 +4,12 @@
 libname d "&data";
 libname dd "&data";
 libname o "&output";
+%let data = C:\Users\basil\Analysis\SAS-advanced-certification\data;
+%let output = C:\Users\basil\Analysis\SAS-advanced-certification\output;
+
+libname d "&data";
+libname dd "&data";
+libname o "&output";
 /* select statement */
 *  creates a new column bonus;
 proc sql;
@@ -324,7 +330,8 @@ quit;
 
 proc sql outobs = 15;
 	title 'New York Employess';
-	select substr(firstname,1,1) || '.' || lastname
+	*select substr(firstname,1,1) || '.' || lastname;
+	select catx('.', substr(firstname,1,1), lastname)
 		as Name,
 		jobcode,
 		int((today() - dateofbirth) / 365.25)
@@ -470,7 +477,19 @@ quit;
 rows in table 1 and only display common columns;
 proc sql;
 	select * 
-		from d.col1 except all corr
+		from d.col1 except all corr /* all corr prints duplicates and common columns */
+	select * 
+		from d.col2;
+quit;
+proc sql;
+	select * 
+		from d.col1 except corr /* corr prints common columns */
+	select * 
+		from d.col2;
+quit;
+proc sql;
+	select * 
+		from d.col1 except all /* all prints duplicates */
 	select * 
 		from d.col2;
 quit;
@@ -485,7 +504,7 @@ quit;
 /* union */
 proc sql;
 	select *
-		from d.col1 union
+		from d.col1 union 
 	select *
 		from d.col2;
 quit;
@@ -535,7 +554,7 @@ proc sql;
 		format = dollar11.2
 		from d.payrollmaster
 		group by jobcode
-		having avg(salary) > (select avg(salary)
+		having avg(salary) < (select avg(salary)
 		from d.payrollmaster);
 quit;
 *query that lists the names and addresses of all employees who have birthdays
@@ -606,6 +625,7 @@ proc sql;
 	describe table d.supervisors, d.staffmaster;
 quit;
 * displays the names of all navigators who are also managers;
+
 proc sql;
 	select lastname, firstname
 		from d.staffmaster
@@ -683,6 +703,7 @@ proc sql;
 		from d.payrollmaster
 		where salary > &avgsal and dateofhire > '01JAN2015'd;
 quit;
+title;
 
 * show value of macro with %put;
 %put avgsalary = &avgsal;

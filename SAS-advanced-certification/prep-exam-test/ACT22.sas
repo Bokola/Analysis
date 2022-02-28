@@ -19,17 +19,18 @@ data division22;
 	length division league $10;
 	set cert.division22;
 	if _n_ = 1 then do;
+		/* Avoid uninitialized variable notes */
+		call missing(Div, League, Division);
 		declare hash lg (dataset: "work.division22",
 		multidata: 'yes', ordered: 'yes');
 		declare hiter iter ('lg');
 		lg.definekey("Div");
 		lg.definedata("League", "Division");
 		lg.definedone();
-		/* Avoid uninitialized variable notes */
-		call missing(Div, League, Division);
+		
 	end;
 	*do until(eof2);
-		set cert.teams22 end = eof2;
+		set cert.teams22;* end = eof2;
 			rc = iter.first();
 			do while (rc =0);
 				if rc = 0 then output;

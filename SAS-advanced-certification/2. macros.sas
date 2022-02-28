@@ -463,8 +463,8 @@ run;
 
 * two dim arrays;
 * Suppose you have the Certadv.StCoup data set, which contains unique data about
-a store’s most recent customer order. You are asked to create a coupon value
-for each of the store’s customers. Customers will receive coupons ranging 
+a storeï¿½s most recent customer order. You are asked to create a coupon value
+for each of the storeï¿½s customers. Customers will receive coupons ranging 
 from 10% to 40% off their next purchase based on the type and size of their
 last order;
 proc print data = d.stcoup  (obs = 4) noobs;
