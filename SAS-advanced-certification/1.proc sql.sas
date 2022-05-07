@@ -319,10 +319,10 @@ proc sql;
 		on s.empid = p.empid;
 quit;
 
-* Suppose you want to create a report where the name is displayed 
-with first initial and last name (R.Long), JobCode, and ages of 
-all employees who live in New York. The report also should be sorted by
-JobCode and Age;
+* Suppose you want to create a report where the name is 
+displayed with first initial and last name (R.Long), JobCode,
+and ages of all employees who live in New York. The report
+also should be sorted by JobCode and Age;
 
 proc sql;
 	describe table d.payrollmaster, d.staffmaster;
@@ -431,6 +431,11 @@ proc sql;
 		d.four
 		on three.x = four.x;
 quit;
+proc sql;
+select * 
+	from d.four;
+quit;
+
 
 /* chap4 - set operators */
 * except - rows in table 1 and not in table 2;
