@@ -1,0 +1,14 @@
+New tools for shiny in production
+https://speakerdeck.com/jcheng5/shiny-in-production
+1. RStudio connect - On-premise shiny serving with push - button deployment
+ https://www.rstudio.com/products/connect/
+2. shinytest - automated UI testing for shiny
+https://rstudio.github.io/shinytest/
+3. shinyloadtest - load testing for shiny
+https://rstudio.github.io/shinyloadtest/
+4. profvis - profiler for R
+https://rstudio.github.io/profvis/
+5. plot caching - dramatically speed up repeated plots
+http://shiny.rstudio.com/articles/plot-caching.html
+6. Async - last resort technique for dealing with slow operations - it is hard, read in order
+https://rstudio.github.io/promises/gm
