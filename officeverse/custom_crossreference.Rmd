@@ -1,0 +1,65 @@
+---
+title: "Table captions linked to section number"
+output: officedown::rdocx_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(officedown)
+library(officer)
+```
+
+## Tables
+
+### Table example
+
+The code below define the set of runs that will compose the auto-numbered sequence in the caption:
+
+```{r}
+runs <- list(
+  run_word_field("STYLEREF 3 \\s"),
+  ftext(" - "),
+  run_autonum(seq_id = "tab", pre_label = "", post_label = "")
+)
+```
+
+And now we can add this sequence into a custom caption:
+
+::: {custom-style="Table Caption"}
+
+
+
+Figure `r run_bookmark("airquality", runs)`: truc machin chose
+
+
+
+:::
+
+```{r}
+head(airquality)
+```
+
+This is a reference to bookmark `airquality`: `r run_reference(id = "airquality")`
+
+```{r}
+runs_0 <- list(ftext("Figure :"))
+runs_p <- list(ftext(": mtcars dataset"))
+runs <- append(runs_0, runs)
+runs <- append(runs, runs_p)
+```
+
+::: {custom-style="Table Caption"}
+
+
+
+`r run_bookmark("mtcars", runs)`
+
+
+
+:::
+
+```{r}
+head(mtcars)
+```
+
+This is a reference to bookmark `mtcars`: `r run_reference(id = "mtcars")`

@@ -1,0 +1,41 @@
+---
+output: officedown::rdocx_document
+---
+
+```{r setup, include=FALSE}
+library(officedown)
+library(ggplot2)
+```
+
+## Figure
+
+```{r fig.cap="economics plot", fig.id = "tsplot", fig.cap.style = "Image Caption"}
+ggplot(economics, aes(date, unemploy / pop)) + 
+  geom_line() + 
+  theme_minimal()
+```
+
+## Tables
+
+### economics
+
+```{r tab.cap="economics table", tab.id = "mytab", tab.cap.style = "Table Caption"}
+head(economics)
+```
+
+### mtcars
+
+```{r tab.cap="mtcars table", tab.id = "mtcars", tab.cap.style = "Table Caption"}
+head(mtcars)
+```
+
+## Cross-referencing
+
+Figure and table have auto-numbered captions that can be cross referenced: 
+
+* This is a linked reference to a figure \@ref(fig:tsplot), its number is computed by Word 
+and it's linked to the corresponding graphic when clicking on it.
+* This is a linked reference to a table \@ref(tab:mytab), its number is computed by Word 
+and it's linked to the corresponding table when clicking on it. This is a linked reference to 
+a table \@ref(tab:mtcars).
+

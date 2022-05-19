@@ -1,0 +1,17 @@
+---
+title: "officedown template"
+output: officedown::rdocx_document
+date: '2022-05-17'
+---
+
+## A level 2 title
+
+Some blah blah blah blah blah blah blah blah blah blah blah blah blah 
+blah blah blah blah blah blah blah blah blah blah blah blah blah blah.
+
+# Templates
+
+Utilizes word or powerpoint template. Template added as 
+`output: 
+  officedown::rdocx_document:
+    reference_docx: path/to/your/template.docx` in the yaml header.
