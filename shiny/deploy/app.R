@@ -7,22 +7,45 @@
 #    http://shiny.rstudio.com/
 #
 
+
+
+# ipk <- function(pkg) {
+#   new_pkg <- list_pkg[!(list_pkg %in% .packages(all.available = T))]
+#   if (length(new_pkg))
+#     install.packages(new_pkg, dependencies = T,
+#                      repos = "https://cran.us.r-project.org",
+#                      lib = .libPaths()[[1]])
+#   sapply(pkg, require, character.only = T)
+# }
+# list_pkg <- c(
+#   "gapminder", "ggforce", "gh", "globals", "openintro", "profvis",
+#   "RSQLite", "shiny", "shinycssloaders", "shinyFeedback",
+#   "shinythemes", "testthat", "thematic", "tidyverse", "vroom",
+#   "waiter", "xml2", "zeallot"
+# )
+# ipk(list_pkg)
+
+
+# use library() not install.packages() for shinyapps.io apps --------------
+
+library(gapminder)
+library(ggforce)
+library(gh)
+library(globals)
+library(openintro)
+library(profvis)
+library(RSQLite)
 library(shiny)
-ipk <- function(pkg) {
-  new_pkg <- list_pkg[!(list_pkg %in% .packages(all.available = T))]
-  if (length(new_pkg))
-    install.packages(new_pkg, dependencies = T,
-                     repos = "https://cran.us.r-project.org",
-                     lib = .libPaths()[[1]])
-  sapply(pkg, require, character.only = T)
-}
-list_pkg <- c(
-  "gapminder", "ggforce", "gh", "globals", "openintro", "profvis",
-  "RSQLite", "shiny", "shinycssloaders", "shinyFeedback",
-  "shinythemes", "testthat", "thematic", "tidyverse", "vroom",
-  "waiter", "xml2", "zeallot"
-)
-ipk(list_pkg)
+library(shinycssloaders)
+library(shinyFeedback)
+library(shinythemes)
+library(testthat)
+library(thematic )
+library(tidyverse)
+library(vroom)
+library(waiter)
+library(xml2)
+library(zeallot)
 
 ui <- fluidPage( # layout function that sets up the basic str of page
   selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),

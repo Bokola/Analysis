@@ -5,7 +5,7 @@ account: bokola
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6418488
-bundleId: 5971509
+bundleId: 5974660
 url: https://bokola.shinyapps.io/deploy/
-when: 1654177221.2661
-lastSyncTime: 1654177221.2661
+when: 1654258986.35067
+lastSyncTime: 1654258986.35067

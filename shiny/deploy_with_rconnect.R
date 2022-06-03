@@ -12,6 +12,7 @@ list.pkg <- c("tidyverse", "magrittr", "rsconnect")
 ipk(list.pkg)
 
 # authorize rconnect to access shinyapps.io
+browseURL("https://docs.rstudio.com/shinyapps.io/getting-started.html")
 rsconnect::setAccountInfo(name = 'bokola',
                           token = 'F8DD64A33717C54BA5B5AD1664C89CAC',
                           secret = 'r5gBSUltMB+oCfIqbd0kWRZ0ORLksjtH3y3HdX0X')
