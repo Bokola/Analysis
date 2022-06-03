@@ -1,0 +1,11 @@
+name: deploy
+title:
+username:
+account: bokola
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6418488
+bundleId: 5971509
+url: https://bokola.shinyapps.io/deploy/
+when: 1654177221.2661
+lastSyncTime: 1654177221.2661
