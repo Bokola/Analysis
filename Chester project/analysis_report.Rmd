@@ -1,0 +1,1338 @@
+---
+title: "Diagnosis and treatment delays impact cervical cancer care: Evidence from a hospital-based study in Zambia"
+author: "XXXX"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  bookdown::word_document2: default
+  bookdown::pdf_document2: default
+  pdf_document: default
+  word_document: default
+  fig_caption: yes
+tables: yes
+fontsize: 14pt
+mainfont: Arial
+fig_caption: yes
+number_sections: yes
+toc: no
+header-includes: \usepackage{amsmath}
+bibliography: citation.bib
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+
+<!-- \newpage -->
+```{r, include=FALSE, echo=F, warning=F, message=F, error=F}
+rm(list = ls(all.names = TRUE))
+home = ifelse(
+  Sys.info()[["sysname"]] %in% c("Darmian", "Linux"),
+  Sys.getenv("HOME"),
+  Sys.getenv("USERPROFILE")
+)
+home = gsub("\\\\", "/", home)
+
+
+
+data_dir = ifelse(
+  grepl('basil', home),
+  file.path(
+    home,
+    "Google Drive (basil.okola@student.uhasselt.be)",
+    "Chester project"
+  ),
+  home
+)
+
+data_dir = data_dir
+fig_dir = data_dir
+
+
+ipk = function(pkg) {
+  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,  repos = 'http://cran.us.r-project.org')
+  suppressPackageStartupMessages({
+    sapply(pkg, require, character.only = TRUE)
+  })
+}
+
+list.of.pkgs = c(
+  "tidyverse",
+  "magrittr",
+  "gtsummary",
+  "gt",
+  "knitr",
+  "rmarkdown",
+  "bookdown",
+  "skimr",
+  "cowplot",
+  "plyr",
+  "data.table",
+  "GGally",
+  "multcomp",
+  "haven",
+  "patchwork",
+  "rJava",
+  "xlsx",
+  "janitor",
+  "pander",
+  "lubridate",
+  "mosaic",
+  "pscl",
+  "multcomp",
+  "MASS",
+  "gridExtra",
+  "kableExtra",
+  "car",
+  "caret"
+)
+ipk(list.of.pkgs)
+```
+
+```{r data, results='hide'}
+# list.files(data_dir)
+# browseURL("https://stackoverflow.com/questions/40113963/how-to-extract-everything-until-first-occurrence-of-pattern")
+# browseURL('https://bookdown.org/roback/bookdown-BeyondMLR/ch-poissonreg.html#sec-overdispPois')
+# temp = list.files(data_dir, pattern = "^data_orig")
+# list2env(
+#   lapply(setNames(temp, tolower(make.names(gsub("(.+?)(\\..*)", "\\1", temp)))), function(x){
+#     x = readr::read_csv(file.path(data_dir, x))
+#     names(x) = tolower(gsub("(.+?)(\\(.*)|(\\_.*)", "\\1", tolower(names(x)))) # drop brackets and anything after first underscore
+#     return(x)
+#   }),
+#   envir = .GlobalEnv
+# )
+# gsub("(.+?)(\\(.*)|(\\_.*)", "\\1", names(x)) # drop brackets and anything after first underscore
+data =  readr::read_csv(file.path(data_dir, 'raw_data.csv')) %>% clean_names()
+meta_data = read.xlsx(file.path(data_dir, 'New Data 2021ab.xlsx'), sheetName = 'Sheet2')
+data =  data %>%
+  mutate(marital = ifelse(marital == 1, 'single',
+                          ifelse(
+                            marital == 2, "married",
+                            ifelse(marital == 3, "divorced",
+                                   ifelse(marital == 4, "widowed", NA_character_))
+                          )))#%>%
+# mutate(across(.cols = c(biopsycollect, biopsyrec, bipsyrx, cxrdate, usdate,
+#                        ctdate, firstassess, txdecide, initialtx), ymd))
+data$biopsyrec = as.Date(data$biopsyrec)
+data$biopsyrx = as.Date(data$biopsyrx)
+data$cxrdate = as.Date(data$cxrdate)
+data$usdate = as.Date(data$usdate)
+data$initialtx = as.Date(data$initialtx)
+data$b2 = as.Date(data$b2, format = "%m/%d/%y")
+data = data %>% mutate(., year = year(biopsycollect),
+                       year_treat = year(initialtx))
+
+data =  data %>% mutate_at(
+  .vars = vars(hiv, arv, cd4,  cxrdone, ctdone, mridone, usdone,
+               txadhere),
+  .funs = funs(ifelse(. == 1, "yes",
+                      ifelse(
+                        . == 2, "No",NA
+                        # ifelse(. == 3, "absent", NA)
+                      )))
+)
+data =  data %>%
+  mutate(
+    stage = ifelse(stage == 1, "1A",
+                   ifelse(
+                     stage == 2, "1B",
+                     ifelse(stage == 3, "2A",
+                            ifelse(
+                              stage == 4, "2B",
+                              ifelse(stage == 5, "3A",
+                                     ifelse(
+                                       stage == 6, "3B",
+                                       ifelse(stage == 7, "3C",
+                                              ifelse(
+                                                stage == 8, "4A",
+                                                ifelse(stage == 9, "4B",
+                                                       ifelse(stage == 0, "not staged", NA))
+                                              ))
+                                     ))
+                            ))
+                   )),
+    txtype = ifelse(
+      txtype == 1,
+      "radiotherapy",
+      ifelse(txtype == 2, "surgery",
+             ifelse(
+               txtype == 3, "chemo",
+               ifelse(txtype == 4, "CRT",
+                      ifelse(txtype == 5, "palliation", NA))
+             ))
+    ),
+    sgytype = ifelse(
+      sgytype == 1,
+      "simple TAH",
+      ifelse(
+        sgytype == 2,
+        "radical TAH",
+        ifelse(
+          sgytype == 3,
+          "trachelectomy",
+          ifelse(sgytype == 4, "pelvic exenteration", NA)
+        )
+      )
+    ),
+    labtype = ifelse(labtype == 1, "public",
+                     ifelse(labtype == 2, "private", NA))
+  )
+
+# saveRDS(data, file.path(data_dir,"data.rds"))
+# mutate_at(.vars = vars(all_of(cat_vars)), .funs = ~factor(., ordered = F, exclude = NA))
+data = data %>% mutate(
+  .,
+  time1 = as.numeric(difftime(biopsyrx, biopsycollect, units = "days")),
+  time2 = as.numeric(difftime(firstassess, biopsyrx, units = "days")),
+  time3 = as.numeric(difftime(initialtx, firstassess, units = "days")),
+  time4 = as.numeric(difftime(initialtx, biopsyrx, units = "days"))
+)
+# number of time vars with negative difference
+sapply(data[, 41:44], function(x)
+  sum(!is.na(x) & x < 0))
+# recode negatives to missing
+data =  data %>% mutate_at(.vars = vars(time1, time2, time3, time4),
+                           .funs = funs(ifelse(. < 0 & !is.na(.), NA, .)))
+data = data %>% mutate(lablocation =  ifelse(
+  tolower(lablocation) %in% c(
+    "congo",
+    "oakland",
+    "blantyre",
+    "lilongwe",
+    "oakland hill",
+    "nairobi kenya",
+    "dubai",
+    "uk"
+  ),
+  "Abroad",
+  ifelse(
+    tolower(lablocation) %in% c(
+      "chingola",
+      "copperbelt",
+      "kitwe",
+      "luanshya",
+      "mufulira",
+      "mpongwe",
+      "ndola",
+      "nkana",
+      "zambia"
+    ),
+    "CB",
+    ifelse(
+      tolower(lablocation) %in% c(
+        "chirundu",
+        "choma",
+        "livingatone",
+        "livingstone",
+        "monze",
+        "namwala"
+      ),
+      "SP",
+      ifelse(
+        tolower(lablocation) %in% c("chitoloki", "mansa"),
+        "LP",
+        ifelse(
+          tolower(lablocation) %in% c("kabwe"),
+          "CP",
+          ifelse(
+            tolower(lablocation) %in% c("kasama"),
+            "NP",
+            ifelse(
+              tolower(lablocation) %in% c("katete"),
+              "EP",
+              ifelse(
+                tolower(lablocation) %in% c("lusaka", "lususa"),
+                "Lus",
+                ifelse(
+                  tolower(lablocation) %in% c("mongu"),
+                  "WP",
+                  ifelse(
+                    tolower(lablocation) %in% c("solwezi", "zambezi"),
+                    "NWP",
+                    NA_character_
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+))
+data = data %>%
+  mutate(
+    lablocation =  ifelse(
+      tolower(lablocation) == 'abroad',
+      NA,
+      ifelse(
+        tolower(lablocation) %in% c('lp', 'np', 'nwp', 'sp', 'wp', 'ep'),
+        'other',
+        lablocation
+      )
+    ),
+    stage = ifelse(grepl('^1', stage), 'I',
+                   ifelse(
+                     grepl('^2', stage), 'II',
+                     ifelse(grepl('^3', stage), 'III',
+                            ifelse(grepl('^4', stage), 'IV', NA))
+                   ))#,
+    # hiv = ifelse(hiv == 'yes', 1,
+    #              ifelse(hiv == 'no', 0, NA_integer_))
+    ,
+  )
+
+
+
+# age quantiles
+cutpoint = round(quantile(data$age, na.rm = T))
+# data = data %>% mutate(.,age_cat =  ifelse(!is.na(age) & age >= 22 & age <= 42, '22-42',
+#                                 ifelse(!is.na(age) & age >= 43 & age <= 49, '43-49', 
+#                                        ifelse(!is.na(age) & age >= 50 & age <= 59, '50-59',
+#                                               ifelse(!is.na(age) & age >= 60 & age <= 88, '60-88', NA)))))
+data = data %>% mutate(., age_cat =  ifelse(
+  !is.na(age) & age >= 22 & age <= 30,
+  '21-30',
+  ifelse(
+    !is.na(age) & age >= 31 & age <= 40,
+    '31-40',
+    ifelse(
+      !is.na(age) & age >= 41 & age <= 50,
+      '41-50',
+      ifelse(
+        !is.na(age) & age >= 51 & age <= 60,
+        '51-60',
+        ifelse(
+          !is.na(age) & age >= 61 & age <= 70,
+          '61-70',
+          ifelse(
+            !is.na(age) & age >= 71 & age <= 80,
+            '71-80',
+            ifelse(!is.na(age) &
+                     age >= 81 & age <= 90, '81-90', NA)
+          )
+        )
+      )
+    )
+  )
+))
+
+# recode to factor
+
+data = data %>%
+  mutate(age_cat = gsub("\\(|\\]", "",age_cat)) %>%
+  mutate(., age_cat = gsub(",", "-",age_cat) )
+
+cat_vars = data %>% select_if(is.character) %>% colnames()
+cat_vars = intersect(cat_vars,
+                     c("marital", "hiv", "stage", "lablocation", "labtype", "age_cat"))
+data_factor = data %>%
+  mutate_at(.vars = vars(all_of(cat_vars)),
+            .funs = ~ factor(., ordered = F, exclude = NA))
+write_csv(data, file.path(data_dir, "data_cleaned.csv"))
+saveRDS(data_factor, file.path(data_dir, "data_cleaned.rds"))
+# data_factor = readRDS(file.path(data_dir,"data_cleaned.rds"))
+# data_factor$hiv = as.character(data_factor$hiv)
+```
+# Method
+
+Variables of interest included age (in years), marital status, HIV status, stage of cancer, lab type (private or public), location of the lab for histology assessment. We further calculated four Turnaround Time outcome variables (in days), time1, time2, time3 and time4. time1 was calculated as the difference between biopsy lab result date and  biopsy sample collection date, time2 as  the difference between first assessment (at CDH) date and biopsy lab result date, time3 as difference between treatment initiation date, and first assessment date  and time4 as the difference between treatment initiation date and biopsy lab result date. We did a number of data pre-processing: <br>
+
+1. TATs that were negative were recorded as missing, 
+2. For HIV, records that did not have any test results also had their values recorded to missing.
+3. For cancer stage we recorded 1A-B as $I$, 2A-B as $II$, 3A-C as $III$,  4A-B as $IV$, and not staged to missing according to International Federation of Gynecology and Obstetrics (FIGO) staging criteria,
+4. For lab location, we recorded abroad to missing, and LP, NP,NWP,SP, WP were merged to 'others'.
+
+We fitted a generalized linear model of the negative binomial family to study the effects of chosen regressors on average TAT in days between initiation of treatment date and biopsy lab results date. <br>
+
+# Results
+
+## Descriptive
+
+In total there were `r nrow(data_factor)` observations, with a median age of `r median(data_factor$age, na.rm  = T)` (`r round(quantile(data_factor$age, c(.25, .75), na.rm = T)[1])`, `r round(quantile(data_factor$age, c(.25, .75), na.rm = T)[2]) `), `r nrow(subset(data, hiv == 'yes'))` (`r round(nrow(subset(data, hiv == 'yes')) / nrow(subset(data, !is.na(hiv))), 2) * 100 ` \%) participants reported having HIV with a majority seeking cancer histology lab assessment in private laboratories `r nrow(subset(data_factor, labtype == 'private'))` (`r round(nrow(subset(data_factor, labtype == 'private')) / nrow(subset(data_factor, !is.na(labtype))), 2) * 100 ` \%). Of the four TAT times, time4 had longer intervals  `r median(data_factor$time4, na.rm  = T)` (`r round(quantile(data_factor$time4, c(.25, .75), na.rm = T)[1])`, `r round(quantile(data_factor$time4, c(.25, .75), na.rm = T)[2]) `). However, the TAT of time4 was not significantly different across lab types.The average number of days between treatment initiation date and biopsy lab result date was `r round(mean(data_factor$time4, na.rm = T))` (var = `r round(var(data_factor$time4, na.rm = T))`). <br>
+
+
+```{r descriptives}
+tab_summary = data_factor %>% dplyr::select(age,
+                                            age_cat,
+                                            time1,
+                                            # time2,
+                                            # time3,
+                                            time4,
+                                            marital,
+                                            hiv,
+                                            stage,
+                                            lablocation,
+                                            txtype,
+                                            biopsyhisto,
+                                            labtype) %>% tbl_summary(., missing = "no", label = list(age_cat = "age category", marital = "marital status", lablocation = "lab location", labtype = 'lab type', hiv = 'HIV status', txtype = "treatment type", biopsyhisto = 'biopsy histology'), sort = all_categorical() ~ "frequency") %>% modify_header(label = "**Variable**") %>%
+  
+  bold_labels()
+
+
+tab_summary_lab = data_factor %>% dplyr::select(age,
+                                                age_cat,
+                                                time1,
+                                                time2,
+                                                time3,
+                                                time4,
+                                                marital,
+                                                 hiv,
+                                                stage,
+                                                lablocation,
+                                                txtype,
+                                            biopsyhisto,
+                                                labtype) %>% tbl_summary(., by = labtype, missing = 'no', label = list(age_cat = "age category", marital = "marital status", lablocation = "lab location", labtype = 'lab type', hiv = 'HIV status', txtype = "treatment type", biopsyhisto = 'biopsy histology'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  # add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**Variable**") %>% # update the column header
+  bold_labels()
+# is turnaround time significantly different across lab types
+tab_summary_time = data_factor %>% dplyr::select(time1, time2, time3, time4, labtype) %>% tbl_summary(., by = labtype, missing = 'no', label = list(labtype = 'lab type')) %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**Variable**") %>% # update the column header
+  bold_labels() 
+
+# cancer stages by provinces
+
+tab_summary_stage = data_factor %>% dplyr::select(stage, lablocation) %>% tbl_summary(., by = lablocation, missing = 'no', label = list(lablocation = 'lab location'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  # add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**Variable**") %>% # update the column header
+  bold_labels() 
+
+# cancer stage by lab type
+
+tab_summary_lab = data_factor %>% dplyr::select(stage, labtype) %>% tbl_summary(., by = labtype, missing = 'no', label = list(labtype = 'lab type'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**Variable**") %>% # update the column header
+  bold_labels() 
+
+# cancer cases by province
+
+tab_summary_province = data_factor %>% dplyr::select(lablocation) %>% tbl_summary(., missing = 'no', label = list(lablocation = 'Province'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  # add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**Number of cancer cases**") %>% # update the column header
+  bold_labels() 
+
+# time 1 by marital status
+
+tab_summary_marital = data_factor %>% dplyr::select(marital, time1, time2, time3, time4) %>% tbl_summary(.,by = marital, missing = 'no', label = list(lablocation = 'Province'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**marital status**") %>% # update the column header
+  bold_labels()
+
+# time by stage
+
+tab_stage_time = data_factor %>% dplyr::select(stage, time1, time2, time3, time4) %>% tbl_summary(.,by = stage, missing = 'no', label = list(stage = 'cancer stage'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**cancer stage**") %>% # update the column header
+  bold_labels()
+
+# time by age category
+
+tab_age_time = data_factor %>% dplyr::select(age_cat, time1, time2, time3, time4) %>% tbl_summary(.,by = age_cat, missing = 'no', label = list(age_cat = 'age category'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**age category**") %>% # update the column header
+  bold_labels()
+
+# time by hiv status
+
+tab_hiv_time = data_factor %>% dplyr::select(hiv, time1, time2, time3, time4) %>% tbl_summary(.,by = hiv, missing = 'no', label = list(age_cat = 'HIV status'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**HIV status**") %>% # update the column header
+  bold_labels()
+
+# time3, time4 by treatment type
+
+
+tab_time_txtype = data_factor %>% dplyr::select(txtype, time3, time4) %>% tbl_summary(.,by = txtype, missing = 'no', label = list(txtype = 'treatment type'), sort = all_categorical() ~ "frequency") %>%  add_n() %>% # add column with total number of non-missing observations
+  add_p(.) %>% # test for a difference between groups
+  modify_header(label = "**age category**") %>% # update the column header
+  bold_labels()
+data_chemo = data_factor %>% filter(txtype == 'chemo')
+write_csv(data_chemo, file.path(data_dir, "chemo data.csv"))
+```
+\newpage
+
+### General descriptive statistics
+
+```{r tab_summary}
+# as_kable(tab_summary)
+tab_summary #%>% as_kable()
+```
+
+### Cancer cases by province
+
+```{r}
+tab_summary_province
+```
+
+
+### Cancer stage by province
+
+<!-- \newpage -->
+```{r tab_summary_lab}
+tab_summary_stage
+```
+
+### Cancer stage by lab type
+
+```{r}
+tab_summary_lab
+```
+
+### TAT by marital status
+
+```{r}
+tab_summary_marital
+```
+
+### TAT by cancer stage
+
+```{r}
+tab_stage_time
+```
+
+### TAT by age category
+
+```{r}
+tab_age_time
+```
+
+### TAT by HIV status
+
+```{r}
+tab_hiv_time
+```
+
+### TAT for time3 and time4 by treatment type
+
+```{r}
+tab_time_txtype
+```
+
+
+```{r, eval=FALSE}
+tbl_tat <-
+  tbl_merge(
+    tbls = list(tab_summary_marital, tab_stage_time),
+    tab_spanner = c("**marital status**", "**cancer stage**")
+  )
+```
+
+### wilcoxon rank sum test of time1 across lab type
+
+```{r}
+wilcox.test(time1 ~ labtype, data = data_factor)#[c("statistic","p.value")] %>% cbind() 
+# knitr::kable(out, caption = "Wilcoxon test statistic for time 1 \\labe{tab: wilcoxcon-time1-labtype}", format = "pandoc")
+```
+
+
+```{r time4_hist,results='hide', eval=FALSE}
+data_factor %>%
+  ggplot(., aes(x = time4)) + geom_histogram(bins = 50)  +
+  theme(axis.title=element_text(size=14), axis.text = element_text(size=14)) +
+  theme_minimal_hgrid(10, rel_small = 1)
+
+```
+
+```{r box_plot, results='hide',eval=FALSE}
+plot_box <- function(df, cols, col_y) {
+  options(repr.plot.width = 4, repr.plot.height = 3.5)
+  for (col in cols) {
+    p <- ggplot(na.omit(df[, c(col, col_y)]), aes_string(col, col_y)) +
+      geom_boxplot() +
+      geom_jitter(color = "black", alpha = 0.03) +
+      theme(axis.title = element_text(size = 14),
+            axis.text = element_text(size = 14)) +
+      theme_minimal_hgrid(10, rel_small = 1) +
+      theme(plot.margin = margin(3, 7, 3, 1.5))
+    print(p)
+    
+    
+  }
+  # p
+}
+cat_cols = c("marital", "labtype", "lablocation", "stage")
+plot_box(data_factor, cat_cols, 'time4')
+```
+
+```{r linearity, fig.cap="Scatter plot of log(time4) against age", eval=FALSE}
+# nrow(subset(data_factor, is.na(age)))
+model_data = data_factor %>% filter(!is.na(age) & !is.na(time4))
+age_quantiles = quantile(data_factor$age, na.rm = T)
+# data_factor = data_factor %>% mutate(age_cat = ifelse(
+#   !is.na(age) & age < age_quantiles[2],
+#   '22 - 42',
+#   ifelse(
+#     !is.na(age) & age < age_quantiles[3],
+#     '42 - 49',
+#     ifelse(
+#       !is.na(age) & age < age_quantiles[4],
+#       '49 - 59',
+#       ifelse(!is.na(age) &
+#                age <= age_quantiles[5], '59 - 88', NA)
+#     )
+#   )
+# ))
+# 
+# mean_time4 = data_factor %>% group_by(age_cat) %>% dplyr::summarise(mean = log(mean(time4, na.rm = T)))
+# data_factor = data_factor %>% mutate(time4_mean = ifelse(age_cat == as.character(mean_time4[1,1]), mean_time4[1,2],
+#                                                          ifelse(as.character(mean_time4[2,1]), mean_time4[2,2],
+#                                                                 ifelse(as.character(mean_time4[3,1]), mean_time4[3,2],
+#                                                                        ifelse(as.character(mean_time4[4,1]), mean_time4[4,2], NA)))))
+p1 = ggplot(na.omit(data_factor[c('age', 'time4')]), aes(x = age, y = log(time4))) +
+  geom_point() + geom_smooth(method = "lm") +
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 14)) +
+  theme_minimal_hgrid(10, rel_small = 1) +
+  theme(plot.margin = margin(3, 7, 3, 1.5))
+p2 = ggplot(na.omit(data_factor[c('age', 'time4', 'labtype')]), aes(
+  x = age,
+  y = log(time4),
+  color = labtype
+)) +
+  geom_point() + geom_smooth(method = "lm") +
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 14)) +
+  theme_minimal_hgrid(10, rel_small = 1) +
+  theme(plot.margin = margin(3, 7, 3, 1.5)) + scale_color_viridis_d(c('grey', 'black'))
+
+p1 | p2
+
+```
+
+## Model results
+
+
+```{r model_p}
+model_p_interaction = glm(
+  time4 ~ (age + labtype + marital + hiv + stage + lablocation) ^ 2,
+  family = poisson,
+  data = data_factor
+)
+model_p = glm(
+  time4 ~ age + labtype + marital + hiv + stage + lablocation,
+  family = poisson,
+  data = data_factor
+)
+summary(model_p)$coefficients %>% as.data.frame() %>% rownames_to_column() -> coef_model_p
+names(coef_model_p)[1] = "variable"
+coef_model_p$Estimate = exp(coef_model_p$Estimate)
+confint(model_p) %>% as.data.frame() %>% rownames_to_column()  %>% `colnames<-`(c('variable', 'lower CI', 'upper CI')) -> confint_model_p
+confint_model_p = confint_model_p %>%
+  mutate(`lower CI` = exp(`lower CI`),
+         `upper CI` = exp(`upper CI`))
+model_p_out = left_join(coef_model_p, confint_model_p)
+
+drop_in_dev = anova(model_p_interaction, model_p, test = "Chisq")
+
+
+```
+
+<!-- We used a hierarchical model building approach, starting with a model of two way interaction of all included regressors. However, this higher model was not any better than the simpler additive model (residual deviance ,`r as.integer(drop_in_dev[2,2])` with `r as.integer(drop_in_dev[1,2])` df) and thus we resorted to the simple model. -->
+
+```{r model_p_out, eval=FALSE}
+# pander(model_p_out, caption = 'Model coefficients of poisson family glm' )
+tab_p <- tbl_regression(model_p, exponentiate = TRUE)
+tab_p
+```
+
+<!-- ### Checking for overdispersion -->
+
+<!-- Poisson model works for scenarios when mean equals variance, if this does not hold then we need to correct for overdispersion otherwise we use incorrect, artificially small standard errors leading to artificially small p-values [@appliedglm]. We used quasipoisson model to correct for overdispersion. None of the estimates of average TAT for time4 was significant at $\alpha = 5\%$ level of significance.<br> -->
+
+```{r model_q, eval=FALSE}
+model_q_interaction = glm(
+  time4 ~ (age + labtype + marital + hiv + stage + lablocation) ^ 2,
+  family = quasipoisson,
+  data = data_factor
+)
+model_q = glm(
+  time4 ~ age + labtype + marital + hiv + stage + lablocation,
+  family = quasipoisson,
+  data = data_factor
+)
+summary(model_q)$coefficients %>% as.data.frame() %>% rownames_to_column() -> coef_model_q
+names(coef_model_q)[1] = "variable"
+coef_model_q$Estimate = exp(coef_model_q$Estimate)
+confint(model_q) %>% as.data.frame() %>% rownames_to_column()  %>% `colnames<-`(c('variable', 'lower CI', 'upper CI')) -> confint_model_q
+confint_model_q = confint_model_q %>%
+  mutate(`lower CI` = exp(`lower CI`),
+         `upper CI` = exp(`upper CI`))
+model_q_out = left_join(coef_model_q, confint_model_q)
+
+drop_in_dev = anova(model_q_interaction, model_q, test = "F")
+# pander(model_q_out, caption = 'Model coefficients of quasi-poisson family glm')
+tab_q <- tbl_regression(model_q, exponentiate = TRUE)
+tab_q
+```
+
+<!-- ### Negative Binomial approach -->
+
+<!-- Negative binomial introduces another coefficient other than $\lambda$, giving the model more flexibility as it assumes explicit likelihood model [@appliedglm].  -->
+
+```{r negative-binomial, eval=FALSE}
+model_nb_interaction = glm.nb(
+  time4 ~ (age + labtype + marital + hiv + stage + lablocation) ^ 2,
+  data = data_factor
+)
+
+model_nb_interaction_it = glm.nb(
+  time4 ~ (age + labtype + marital + hiv + stage + lablocation) ^ 2,
+  data = data_factor, maxit = 100
+)
+model_nb = glm.nb(
+  time4 ~ age + labtype + marital + hiv + stage + lablocation,
+  data = data_factor
+)
+model_nb_it = glm.nb(
+  time4 ~ age + labtype + marital + hiv + stage + lablocation,
+  data = data_factor, control = glm.control(maxit = 1000)
+)
+tab_nb <- tbl_regression(model_nb, exponentiate =T)
+tab_nb_it <- tbl_regression(model_nb_it, exponentiate =T)
+tab_nb
+
+tbl_merge <-
+  tbl_merge(
+    tbls = list(tab_nb_it, tab_nb),
+    tab_spanner = c("**100 iterations**", "**1 iteration**")
+  )
+```
+
+```{r univariate}
+data_model = data_factor[, c('time4', 'age_cat', 'marital', 'hiv', 'stage', 'txtype')]
+cols = names(data_model)[-1]
+
+uni_glm = vector("list", length = length(cols))
+for (i in seq_along(cols)) {
+  uni_glm[[i]] = glm.nb(reformulate(cols[i], "time4"),
+                        maxit = 100,
+                        data = data_model)
+}
+anova_uni = lapply(uni_glm, anova)
+
+anova_table_univariate = data.frame(
+  variable = do.call(rbind, lapply(anova_uni, function(x) {
+    row.names(x)[2]
+  })),
+  Df = do.call(rbind, lapply(anova_uni, function(x) {
+    x$Df[2]
+  })),
+  Deviance = do.call(rbind, lapply(anova_uni, function(x) {
+    x$Deviance[2]
+  })),
+  `Resid. Df` = do.call(rbind, lapply(anova_uni, function(x) {
+    x$`Resid. Df`[2]
+  })),
+  `Resid. Dev` = do.call(rbind, lapply(anova_uni, function(x) {
+    x$`Resid. Dev`[2]
+  })),
+  `p-value` = do.call(rbind, lapply(anova_uni, function(x) {
+    x$`Pr(>Chi)`[2]
+  }))
+)
+```
+
+
+```{r negative-binomial-2}
+# Negative binomial time 1
+model_nb_t1 = glm.nb(time1 ~ labtype + lablocation,
+                     data = data_factor, maxit = 100)
+
+model_nb_t1_a = glm.nb(time1 ~ 0 + labtype + lablocation,
+                       data = data_factor,
+                       maxit = 100)
+
+model_nb_t1_b = glm.nb(time1 ~ 0 + lablocation + labtype,
+                       data = data_factor,
+                       maxit = 100)
+
+# raw estimates
+
+estimates_t1_a_raw = cbind(
+  estimates = coef(model_nb_t1_a),
+  LL = confint(model_nb_t1_a)[, 1],
+  UL = confint(model_nb_t1_a)[, 2],
+  std.error = summary(model_nb_t1_a)$coefficients[, 2],
+  z = summary(model_nb_t1_a)$coefficients[, 3]
+) %>% # exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t1_a)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t1_a_raw = estimates_t1_a_raw %>% subset(grepl('^labtype', variable))
+
+estimates_t1_b_raw = cbind(
+  estimates = coef(model_nb_t1_b),
+  LL = confint(model_nb_t1_b)[, 1],
+  UL = confint(model_nb_t1_b)[, 2],
+  std.error = summary(model_nb_t1_b)$coefficients[, 2],
+  z = summary(model_nb_t1_b)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t1_b)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t1_b_raw = estimates_t1_b_raw %>% subset(grepl('^labloc', variable))
+# model without intercept, without contrasts
+
+estimates_t1_intercept_raw = rbind(estimates_t1_a_raw, estimates_t1_b_raw)
+# ####################
+
+estimates_t1_a = cbind(
+  estimates = coef(model_nb_t1_a),
+  LL = confint(model_nb_t1_a)[, 1],
+  UL = confint(model_nb_t1_a)[, 2],
+  std.error = summary(model_nb_t1_a)$coefficients[, 2],
+  z = summary(model_nb_t1_a)$coefficients[, 3]
+) %>% exp() %>% round(., 4) %>% cbind(p = summary(model_nb_t1_a)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t1_a = estimates_t1_a %>% subset(grepl('^labtype', variable))
+
+estimates_t1_b = cbind(
+  estimates = coef(model_nb_t1_b),
+  LL = confint(model_nb_t1_b)[, 1],
+  UL = confint(model_nb_t1_b)[, 2],
+  std.error = summary(model_nb_t1_b)$coefficients[, 2],
+  z = summary(model_nb_t1_b)$coefficients[, 3]
+) %>% exp() %>% round(., 4) %>% cbind(p = summary(model_nb_t1_b)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t1_b = estimates_t1_b %>% subset(grepl('^labloc', variable))
+# model without intercept, without contrasts
+
+estimates_t1_intercept = rbind(estimates_t1_a, estimates_t1_b)
+
+# testing if dispersion parameter = 1, pvalue should be > 0.05
+dev_1 = with(model_nb_t1,
+             cbind(
+               res.deviance = deviance,
+               df = df.residual,
+               p = pchisq(deviance, df.residual, lower.tail = FALSE)
+             )) %>%
+  as.data.frame()
+
+rownames(dev_1) = NULL
+
+
+anova_tab_1 = anova(model_nb_t1) %>% as.data.frame() %>% rownames_to_column() %>%
+  `colnames<-`(c(
+    'Variable',
+    'Df',
+    'Deviance',
+    'Resid. Df',
+    'Resid. Dev ',
+    'Pr(>Chi)'
+  ))
+# summary(model_nb_t1)
+tab_time1 = tbl_regression(model_nb_t1, exponentiate = TRUE)
+estimates_t1 = cbind(
+  estimates = coef(model_nb_t1),
+  LL = confint(model_nb_t1)[, 1],
+  UL = confint(model_nb_t1)[, 2]
+) %>%
+  exp() %>% round(., 4) %>% as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c('variable', 'estimate', 'LL', 'UL'))
+# exp(estimates_t1)
+
+
+# Negative binomial time 4
+model_nb_t4 = glm.nb(time4 ~ +age_cat + marital + hiv + stage + txtype,
+                     data = data_factor,
+                     maxit = 100)
+
+model_nb_t4_a = glm.nb(time4 ~ 0 + age_cat + marital + hiv + stage + txtype,
+                       data = data_factor,
+                       maxit = 100)
+
+model_nb_t4_b = glm.nb(time4 ~ 0 + stage + age_cat  + hiv + marital + txtype,
+                       data = data_factor,
+                       maxit = 100)
+
+model_nb_t4_c = glm.nb(time4 ~ 0 + hiv + age_cat + stage + marital + txtype,
+                       data = data_factor,
+                       maxit = 100)
+model_nb_t4_d = glm.nb(time4 ~ 0 + marital + age_cat + txtype + hiv + stage  ,
+                       data = data_factor,
+                       maxit = 100)
+model_nb_t4_e = glm.nb(time4 ~ 0 + txtype + marital + age_cat + hiv + stage  ,
+                       data = data_factor,
+                       maxit = 100)
+
+# time4 raw coefficient estimates
+estimates_t4_a_raw = cbind(
+  estimates = coef(model_nb_t4_a),
+  LL = confint(model_nb_t4_a)[, 1],
+  UL = confint(model_nb_t4_a)[, 2],
+  std.error = summary(model_nb_t4_a)$coefficients[, 2],
+  z = summary(model_nb_t4_a)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t4_a)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t4_a_raw = estimates_t4_a_raw %>% subset(grepl('^age', variable))
+
+estimates_t4_b_raw = cbind(
+  estimates = coef(model_nb_t4_b),
+  LL = confint(model_nb_t4_b)[, 1],
+  UL = confint(model_nb_t4_b)[, 2],
+  std.error = summary(model_nb_t4_b)$coefficients[, 2],
+  z = summary(model_nb_t4_b)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t4_b)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t4_b_raw = estimates_t4_b_raw %>% subset(grepl('^stage', variable))
+
+estimates_t4_c_raw = cbind(
+  estimates = coef(model_nb_t4_c),
+  LL = confint(model_nb_t4_c)[, 1],
+  UL = confint(model_nb_t4_c)[, 2],
+  std.error = summary(model_nb_t4_c)$coefficients[, 2],
+  z = summary(model_nb_t4_c)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t4_c)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t4_c_raw = estimates_t4_c_raw %>% subset(grepl('^hiv', variable))
+
+estimates_t4_d_raw = cbind(
+  estimates = coef(model_nb_t4_d),
+  LL = confint(model_nb_t4_d)[, 1],
+  UL = confint(model_nb_t4_d)[, 2],
+  std.error = summary(model_nb_t4_d)$coefficients[, 2],
+  z = summary(model_nb_t4_d)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t4_d)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t4_d_raw = estimates_t4_d_raw %>% subset(grepl('^mari', variable))
+
+estimates_t4_e_raw = cbind(
+  estimates = coef(model_nb_t4_e),
+  LL = confint(model_nb_t4_e)[, 1],
+  UL = confint(model_nb_t4_e)[, 2],
+  std.error = summary(model_nb_t4_e)$coefficients[, 2],
+  z = summary(model_nb_t4_e)$coefficients[, 3]
+) %>% #exp() %>%
+  round(., 4) %>% cbind(p = summary(model_nb_t4_e)$coefficients[, 4]) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c(
+    'variable',
+    'estimate',
+    'LL',
+    'UL',
+    'Std. Error',
+    'z value ',
+    'Pr(>|z|)'
+  ))
+
+estimates_t4_e_raw = estimates_t4_e_raw %>% subset(grepl('^txty', variable))
+estimates_t4_intercept_raw = rbind(
+  estimates_t4_a_raw,
+  estimates_t4_b_raw,
+  estimates_t4_c_raw,
+  estimates_t4_d_raw,
+  estimates_t4_e_raw
+)
+
+
+
+
+##############################
+# estimates_t4_a = cbind(estimates = coef(model_nb_t4_a),
+#                   LL = confint(model_nb_t4_a)[,1], UL = confint(model_nb_t4_a)[,2], std.error = summary(model_nb_t4_a)$coefficients[,2], z = summary(model_nb_t4_a)$coefficients[,3]) %>% exp() %>% round(., 4) %>% cbind(
+#                         p = summary(model_nb_t4_a)$coefficients[,4]) %>%
+#   as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c('variable', 'estimate', 'LL', 'UL', 'Std. Error',   'z value ',  'Pr(>|z|)'))
+#
+# estimates_t4_a = estimates_t4_a %>% subset(grepl('^mari|^hiv|^age', variable))
+#
+# estimates_t4_b = cbind(estimates = coef(model_nb_t4_b),
+#                   LL = confint(model_nb_t4_b)[,1], UL = confint(model_nb_t4_b)[,2], std.error = summary(model_nb_t4_b)$coefficients[,2], z = summary(model_nb_t4_b)$coefficients[,3]) %>% exp() %>% round(., 4) %>% cbind(
+#                         p = summary(model_nb_t4_b)$coefficients[,4]) %>%
+#   as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c('variable', 'estimate', 'LL', 'UL', 'Std. Error',   'z value ',  'Pr(>|z|)'))
+#
+# estimates_t4_b = estimates_t4_b %>% subset(grepl('^stage', variable))
+# model without intercept, without contrasts
+
+estimates_t4_intercept = estimates_t4_intercept_raw
+
+estimates_t4_intercept[, c(2:4)] = exp(estimates_t4_intercept[, c(2:4)])
+# testing if dispersion parameter = 1, pvalue should be > 0.05
+dev_4 = with(model_nb_t4,
+             cbind(
+               res.deviance = deviance,
+               df = df.residual,
+               p = pchisq(deviance, df.residual, lower.tail = FALSE)
+             )) %>% as.data.frame()
+rownames(dev_4) = NULL
+
+anova_tab_4 = anova(model_nb_t4) %>% as.data.frame() %>% rownames_to_column() %>%
+  `colnames<-`(c(
+    'Variable',
+    'Df',
+    'Deviance',
+    'Resid. Df',
+    'Resid. Dev ',
+    'Pr(>Chi)'
+  ))
+# summary(model_nb_t4)
+estimates_t4 = cbind(
+  estimates = coef(model_nb_t4),
+  LL = confint(model_nb_t4)[, 1],
+  UL = confint(model_nb_t4)[, 2]
+) %>% exp() %>% round(., 4) %>%
+  as.data.frame() %>% rownames_to_column() %>% `colnames<-`(c('variable', 'estimate', 'LL', 'UL'))
+# exp(estimates_t4)
+# library(caret)
+# varImp(model_nb_t4)
+tab_time4 = tbl_regression(model_nb_t4, exponentiate = FALSE, label = list(age_cat = 'age category (yrs)', txtype = 'treatment type'))
+```
+
+None of the covariates reported significant estimates in the univariate setting. <br>
+
+
+```{r}
+knitr::kable(anova_table_univariate, caption = "Anova table of the univariate negative-binomial model\\label{tab:anova-univariate}", format = "pandoc")
+
+```
+
+
+The waiting time to receive the biopsy results(TATR) was associated with type of the laboratory used
+to test for cervical cancer (P value < 0.0001) and was not associated with the location of the laboratory
+used (P value = 0.1049 ). The number of days to wait for the biopsy results was higher when the biopsy
+was sent to public laboratory by 47.6% (CI: 21%, 81.2%) compared to when its sent to a private laboratory.
+This show that waiting time can be halved by sending the biopsy to a private laboratory
+which implies that private laboratories are more efficient then public laboratories.<br>
+
+<br>
+<br>
+<br>
+
+```{r}
+estimates_t1_intercept_raw = estimates_t1_intercept_raw %>% mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, '< 0.001', round(`Pr(>|z|)`,4)))
+knitr::kable(estimates_t1_intercept_raw, caption = "Model coefficients of TAT for time 1 (expected log number of days)\\labe{tab:tat1log}", format = "pandoc")
+
+```
+
+
+```{r}
+estimates_t1_intercept = estimates_t1_intercept %>% mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, '< 0.001', round(`Pr(>|z|)`,4)))
+
+estimates_t1_intercept = estimates_t1_intercept %>%
+  dplyr::rename(ratio = `z value `)
+
+estimates_t1_intercept = estimates_t1_intercept %>%
+  mutate(ratio = ifelse(grepl("^labty", variable),estimate / estimates_t1_intercept %>% dplyr::filter(variable == 'labtypeprivate') %>% dplyr::select(estimate) %>% pull(), 
+                        ifelse(grepl("^labloc", variable),estimate / estimates_t1_intercept %>% dplyr::filter(variable == 'lablocationCB') %>% dplyr::select(estimate) %>% pull(), estimate)))
+estimates_t1_intercept = estimates_t1_intercept %>% mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, '< 0.001', round(`Pr(>|z|)`,4)))
+knitr::kable(estimates_t1_intercept, caption = "Model coefficients of TAT for time 1 (expected number of days)\\labe{tab:tat1}", format = "pandoc")
+
+```
+
+
+<br>
+<br>
+<br>
+
+
+
+\newpage
+
+### Contrasts of expected number of days for time 1
+
+```{r time-1}
+tab_time1
+
+```
+
+
+```{r}
+knitr::kable(anova_tab_1, caption = "ANOVA table of negative binomial model for time 1 \\label{tab:anova-time-1}", format = "pandoc")
+```
+<br>
+<br>
+<br>
+
+```{r dev-time-1, eval=FALSE}
+pander(dev_1)
+```
+
+<br>
+<br>
+<br>
+
+Only Marital status was statistically significant related to the time between getting biopsy(TATT) results and the initiation of treatment at 5\% level of significance.<br>
+
+Expected TATT for a married person, single person, and widowed person decreased by 0.8745, 0.7873, and 0.7434 times compared to divorced person, respectively. These decreases were equivalently to 12.6%, 21.3%, and 25.7%, respectively. Even though there seem to be a decrease in expected TATT, only a decrease in expected TATT for a widowed person was significant different from that of divorced.  <br>
+
+<br>
+<br>
+<br>
+
+```{r}
+rownames(estimates_t4_intercept_raw) <- NULL
+estimates_t4_intercept_raw = estimates_t4_intercept_raw %>% mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, '< 0.001', round(`Pr(>|z|)`,4)))
+knitr::kable(estimates_t4_intercept_raw, caption = "Coefficient of TAT for time 4 (expected log number of days)\\label{tab:tat4log}",
+                     format = "pandoc")
+
+```
+
+```{r}
+rownames(estimates_t4_intercept) <- NULL
+estimates_t4_intercept = estimates_t4_intercept %>%
+  dplyr::rename(ratio = `z value `)
+
+estimates_t4_intercept = estimates_t4_intercept %>%
+  mutate(
+    ratio = ifelse(
+      grepl("^marit", variable),
+      estimate / estimates_t4_intercept %>% dplyr::filter(variable == 'maritaldivorced') %>% dplyr::select(estimate) %>% pull(),
+      ifelse(
+        grepl("^stage", variable),
+        estimate / estimates_t4_intercept %>% dplyr::filter(variable == 'stageI') %>% dplyr::select(estimate) %>% pull(),
+        ifelse(
+          grepl("^age", variable),
+          estimate / estimates_t4_intercept %>% dplyr::filter(variable == 'age_cat21-30') %>% dplyr::select(estimate) %>% pull(),
+          ifelse(
+            grepl("^txty", variable),
+            estimate / estimates_t4_intercept %>% dplyr::filter(variable == 'txtypechemo') %>% dplyr::select(estimate) %>% pull(),
+            ifelse(
+              grepl("^hiv", variable),
+              estimate / estimates_t4_intercept %>% dplyr::filter(variable == 'hivNo') %>% dplyr::select(estimate) %>% pull(),
+              estimate
+            )
+          )
+        )
+      )
+    )
+  )
+estimates_t4_intercept = estimates_t4_intercept %>% mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, '< 0.001', round(`Pr(>|z|)`, 4)))
+
+knitr::kable(estimates_t4_intercept, caption = "Coefficient of TAT for time 4 (expected number of days)\\label{tab:tat4}",
+                     format = "pandoc")
+
+```
+
+
+<br>
+<br>
+<br>
+
+```{r}
+knitr::kable(anova_tab_4, caption = "ANOVA table of negative binomial model for time 4 \\label{tab:anova-time-4}", format = "pandoc")
+```
+
+\newpage
+
+### Contrasts of expected number of days for time 4
+
+```{r time-4}
+tab_time4
+
+```
+
+<br>
+<br>
+<br>
+
+```{r dev-time-4, eval=FALSE}
+pander(dev_4)
+```
+
+
+# Data in brief
+
+Data processing involved generation of categories/factor variables from the raw data set that would then fit into the final model. We specifically generated age category in years (21-30, 31-40, 41-50, …, 81-90), marital status (single, married, divorced, widowed), HIV status (yes, no), stage of cancer (I-IV), lab location (Lus, CB, CP, other), treatment type (CRT, radiotherapy, palliation, chemotherapy, surgery) among others.   Being a count data, Poisson distribution was a natural choice, a negative binomial distribution was used to adjust for overdispersion. Analysis was conducted in R (4.0.2) and Rstudio (1.4.1103). All the code and the accompanying data is openly available for reproducibility.
+
+
+```{r, include=TRUE}
+# data_time = data %>% dplyr::select(year, time1, time2,time3,time4) %>%
+#   filter(!is.na(year) & year <= 2021) %>% as.data.table() %>% tbl_summary(., by = year, missing = 'no') %>% modify_header(label = "**TATs**")
+
+data_time = data %>% dplyr::select(year, time1, time2,time3,time4) %>%
+  filter(!is.na(year) & year <= 2021) %>% as.data.table() 
+# time_median = na.omit(data_time)[, lapply(.SD,median), by = year] %>% dplyr::arrange(year)
+
+time_median = data %>% dplyr::select(year, time1, time2,time3,time4) %>%
+  filter(!is.na(year) & year <= 2021) %>% group_by(year) %>% 
+  summarise_at(vars(time1, time2, time3, time4), funs(median(., na.rm = T)))
+
+time_iqr = ddply(
+  data_time,
+  .(year),
+  summarise,
+  time1 = paste(median(time1, na.rm = T),
+                    "(",
+    quantile(time1, probs = c(0.25), na.rm = T),
+    "-",
+    quantile(time1, probs = c(0.75), na.rm = T),
+    ")",
+    sep = ''
+  ),
+  time2 = paste(median(time2, na.rm = T),
+                    "(", 
+    quantile(time2, probs = c(0.25), na.rm = T),
+    "-",
+    quantile(time2, probs = c(0.75), na.rm = T),
+    ")",
+    sep = ''
+  ),
+  time3 = paste(median(time3, na.rm = T),
+                    "(",
+    quantile(time3, probs = c(0.25), na.rm = T),
+    "-",
+    quantile(time3, probs = c(0.75), na.rm = T),
+    ")",
+    sep = ''
+  ),
+  time4 = paste(median(time4, na.rm = T),
+                    "(",
+    quantile(time4, probs = c(0.25), na.rm = T),
+    "-",
+    quantile(time4, probs = c(0.75), na.rm = T),
+    ")",
+    sep = ''
+  )
+)
+
+
+
+# pivot_longer(., -year, names_to = 'ToT', values_to = 'median time') #%>% 
+  # mutate(year = as.Date(as.character(year), format = "%Y"))
+
+a = summary(time_median$year)[c(1,6)] %>% unname() 
+time_span = cbind(from = a[1], to = a[2]) %>% as.data.frame()
+knitr::kable(time_span, caption = "Biopsy collection timeline in years \\label{tab:time_span}", format = "pandoc")
+
+```
+
+
+
+```{r, fig.cap='Data points by year of biopsy sample collection', include=TRUE}
+data_points = data %>%filter(!is.na(year) & year <= 2021) %>%
+  group_by(year) %>% dplyr::summarise(`data points` = n()) %>% dplyr::arrange(year)
+
+data_treat = data %>%filter(!is.na(year_treat) & year_treat <= 2021) %>%
+  group_by(year_treat) %>% dplyr::summarise(`data points` = n()) %>% dplyr::arrange(year_treat)
+# knitr::kable(data_points, caption = 'Data points by year of biopsy sample collection \\label{tab:data_points}',
+# format = 'pandoc')
+# readr::write_csv(data_points, file.path(data_dir, 'data_points.csv'))
+# readr::write_csv(data_treat, file.path(data_dir, 'data_points.csv'))
+xlsx::write.xlsx(data_points, file.path(data_dir, "data points .xlsx"), sheetName = "biopsy collection year-1", append = T)
+xlsx::write.xlsx(data_treat, file.path(data_dir, "data points .xlsx"), sheetName = "treatment year-1", append = T)
+
+ggplot(data = data_points, aes(x = year, y = `data points`)) + geom_bar(stat = 'identity') +
+  scale_y_continuous(breaks  = seq(0,300, 50), limits = c(0, 300)) +
+   scale_x_continuous(breaks  = seq(2007,2019, 2)) +
+  # theme(axis.title.x = element_text(margin = margin(t = 10), size = 12),
+  #       axis.title.y = element_text(margin = margin(r = 10), size = 12),
+  #       axis.text = element_text(size = 10)) +
+  labs(x = '', y = '') +
+  theme_minimal_hgrid(10, rel_small = 1) +
+  ggtitle('Data points by year of biopsy sample collection')
+
+ggplot(data = data_treat, aes(x = year_treat, y = `data points`)) + geom_bar(stat = 'identity') +
+  scale_y_continuous(breaks  = seq(0,450, 50), limits = c(0, 450)) +
+   scale_x_continuous(breaks  = seq(2012,2019, 2)) +
+  # theme(axis.title.x = element_text(margin = margin(t = 10), size = 12),
+  #       axis.title.y = element_text(margin = margin(r = 10), size = 12),
+  #       axis.text = element_text(size = 10)) +
+  labs(x = '', y = '') +
+  theme_minimal_hgrid(10, rel_small = 1) +
+  ggtitle('Data points by year of treatment initiation')
+  
+```
+
+
+
+```{r, include=TRUE}
+knitr::kable(time_iqr, caption = "Median TATs in days by year of biopsy sample collection \\label{tab:median_time}",
+             format = "pandoc")
+
+```
+
+
+\newpage
+
+# References
+
+```{r, eval=FALSE}
+citation("gtsummary")
+citation("base")
+citation("Rstudio")
+
+
+```
+
