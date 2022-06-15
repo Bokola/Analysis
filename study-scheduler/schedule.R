@@ -1,14 +1,6 @@
 # link to gt tutorial
-browseURL('https://themockup.blog/posts/2020-05-16-gt-a-grammer-of-tables/')
+# browseURL('https://themockup.blog/posts/2020-05-16-gt-a-grammer-of-tables/')
 # study schedule program
-
-# directories
-
-home = ifelse(Sys.info()["sysname"] == "Linux",
-              Sys.getenv("Home"), Sys.getenv("USERPROFILE")) %>%
-  gsub("\\\\",  "/",.)
-data_dir = file.path(home, "Analysis", "study-scheduler")
-
 # packages
 ipk <- function(pkg){
   new.pkg <- list.pkg[!(list.pkg %in% .packages(all.available = T))]
@@ -17,26 +9,37 @@ ipk <- function(pkg){
   sapply(pkg, require, character.only = T)
 }
 list.pkg <- c("tidyverse",
+              "magrittr",
               "janitor",
               "gt",
               "officer",
-              "paletteer")
+              "flextable",
+              "paletteer"
+)
 ipk(list.pkg)
+# directories
+rm(list = ls(all.names = T))
+home = ifelse(Sys.info()["sysname"] == "Linux",
+              Sys.getenv("Home"), Sys.getenv("USERPROFILE")) %>%
+  gsub("\\\\",  "/",.)
+data_dir = file.path(home, "Analysis", "study-scheduler")
+
+
 
 # function
 schedule <- function(core_courses, side_study, core_weight, side_weight){
-  study_schedule <- tibble::tibble(Mon = vector("character", 8),
-                                   Tue = vector("character", 8),
-                                   Wed = vector("character", 8),
-                                   Thu = vector("character", 8),
-                                   Fri = vector("character", 8))
+  study_schedule <- tibble::tibble(Mon = vector("character", 3),
+                                   Tue = vector("character", 3),
+                                   Wed = vector("character", 3),
+                                   Thu = vector("character", 3),
+                                   Fri = vector("character", 3))
   
   # sample
   set.seed(1234)
   for(i in seq_along(study_schedule)) {
     
-    tmp_core <- sample(core_courses, size = 4, prob = core_weight, replace = F)
-    tmp_side <- sample(side_study, size = 4, prob = side_weight, replace = F)
+    tmp_core <- sample(core_courses, size = 2, prob = core_weight, replace = T)
+    tmp_side <- sample(side_study, size = 1, prob = side_weight, replace = F)
     tmp <- c(tmp_core, tmp_side)
     study_schedule[[i]] <- tmp
   }
@@ -53,9 +56,10 @@ schedule <- function(core_courses, side_study, core_weight, side_weight){
     scales::show_col()
   
   # add rownames
-  row.names(study_schedule) <- c("0800 - 1000", "1015 - 1215",
-                                 "1315 - 1515", "1530 - 1730", "1900 - 2100",
-                                 "2100 - 2300", "2300 - 0100", "0100 - 0300")
+  row.names(study_schedule) <- c(
+                                 "0300 - 0500",
+                                 "2200 - 2400",
+                                 "0100 - 0300")
   study_schedule <- study_schedule %>% tibble::rownames_to_column()
   names(study_schedule)[1]  <- "Time"
   
@@ -135,12 +139,11 @@ schedule <- function(core_courses, side_study, core_weight, side_weight){
 
 # arguments
 
-core_courses <- c("CPS", "Bayesian\nData Analysis", "Capita selecta\nof Computational Biology",
-                  "Computer\nIntensive Methods", "LDA", "Topics in Advanced\nModelling Techniques")
-side_study <- c("Advanced R", "base SAS", "Advanced SAS", "SQL", "bayes rules book", "data engineering")
+core_courses <- c("Bayesian\nData Analysis", "LDA", "AMT")
+side_study <- c( "SAS", "shiny\nwebDev")
 # weights for Sep - Oct 2021
-core_weight = c(0.16, 0.15, 0.12, 0.12, 0.3, 0.12)
-side_weight <- c(0.2, 0.25, 0.15, 0.2, 0.2, 0)
+core_weight = rep(1/length(core_courses), 3)
+side_weight <- c(0.45, 0.55)
 
 
 # Sep & Oct 2021
@@ -162,15 +165,15 @@ core_nov_wt <- c(0.2, 0.2, 0.15, 0.2, 0.15, 0.1)
 
 # call the function
 
-nov_schedule <- schedule(core_courses = core_nov, side_study = side_nov, core_weight = core_nov_wt,
-                         side_weight = side_nov_wt)
+Jul_schedule <- schedule(core_courses = core_courses, side_study = side_study, core_weight = core_weight,
+                         side_weight = side_weight)
 
 # save the gt object
-gtsave(data = nov_schedule, filename = file.path(data_dir, paste0(
+gtsave(data = Jul_schedule, filename = file.path(data_dir, paste0(
   "study schedule_", format(Sys.Date(), "%b-%Y"), ".tex"
 )))
 gtsave(
-  data = nov_schedule,
+  data = Jul_schedule,
   filename = file.path(data_dir, paste0(
     "study schedule_", format(Sys.Date(), "%b-%Y"), ".html"
   )),

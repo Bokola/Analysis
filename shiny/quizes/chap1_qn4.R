@@ -1,7 +1,7 @@
 library(shiny)
 # Replace the UI and server components of your app from the previous
 # exercise with the UI and server components below, run the app,
-# and describe the app’s functionality. Then reduce the duplication
+# and describe the app's functionality. Then reduce the duplication
 # in the app by using a reactive expression.
 ui <- fluidPage(
   sliderInput("x", label = 'if x is', min = 1, max = 50, value = 30),
