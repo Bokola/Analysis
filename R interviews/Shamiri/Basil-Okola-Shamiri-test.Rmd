@@ -1,0 +1,245 @@
+---
+title: "Wilcoxon signed rank test: pre and post workshop analysis."
+author: "Basil Okola"
+date: "`r format(Sys.Date(), '%b %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  fig_caption: yes
+  tables: yes
+  mainfont: Calibri Light
+  fontsize: 12pt
+  number_sections: yes
+  toc: no
+  bookdown::word_document2: default
+header-includes: \usepackage{amsmath}
+editor_options:
+  chunk_output_type: console
+urlcolor: blue
+link-citations: yes
+linkcolor: blue
+csl: https://raw.githubusercontent.com/Bokola/resources/main/biomed-central.csl
+---
+\newpage
+
+<center>**Abstract**</center>
+
+Wilcoxon signed rank test was employed to analyze difference in scores pre and post workshop. A further subset analysis was done for each category of gender to assess gender differences. Analysis was restricted to $\alpha = 0.05$ level of significance. There were no statistically significant differences reported.
+
+**Key words**: score index, Wilcoxon signed rank test.
+
+```{r setup, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+# browseURL("https://inbo.github.io/tutorials/tutorials/r_citations_markdown/")
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+options(scipen = 4)
+ipk = function(pkg) {
+  new.pkg <-
+    list.pkg[!(list.pkg %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,
+              repos = 'https://cran.us.r-project.org')
+  ddpcr::quiet(sapply(pkg, require, character.only = TRUE))
+}
+list.pkg <- c('magrittr',
+              'tidyverse',
+              'readxl',
+              'janitor',
+              'exactRankTests')
+
+ipk(list.pkg)
+```
+
+```{r data}
+read_data <- function(name){
+  home  <- dirname(rstudioapi::getActiveDocumentContext()$path)
+  tmp <- list.files(file.path(home, "data"), pattern = "*.csv")
+  tmp1 <- subset(tmp, grepl(tolower(name), tolower(tmp)))
+  data <- read_csv(file.path(home, "data", tmp1), na = c("", "NA", "na"))
+  data <- data %>% clean_names()
+  data <- data[, order(names(data))]
+  return(data)
+}
+
+pre <- read_data(name = '_pre')
+post <- read_data(name = "_post")
+# get common columns
+lst <- list(pre, post)
+# lst %>%
+#   map(~ .x %>% names()) %>%
+#   reduce(~ intersect(.x, .y))
+# names(pre)
+# names(post)
+names(pre) <- c(
+  "age", "art_based_activities_promote", "gender", "reading", 
+  "teaching", "happy_at_school", "improve_creativity",
+  "improve_literacy", "mental_wellbeing", "science_subjects",
+  "languages_humanity_subjects", "profession", "shamiri_id", "consent",
+  "student_mental_wellbeing", "students_smart", "students_reading", "students_happy", "subject_taught", "teacher_mental_wellbeing", "use_art_based_activities"
+)
+names(post) <- c(
+  "art_based_activities_teaching", "art_based_activities_promote", "reading",
+  "teaching", "improve_creativity",
+  "improve_literacy", "mental_wellbeing", "languages_humanity_subjects",
+  "science_subjects", "shamiri_id",
+  "student_mental_wellbeing", "teacher_mental_wellbeing", "x8"
+)
+post <- post %>% select(-x8, -art_based_activities_teaching)
+cols <- names(post)
+pre <- pre %>% select(
+  age, shamiri_id, gender, subject_taught, all_of(cols)
+)
+post <- post %>%
+  left_join(pre %>% 
+              select(shamiri_id, age, gender, subject_taught), by = "shamiri_id")
+pre <- pre[, order(names(pre))]
+pre1 <- pre %>% filter(shamiri_id %in% post$shamiri_id)
+post <- post[, order(names(post))]
+```
+
+```{r}
+pre_1 <- pre1 #%>% select(-c(age, gender, subject_taught, shamiri_id))
+post_1 <- post #%>% select(-c(age, gender, subject_taught, shamiri_id))
+gender <- pre_1 %>% group_by(gender) %>%
+  summarise(n = n()) %>%
+  mutate(p = round(n / sum(n), 2)) %>%
+  slice(1)
+# gender[,2:3][1]
+```
+
+
+
+
+```{r}
+test_improvement <- function(pre, post){
+  out <- list()
+  cols <- pre %>% select(where(is.numeric)) %>% names()
+  cols <- cols[-1]
+  for(i in seq_along(cols)){
+    column <- cols[i]
+    control <- pre[, column] %>% pull(column)
+    treatment <- post[, column] %>% pull(column)
+    # diff <- treatment - control
+    # sign <- sum(diff > 0, na.rm = T)
+    # test <- binom.test(sign, length(diff[diff != 0]), 1 / 2, alternative="greater")
+    test <- wilcox.exact(treatment, control, alternative = "greater", paired = T)
+    out1 <- tibble(variable = column, statistic = test$statistic,
+                        `p value` = test$p.value)
+    out[[i]] <- out1
+  }
+  return(out)
+}
+
+a <- test_improvement(pre = pre_1, post = post_1) %>%
+  bind_rows() %>% mutate(variable = gsub("_", " ", variable))
+rownames(a) <- NULL
+```
+
+# Introduction
+
+Focus of this analysis was to assess if there were any statistically significant differences in scoring by participants attending a workshop prior and post attendance. Prior to the workshop, participants scored a list of questions, on how much they agreed with the subject matter. Assigned score ranged between 0-10, 10 indicating highest agreement. After the workshop, participants again scored same set of questions.
+
+Wilcoxon signed rank test allows for paired comparisons when parametric assumptions are not met. For this problem,  analysis was restricted to $\alpha = 0.05$ level of significance and `wilcox.test` from `{exactRankTests}` package used for analysis setting paired argument to TRUE, and alternative as 'greater' - since interest was on assessing improvement in indicators as specified in the problem statement.
+
+# Results
+
+There were N = `r nrow(pre)` in the pre workshop data and N = `r nrow(post)` in the post workshop test. Three observations never reported data in the post workshop set and were dropped as paired test require exact length of data. Of the N = `r nrow(pre_1)`, females were the minority group, with n = `r gender[,2:3][1]` accounting for `r gender[,2:3][2]` percent.
+
+Results from the paired Wilcoxon signed rank test are presented in table \ref{tab:res}. There were no significant difference at 95\% level of significance.
+A subset analysis for each gender category did not report any significant differences. Tables \ref{tab:males} and \ref{tab:females} report estimates for males and females participants respectively.
+
+
+```{r}
+a %>% knitr::kable(., format = "pandoc",
+                                      caption = "Wilcoxon signed rank test results\\label{tab:res}")
+```
+
+
+```{r}
+test_improvement_gender <- function(pre, post, choice, ...){
+  out <- list()
+  cols <- pre %>% select(where(is.numeric)) %>% names()
+  cols <- cols[-1]
+  for(i in seq_along(cols)){
+    column <- cols[i]
+    control <- pre %>% filter(tolower(gender) %in% choice) %>% 
+       pull(column)
+    treatment <- post %>% filter(tolower(gender) %in% choice) %>%
+       pull(column)
+    # diff <- treatment - control
+    # sign <- sum(diff > 0, na.rm = T)
+    # test <- binom.test(sign, length(diff[diff != 0]), 1 / 2, alternative="greater")
+    test <- wilcox.exact(treatment, control, alternative = "greater", paired = T)
+    out1 <- tibble(variable = column, statistic = test$statistic,
+                        `p value` = test$p.value)
+    out[[i]] <- out1
+  }
+  return(out)
+}
+males <- test_improvement_gender(pre = pre_1, post = post_1, choice = "male")
+b <- bind_rows(males) %>% mutate(variable = gsub("_", " ", variable))
+females <- test_improvement_gender(pre = pre_1, post = post_1, choice = "female")
+c <- bind_rows(females) %>% mutate(variable = gsub("_", " ", variable))
+```
+
+
+```{r}
+b %>% knitr::kable(., format = "pandoc",
+                                      caption = "Wilcoxon signed rank test results - males\\label{tab:males}")
+```
+
+
+```{r}
+c %>% knitr::kable(., format = "pandoc",
+                                      caption = "Wilcoxon signed rank test results- females\\label{tab:females}")
+```
+
+
+# Discussion
+
+The data as presented was not sufficient to pick any significant differences in indicator scores, pre and post workshop. A larger study may be needed do arrive at such significant differences. 
+
+\newpage
+
+
+# Appendix
+
+Programs used in this report
+
+```{r codes, eval=FALSE}
+test_improvement_gender <- function(pre, post, choice, ...){
+  out <- list()
+  cols <- pre %>% select(where(is.numeric)) %>% names()
+  cols <- cols[-1]
+  for(i in seq_along(cols)){
+    column <- cols[i]
+    control <- pre %>% filter(tolower(gender) %in% choice) %>% 
+       pull(column)
+    treatment <- post %>% filter(tolower(gender) %in% choice) %>%
+       pull(column)
+    test <- wilcox.exact(treatment, control, alternative = "greater", paired = T)
+    out1 <- tibble(variable = column, statistic = test$statistic,
+                        `p value` = test$p.value)
+    out[[i]] <- out1
+  }
+  return(out)
+}
+
+```
+
+
+
+```{r cod, ref.label='codes', eval=FALSE, echo=TRUE}
+
+```
+
+
+
+
+
+
+
+
