@@ -1,0 +1,113 @@
+---
+title: "Chemoprevention PhD Studentship"
+subtitle: "Current work: "
+author: "Basil okola"
+date: "`r format(Sys.Date(),'%m %d, %Y')`"
+header-includes: 
+  - \usepackage{amsmath}
+output:
+  xaringan::moon_reader:
+    css: ["default", "css/my-theme.css", "css/my-fonts.css"]
+    seal: false
+    lib_dir: libs
+    nature:
+      ratio: '4:3'
+      highlightStyle: dracula
+      highlightLines: true
+      countIncrementalSlides: false
+toc: yes
+---
+
+```{r, child="_setup.Rmd"}
+
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE,
+        eval = TRUE)
+library(tidyverse)
+library(testthat)
+library(gt)
+library(devtools)
+library(usethis)
+library(here)
+library(readxl)
+```
+
+```{r metathis, echo=FALSE}
+library(metathis)
+meta() %>%
+  meta_name("github-repo" = "jthomasmock/pkg-building") %>% 
+  meta_social(
+    title = "Package Building with devtools and usethis",
+    description = paste(
+      "Package building doesn't have to be scary!",
+      "The tidyverse team made it easy to get started",
+      "with RStudio, {devtools}, & {usethis}."
+    ),
+    url = "https://colorado.rstudio.com/rsc/pkg-building/",
+    image = "https://raw.githubusercontent.com/jthomasmock/pkg-building/master/images/title-card.png",
+    image_alt = paste(
+      "Title slide of Package Building with devtools and usethis.", 
+      "A slide deck covering the basics of writing functions and developing packages.",
+      "It also has an image of a orange rubik cube with a blue heart in the middle."
+    ),
+    og_type = "website",
+    og_author = "Tom Mock",
+    twitter_card_type = "summary_large_image",
+    twitter_creator = "@thomas_mock",
+    twitter_site = "@thomas_mock"
+  )
+```
+
+class: title-slide, left, top
+
+# `r rmarkdown::metadata$title`
+
+## `r rmarkdown::metadata$subtitle`
+
+### `r rmarkdown::metadata$author`
+
+### `r format(Sys.Date(), '%b %d, %Y')`
+
+<br>
+
+---
+
+# Introduction
+
+- Reported cases of COVID-19 stand at about <b>758M</b> with deaths about <b>6.9M</b>
+
+- A number of coping measures including restricted movement, lockdowns, closure of   schools, social joints were implemented
+
+- While the spread is now under control thanks to vaccines, the effects live on
+
+- There are reported cases of long COVID
+
+- Growing interest in understanding the mental burden of the disease
+
+- Coping measures + losing close family members,  contracting covid (could) have greater impact on mental health of survivors
+
+---
+
+# Data
+
+- Omtanke2020 (since September 2020) study hosted by KI, Sweden
+
+- A self-reported longitudinal data on:
+
+  - socio-demographics: age, sex, relationship status, general lifestyle
+  mental and physical health, COVID-19 infection and impact
+
+  - Depression via 9-item questions Patient Health Questionnaire (PHQ-9) on a four-point Likert scale 
+<!-- (0 = not at all, 1 = somedays, 2 = more than half of the days, 3 = nearly every day). -->
+  - Anxiety via 7-item questions General Anxiety Disorder (GAD-7) on a four-point Likert scale
+
+  - COVID-19-related distress using COVID-19 primary care PTSD screening tool
+---
+# Methods
+
+- Poisson regression used to assess the relative risk of demonstrating high level symptoms of depression,
+
+# Preliminary results
+

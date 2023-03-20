@@ -1,0 +1,279 @@
+---
+title: "Proficiency test research data coordinator"
+author: "Basil Okola"
+# abstract: |
+#   **Background**: Add.
+#   **Objectives**: Add.
+#   **Methodology**: Add.
+#    **Results**: 
+#    **Conclusions**:
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    # citation_package: natbib
+  # bookdown::word_document2:
+  #   citation_package: natbib
+  #   keep_tex: true
+  # bookdown::pdf_document2:
+  #   citation_package: natbib
+  #   keep_tex: true
+  # word_document: default
+  fig_caption: yes
+  tables: yes
+  mainfont: "Times New Roman"
+  fontsize: 11pt
+  number_sections: true
+  toc: no
+header-includes: 
+  - \usepackage{amsmath}
+editor_options: 
+  chunk_output_type: console
+# bibliography: citation.bib
+# csl: biomed-central.csl
+# csl: american-political-science-association.csl
+# geometry: margin=1in
+# fontfamily: mathpazo
+# fontsize: 12pt
+# spacing: double
+# bibliography: citation.bib
+urlcolor: blue
+link-citations: yes
+linkcolor: blue
+csl: "https://raw.githubusercontent.com/Bokola/resources/main/biomed-central.csl"
+---
+
+
+```{r setup, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data}
+# set paths and packages
+options(scipen = 4)
+ipk = function(pkg) {
+  new.pkg <-
+    list.pkg[!(list.pkg %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,
+              repos = 'https://cran.us.r-project.org')
+  ddpcr::quiet(sapply(pkg, require, character.only = TRUE))
+}
+list.pkg <- c('magrittr',
+              'tidyverse',
+              'lubridate',
+              'janitor')
+
+ipk(list.pkg)
+
+home  <- dirname(rstudioapi::getActiveDocumentContext()$path) %>% dirname()
+data_dir <- file.path(home, 'KI-data-coordinator', 'Data')
+```
+
+Response to the questions follow a question and answer format, first listing the question and providing an answer afterwards.
+
+
+# Question 1
+
+Attached are two files, one Excel (Data_SRQ) and one txt (Data_KIBB). Merge the two files, the primary key is ID. Return your log and the merged file.
+
+```{r}
+# read data
+data_files <- list.files(data_dir)
+excel_file <- grep(".xlsx$", data_files, v = T)
+text_file <- grep(".txt$", data_files, v = T)
+# get sheet name for excel file
+sheet <- readxl::excel_sheets(file.path(data_dir, excel_file))
+data_excel <-
+  readxl::read_excel(file.path(data_dir, excel_file), sheet = sheet) %>% 
+  janitor::clean_names()
+# clean date column
+# A wrong date entry for ID 9, month of February never exceeds 29 days
+
+data_excel1 <- data_excel %>% filter(grepl("-", date_inclusion))
+# date does not parse as is out of range
+data_excel1_1 <- data_excel1 %>% mutate(
+  date_inclusion = dmy(date_inclusion)
+)
+data_excel2 <- data_excel %>% filter(!grepl("-", date_inclusion)) %>%
+  mutate(date_inclusion = 
+    excel_numeric_to_date(as.numeric(date_inclusion)))
+data_1 <- bind_rows(data_excel1_1, data_excel2)
+
+# data_txt <- read_fwf(file.path(data_dir, text_file))
+data_txt2 <- readLines(file.path(data_dir, text_file), encoding = "UTF-8") %>%
+  tibble()
+Encoding(data_txt2$.) <- "UTF-16"
+names(data_txt2) <- "var"
+data_txt2 <- data_txt2 %>%
+  filter(!var == "\t\t\t")
+```
+
+
+```{r}
+# separate to distinct columns
+data_txt <- data_txt2 %>% separate(var, sep = "\t", into = c("a", "b", "c", "d"))
+# rename columns
+names(data_txt) <- data_txt[1,]
+data_txt <- data_txt[-1,]
+data_txt <- data_txt %>% clean_names()
+# ID 9 has wrong date here too
+data_2 <- data_txt %>% mutate(
+  date_sample = dmy(date_sample),
+  id = as.numeric(id),
+  das28 = gsub(",", ".", das28) %>% as.numeric()
+)
+# merge
+data <- data_1 %>% select(-lan) %>%
+  left_join(data_2, by = c("id")) %>%
+  mutate(crp = as.numeric(crp))
+write_csv(data, file.path(data_dir, "data-merged.csv"))
+```
+
+# Question 2
+
+## a.	number of men with a CRP > 750 and DAS28 $\ge 4$.
+
+Since the participants were followed multiple times, we count unique ids returned after filtering by given conditions. The solution returns 2 men.
+
+```{r}
+dat_a <- data  %>% filter(
+  grepl("^men", sex, ignore.case = T) & crp > 750 & das28 >= 4
+) 
+dat_a %>% summarize(n = n_distinct(id)) %>% knitr::kable(format = "pandoc")
+```
+
+
+## b.	the median date of inclusion for these men.
+
+
+
+```{r}
+median(dat_a$date_inclusion, na.rm = T) %>% knitr::kable(format = "pandoc")
+```
+
+\newpage
+
+## c.	the mean ESR by Lan.
+
+```{r}
+data %>% group_by(lan) %>%
+  summarize(
+    `mean esr` = mean(esr, na.rm = T)
+  ) %>% knitr::kable(format = "pandoc")
+```
+
+
+
+\newpage
+
+# References
+<div id="refs"></div>
+
+# Appendix
+
+Programs used in this report
+
+
+
+```{r codes, eval=FALSE}
+# set paths and packages
+options(scipen = 4)
+ipk = function(pkg) {
+  new.pkg <-
+    list.pkg[!(list.pkg %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,
+              repos = 'https://cran.us.r-project.org')
+  ddpcr::quiet(sapply(pkg, require, character.only = TRUE))
+}
+list.pkg <- c('magrittr',
+              'tidyverse',
+              'lubridate',
+              'janitor')
+
+ipk(list.pkg)
+
+home  <- dirname(rstudioapi::getActiveDocumentContext()$path) %>% dirname()
+data_dir <- file.path(home, 'KI-data-coordinator', 'Data')
+
+# read data
+data_files <- list.files(data_dir)
+excel_file <- grep(".xlsx$", data_files, v = T)
+text_file <- setdiff(data_files, excel_file)
+# get sheet name for excel file
+sheet <- readxl::excel_sheets(file.path(data_dir, excel_file))
+data_excel <-
+  readxl::read_excel(file.path(data_dir, excel_file), sheet = sheet) %>% 
+  janitor::clean_names()
+# clean date column
+# A wrong date entry for ID 9, month of February never exceeds 29 days
+
+data_excel1 <- data_excel %>% filter(grepl("-", date_inclusion))
+# date does not parse as is out of range
+data_excel1_1 <- data_excel1 %>% mutate(
+  date_inclusion = dmy(date_inclusion)
+)
+data_excel2 <- data_excel %>% filter(!grepl("-", date_inclusion)) %>%
+  mutate(date_inclusion = 
+    excel_numeric_to_date(as.numeric(date_inclusion)))
+data_1 <- bind_rows(data_excel1_1, data_excel2)
+
+# data_txt <- read_fwf(file.path(data_dir, text_file))
+data_txt2 <- readLines(file.path(data_dir, text_file), encoding = "UTF-8") %>%
+  tibble()
+Encoding(data_txt2$.) <- "UTF-16"
+names(data_txt2) <- "var"
+data_txt2 <- data_txt2 %>%
+  filter(!var == "\t\t\t")
+
+# separate to distinct columns
+data_txt <- data_txt2 %>% separate(var, sep = "\t", into = c("a", "b", "c", "d"))
+# rename columns
+names(data_txt) <- data_txt[1,]
+data_txt <- data_txt[-1,]
+data_txt <- data_txt %>% clean_names()
+# ID 9 has wrong date here too
+data_2 <- data_txt %>% mutate(
+  date_sample = dmy(date_sample),
+  id = as.numeric(id),
+  das28 = gsub(",", ".", das28) %>% as.numeric()
+)
+# Question 1  merge
+data <- data_1 %>%
+  left_join(data_2, by = "id")
+
+# Question 2
+
+# # a.
+
+data  %>% filter(
+  grepl("^men", sex, ignore.case = T) & crp > 750 & das28 >= 4
+) %>% summarize(n = n_distinct(id))
+
+## b
+
+median(dat_a$date_inclusion, na.rm = T)
+
+## c
+
+data %>% group_by(lan) %>%
+  summarize(
+    mean_esr = mean(esr, na.rm = T)
+  )
+
+```
+
+```{r cod, ref.label='codes', eval=FALSE, echo=TRUE}
+
+```
+
+
+<!-- # ```{r code=readLines(knitr::purl('C:/Users/basil/Google Drive (basil.okola@student.uhasselt.be)/MSc. Stats Hasselt/y2 sem1/AMT/finite mixture project/finite-code.Rmd', documentation = 0)), eval = FALSE, echo=TRUE} -->
+<!-- #  -->
+<!-- # ``` -->
+
+
+
+
+
