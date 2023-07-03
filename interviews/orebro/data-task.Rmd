@@ -1,0 +1,144 @@
+---
+title: "Data task"
+subtitle: ""
+author: "Basil okola"
+date: "`r format(Sys.Date(),'%m %d, %Y')`"
+header-includes: 
+  - \usepackage{amsmath}
+output:
+  xaringan::moon_reader:
+    css: ["default", "css/my-theme.css", "css/my-fonts.css"]
+    seal: false
+    lib_dir: libs
+    nature:
+      ratio: '4:3'
+      highlightStyle: dracula
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, child="_setup.Rmd"}
+
+```
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE,
+        eval = TRUE)
+# library(tidyverse)
+# library(testthat)
+# library(gt)
+# library(devtools)
+# library(usethis)
+# library(here)
+# library(readxl)
+# library(gsDesign)
+
+ipk <- function(pkg){
+  for(i in seq(length(pkg))){
+    if(!require(pkg[[i]], character.only = TRUE)) 
+      install.packages(pkg[[i]], repos = "https://cran.rstudio.com", dep = T)
+  }
+}
+
+pkg <- c(
+  "devtools",
+  "gsDesign",
+  "gt",
+  "tidyverse",
+  "magrittr",
+  "here",
+  "metathis",
+  "xaringan"
+)
+
+
+ipk(pkg)
+
+```
+
+```{r metathis, echo=FALSE}
+library(metathis)
+meta() %>%
+  meta_name("github-repo" = "jthomasmock/pkg-building") %>% 
+  meta_social(
+    title = "Package Building with devtools and usethis",
+    description = paste(
+      "Package building doesn't have to be scary!",
+      "The tidyverse team made it easy to get started",
+      "with RStudio, {devtools}, & {usethis}."
+    ),
+    url = "https://colorado.rstudio.com/rsc/pkg-building/",
+    image = "https://raw.githubusercontent.com/jthomasmock/pkg-building/master/images/title-card.png",
+    image_alt = paste(
+      "Title slide of Package Building with devtools and usethis.", 
+      "A slide deck covering the basics of writing functions and developing packages.",
+      "It also has an image of a orange rubik cube with a blue heart in the middle."
+    ),
+    og_type = "website",
+    og_author = "Tom Mock",
+    twitter_card_type = "summary_large_image",
+    twitter_creator = "@thomas_mock",
+    twitter_site = "@thomas_mock"
+  )
+```
+
+class: title-slide, left, top
+
+# `r rmarkdown::metadata$title`
+
+## `r rmarkdown::metadata$subtitle`
+
+### `r rmarkdown::metadata$author`
+
+### `r format(Sys.Date(), '%b %d, %Y')`
+
+<br>
+
+---
+
+```{r}
+data_dir <- file.path(here(), "orebro")
+data_file <- list.files(data_dir, pattern = "*.csv|*.xlsx|*.txt")
+
+load_data <- function(file_dir, file_name){
+  if(grepl("*.csv", file_name)){
+    out <- readr::read_csv(file.path(file_dir, file_name), delim = ";")
+  }else if(grepl("*.xlsx", file_name)){
+    out <- readxl::read_xlsx(file.path(file_dir, file_name))
+  }
+  return(out)
+} 
+
+df <- read_csv2(file.path(data_dir, data_file)) |> as.data.frame()
+rownames(df) <- df[,1]
+df[,1] <- NULL
+
+df2 <- df[which((rowSums(is.na(df)) / dim(df)[2]) > 0.1),]
+out <- rownames(df2)
+out2 <- matrix(nrow = 2, ncol = 4)
+out2[1, ] <- out[1:4]
+out2[2, ] <- out[5:8]
+
+knitr::kable(out2, format = "html", caption = "samples with over 10% missingness")
+```
+
+
+Programs
+
+```{r codes, eval=FALSE}
+df <- read_csv2(file.path(data_dir, data_file)) |> as.data.frame()
+rownames(df) <- df[,1]
+df[,1] <- NULL
+
+df2 <- df[which((rowSums(is.na(df)) / dim(df)[2]) > 0.1),]
+out <- rownames(df2)
+```
+
+
+```{r cod, ref.label='codes', eval=FALSE, echo=TRUE}
+
+```
+
+
