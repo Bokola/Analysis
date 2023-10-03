@@ -5,3 +5,4 @@
 *.Rhistory
 *.docx
 *.pdf
+.Rproj.user

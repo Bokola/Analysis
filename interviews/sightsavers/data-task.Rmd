@@ -1,0 +1,224 @@
+---
+title: "Prevalence of blindness"
+author: "Basil Okola"
+# abstract: |
+#   **Background**: Add.
+#   **Objectives**: Add.
+#   **Methodology**: Add.
+#    **Results**: 
+#    **Conclusions**:
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    # citation_package: natbib
+  # bookdown::word_document2:
+  #   citation_package: natbib
+  #   keep_tex: true
+  # bookdown::pdf_document2:
+  #   citation_package: natbib
+  #   keep_tex: true
+  # word_document: default
+  fig_caption: yes
+  tables: yes
+  mainfont: "Times New Roman"
+  fontsize: 11pt
+  number_sections: true
+  toc: no
+header-includes: 
+  - \usepackage{amsmath}
+editor_options: 
+  chunk_output_type: console
+# bibliography: citation.bib
+# csl: biomed-central.csl
+# csl: american-political-science-association.csl
+# geometry: margin=1in
+# fontfamily: mathpazo
+# fontsize: 12pt
+# spacing: double
+# bibliography: citation.bib
+urlcolor: blue
+link-citations: yes
+linkcolor: blue
+csl: "https://raw.githubusercontent.com/Bokola/resources/main/biomed-central.csl"
+---
+
+
+```{r setup, child="_setup.Rmd"}
+# knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data}
+# set paths and packages
+options(scipen = 4)
+ipk = function(pkg) {
+  new.pkg <-
+    list.pkg[!(list.pkg %in% .packages(all.available = TRUE))]
+  if (length(new.pkg))
+    install.packages(new.pkg, dependencies = TRUE,
+              repos = 'https://cran.us.r-project.org')
+  ddpcr::quiet(sapply(pkg, require, character.only = TRUE))
+}
+list.pkg <- c("haven", "here", "remotes","dplyr", "purrr", "readxl", "magrittr", "janitor", "tidyr")
+
+ipk(list.pkg)
+
+# home  <- dirname(rstudioapi::getActiveDocumentContext()$path) %>% dirname()
+# data_dir <- file.path(home, 'KI-data-coordinator', 'Data')
+```
+
+Response to the questions follow a question and answer format, first listing the question and providing an answer afterwards.
+
+
+# Question 1
+
+In calculating prevalence of blindness, we use the fact that Bilateral visual impairment is defined by the vision in the better, i.e. least impaired, eye and as such both eyes must be blind for one to be labelled blind. The prevalence of blindness is 0.02. 
+
+
+```{r}
+# read data
+fils <- list.files(file.path(here(),  "sightsavers"),pattern = ".xlsx")
+fils <- subset(fils, !grepl("~", fils))
+dat <- read_xlsx(file.path(here(), "sightsavers", fils), sheet = "Data")
+pop <- read_xlsx(file.path(here(), "sightsavers", fils), sheet = "pop")
+pop <- pop %>% filter(age != "total")
+# str(dat)
+dat <- dat %>% mutate(
+  blind_le = ifelse(pvale %in% c(5, 6, 7), 1, 0),
+  blind_re = ifelse(pvare %in% c(5, 6, 7), 1, 0)
+)
+
+dat <- dat %>% mutate(
+  blind = ifelse(blind_le == 1 & blind_re == 1, 1, 0)
+)
+dat <- dat %>% mutate(
+  sex = ifelse(sex == 1, "male", "female")
+)
+
+tab1 <- table(dat$blind) %>% prop.table() %>% round(., 3) %>%  as.data.frame() %>%
+  `colnames<-`(c("blind", "prop"))
+knitr::kable(tab1, format = "pandoc")
+
+tab2 <- dat %>% group_by(sex) %>%
+  summarize(
+    prop = mean(blind)
+  )
+knitr::kable(tab2, format = "pandoc")
+
+p <- 0.02; pm <- 0.019;pf <- 0.024
+se <- sqrt((p*(1-p))/ nrow(dat))
+ci <- paste0("(", round(p - 1.96 * se, 3), ",", round(p + 1.96 * se, 3), ")")
+sem <- sqrt((pm*(1-pm))/ nrow(dat))
+cim <- paste0("(", round(pm - 1.96 * se, 3), ",", round(pm + 1.96 * se, 3), ")")
+sef <- sqrt((pm*(1-pf))/ nrow(dat))
+cif <- paste0("(", round(pf - 1.96 * se, 3), ",", round(pf + 1.96 * se, 3), ")")
+
+```
+
+
+# Question 2
+
+
+The 95\% CI is given by `r ci` , for males is `r cim`, for females `r cif`
+
+
+# Question 3
+
+```{r}
+
+dat <- dat %>%
+  
+mutate(
+  age_g = case_when(
+    age >=50 & age <= 54 ~ "50-54",
+    age >=55 & age <= 59 ~ "55-59",
+    age >=60 & age <= 64 ~ "60-64",
+    age >=65 & age <= 69 ~ "65-69",
+    age >=70 & age <= 74 ~ "70-74",
+    age >=75 & age <= 80 ~ "75-80",
+    TRUE ~ "80+"
+  )
+)
+
+out3 <- dat %>% group_by(sex, age_g) %>%
+  summarize(
+    prop = round(mean(blind), 3)
+  )
+out3_w <- out3 %>% pivot_wider(
+ names_from = sex, values_from = prop
+)
+names(out3_w) <- c("age", "prop_f", "prop_m")
+
+dat3 <- out3_w %>% left_join(pop) %>% select(-total)
+
+dat3 <- dat3 %>% mutate(
+  tot_blind_male = round(male * prop_m),
+  tot_blind_female = round(female * prop_f)
+)
+
+dat3$total_blind <- dat3$tot_blind_female + dat3$tot_blind_male
+
+knitr::kable(dat3, format = "pandoc")
+```
+
+Total blind given  in last three columns
+
+\newpage
+
+# References
+<div id="refs"></div>
+
+# Appendix
+
+Programs used in this report
+
+
+
+```{r codes, eval=FALSE}
+# set paths and packages
+dat <- dat %>%
+  
+mutate(
+  age_g = case_when(
+    age >=50 & age <= 54 ~ "50-54",
+    age >=55 & age <= 59 ~ "55-59",
+    age >=60 & age <= 64 ~ "60-64",
+    age >=65 & age <= 69 ~ "65-69",
+    age >=70 & age <= 74 ~ "70-74",
+    age >=75 & age <= 80 ~ "75-80",
+    TRUE ~ "80+"
+  )
+)
+
+out3 <- dat %>% group_by(sex, age_g) %>%
+  summarize(
+    prop = round(mean(blind), 3)
+  )
+out3_w <- out3 %>% pivot_wider(
+ names_from = sex, values_from = prop
+)
+names(out3_w) <- c("age", "prop_f", "prop_m")
+
+dat3 <- out3_w %>% left_join(pop) %>% select(-total)
+
+dat3 <- dat3 %>% mutate(
+  tot_blind_male = round(male * prop_m),
+  tot_blind_female = round(female * prop_f)
+)
+
+
+```
+
+```{r cod, ref.label='codes', eval=FALSE, echo=TRUE}
+
+```
+
+
+<!-- # ```{r code=readLines(knitr::purl('C:/Users/basil/Google Drive (basil.okola@student.uhasselt.be)/MSc. Stats Hasselt/y2 sem1/AMT/finite mixture project/finite-code.Rmd', documentation = 0)), eval = FALSE, echo=TRUE} -->
+<!-- #  -->
+<!-- # ``` -->
+
+
+
+
+

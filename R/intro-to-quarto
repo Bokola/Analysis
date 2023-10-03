@@ -1,0 +1,22 @@
+https://quarto.org/docs/get-started/hello/rstudio.html
+# Quarto (.qmd)
+the yaml, a simple one
+---
+title: "hello"
+format: html or pdf or revealjs (slides)
+editor: visual
+execute:
+  echo: false
+---
+
+code chunks similar as rmarkdown but options written in the form
+#| label: load-packages
+#| message: false
+#| fig-width: 5
+#| fig-asp: 0.618
+#| echo: false
+#| fig-alt:
+#| fig-cap:
+#| tab-cap:
+
+- insert code chunk in visual mode using the keyboard shortcut / (forward slash)

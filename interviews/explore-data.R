@@ -13,12 +13,14 @@ list.pkg <- c("Hmisc",
               "GGally",
               "bookdown",
               "hrbrthemes",
-              "viridis")
+              "viridis",
+              "zoo")
 ipk(list.pkg)
 
 dat <- mtcars
 #  get numeric columns
 num <- names(dat[,sapply(dat, is.numeric)])
+
 nu.dp <- dat %>% select(where(is.numeric)) %>% names(.)
 # count nas
 
@@ -77,7 +79,7 @@ data <- data.frame(
 # compute the position of labels
 data <- data %>%
   arrange(desc(group)) %>%
-  mutate(prop = value / sum(value) + 100) %>%
+  mutate(prop = value / sum(value)) %>%
   mutate(ypos = cumsum(prop) - 0.5*prop)
 
 
@@ -89,3 +91,6 @@ ggplot(data, aes(x="", y=prop, fill=group)) +
   
   geom_text(aes(y = ypos, label = group), color = "white", size=6) +
   scale_fill_brewer(palette="Set1")
+
+# aggregate such a useful function
+aggregate(state.x77, list(Region = state.region), mean)

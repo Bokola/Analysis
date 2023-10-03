@@ -1,0 +1,17 @@
+* Written by R;
+*  foreign::write.foreign(df = dyme, file.path(data_dir, "dyme.sasdata"),  ;
+
+DATA  rdata ;
+INFILE  "C:/Users/basil/Google Drive (basil.okola@student.uhasselt.be)/MSc. Stats Hasselt/y1 sem2/Generalized Linear Models/data/dyme.sasdata" 
+     DSD 
+     LRECL= 33 ;
+INPUT
+ id
+ dose
+ weight
+ litsz
+ ord
+ ord_binary
+ dose2
+;
+RUN;

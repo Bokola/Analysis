@@ -19,7 +19,7 @@ proc sql;
 		order by jobcode;
 quit;
 
-* use * to select all coluns;
+* use * to select all columns;
 proc sql feedback;
 	select * 
 		from d.staffchanges;
@@ -79,12 +79,22 @@ proc sql outobs = 10;
 		where name ? 'ER';
 quit;
 
-/* 3. missing */
+/* 3. missing/ null - negate with not */
 proc sql feedback outobs = 10;
 	select *
 		from d.marchflights
 		where boarded is missing;
 quit; 
+proc sql feedback outobs = 10;
+	select *
+		from d.marchflights
+		where boarded is not missing;
+quit; 
+proc sql feedback outobs = 10;
+	select *
+		from d.marchflights
+		where boarded is not null;
+quit;
 
 /* Alternatively, you can specify missing values without using 
 the IS MISSING or IS NULL
@@ -280,6 +290,14 @@ proc sql;
 run;
 
 /* chap3: Joining tables */
+proc sql;
+select * 
+	from d.one;
+quit;
+proc sql;
+select *
+	from d.two;
+quit;
 
 * a) cartesian product;
 proc sql;

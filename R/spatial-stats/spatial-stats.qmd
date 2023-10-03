@@ -1,0 +1,96 @@
+---
+title: "Spatial Statistics (R)"
+format: html
+editor: visual
+execute: 
+  echo: false
+  warning: false
+---
+
+# Types of spatial data:
+
+##  a) aerial (lattice): 
+
+no. of events aggregated in an area e.g admin units
+
+```{r}
+#| include: false
+# browseURL("https://www.paulamoraga.com/book-spatial/types-of-spatial-data.html")
+ipk <- function(pkg){
+  for (i in seq_len(length(pkg))) {
+    if(!require(pkg[i], character.only = TRUE)) install.packages(pkg[i], dependencies = TRUE)
+    
+  }
+}
+pks <- c("sf", "sp", "mapview", "terra", "spData", "ggplot2", "malariaAtlas", "sparr")
+ipk(pks)
+```
+
+```{r}
+#| label: fig-deaths
+#| fig-cap: Example of areal data. Number of sudden infant deaths in counties of North Carolina, USA, in 1974.
+#| 
+d <- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
+mapview(d, zcol = "SID74")
+```
+
+Using ggplot
+```{r}
+#| label: fig-income
+#| fig-cap: Example of areal data. Household income in $1000 USD in neighborhoods in Columbus, Ohio, in 1980.
+d <- st_read(system.file("shapes/columbus.shp", package = "spData"), quiet = TRUE)
+ggplot(d) + geom_sf(aes(fill = INC))
+```
+
+```{r}
+#| label: luxe
+#| fig-cap: Example of areal data. Elevation at raster grid cells covering Luxembourg.
+
+d <- rast(system.file("ex/elev.tif", package = "terra"))
+plot(d)
+```
+
+## b) Geostatistical data
+
+```{r}
+#| label: fig-soil
+#| fig-cap:  Example of geostatistical data. Topsoil lead concentrations at locations sampled in a flood plain of the river Meuse, The Netherlands.
+
+data("meuse")
+meuse <- st_as_sf(meuse, coords = c("x", "y"), crs = 2892)
+mapview(meuse, zcol = "lead", map.type = "CartoDB.Voyager")
+```
+
+```{r}
+#| label: fig-price
+#| fig-cap:  Example of geostatistical data. Price per square meter of a set of apartments in Athens, Greece, in 2017.
+mapview(properties, zcol = "prpsqm")
+```
+
+```{r}
+#| label: fig-mal
+#| message: false
+#| fig-cap:  Example of geostatistical data. Malaria prevalence at specific locations in Kenya.
+
+d <- getPR(country = "Kenya", species = "both")
+autoplot(d)
+```
+
+## c) point patterns
+
+```{r}
+#| label: fig-case
+#| fig-cap: Example of point pattern. Locations of cases and controls of primary biliary cirrhosis in north-eastern England between 1987 and 1994.
+
+data(pbc)
+plot(unmark(pbc[which(pbc$marks == "case"), ]), main = "cases")
+axis(1)
+axis(2)
+title(xlab = "Easting", ylab = "Northing")
+plot(unmark(pbc[which(pbc$marks == "control"), ]),
+     pch = 3, main = "controls")
+axis(1)
+axis(2)
+title(xlab = "Easting", ylab = "Northing")
+```
+

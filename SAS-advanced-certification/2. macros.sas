@@ -242,7 +242,7 @@ to create the macro variables in the Printdsn macro definition;
 	%let vars=course_title course_code days;
 	proc print data=&dsn;
 		var &vars;
-	title "Listin g of &dsn data set";
+	title "Listing of &dsn data set";
 	run;
 %mend printdsn;
 %printdsn
@@ -252,7 +252,7 @@ to create the macro variables in the Printdsn macro definition;
 * debug macro with mprint option;
 %macro prtlast;
 	proc print data = &syslast (obs = 5);
-		title "Llisting of &syslast dataset";
+		title "Listing of &syslast dataset";
 	run;
 %mend prtlast;
 
