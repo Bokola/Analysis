@@ -22,7 +22,7 @@ ipk <- function(pkg){
     
   }
 }
-pks <- c("sf", "sp", "mapview", "terra", "spData", "ggplot2", "malariaAtlas", "sparr")
+pks <- c("sf", "sp", "mapview", "terra", "spData", "ggplot2", "malariaAtlas", "sparr", "rnaturalearth")
 ipk(pks)
 ```
 
@@ -92,5 +92,38 @@ plot(unmark(pbc[which(pbc$marks == "control"), ]),
 axis(1)
 axis(2)
 title(xlab = "Easting", ylab = "Northing")
+```
+
+# {sf}
+
+## Creating sf object
+
+- use `sf_st()` to create an sf object by providing two elements; a df and simple feature geometry list-column **sfc** containing simple feature geometries **sfg**
+- first create simple feauture geometries **sfg** and use the `st_sf()` to put the df and with the attributes and simple feature geometry list-column **sfc** together
+- simple feature geometries **sfg** can be of single point - `st_point()`, multipoint - `st_multipoint()` and polygon - `st_polygon()`
+
+
+```{r}
+# single point
+p1_sfg <- st_point(c(2, 2))
+p2_sfg <- st_point(c(2.5, 3))
+
+# set of points
+p <- rbind(c(6, 2), c(6.1, 2.6), c(6.8, 2.5),
+           c(6.2, 1.5), c(6.8, 1.8))
+mp_sfg <- st_multipoint(p)
+
+# polygon
+p1 <- rbind(c(10, 0), c(11, 0), c(13, 2),
+            c(12, 4), c(11, 4), c(10, 0))
+p2 <- rbind(c(11, 1), c(11, 2), c(12, 2), c(11, 1))
+pol_sfg <- st_polygon(list(p1, p2))
+
+# create sf object
+p_sfc <- st_sfc(p1_sfg, p2_sfg, mp_sfg, pol_sfg)
+df <- data.frame(V1 = c("A", "B", "C", "D"))
+p_sf <- st_sf(df, geometry = p_sfc)
+# plot
+ggplot(p_sf) + geom_sf(aes(col = V1), size = 3) + theme_bw()
 ```
 
