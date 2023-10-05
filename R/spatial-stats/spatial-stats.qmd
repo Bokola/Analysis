@@ -3,27 +3,52 @@ title: "Spatial Statistics (R)"
 format: html
 editor: visual
 execute: 
-  echo: false
+  echo: true
   warning: false
 ---
 
 # Types of spatial data:
 
-##  a) aerial (lattice): 
+## a) aerial (lattice):
 
 no. of events aggregated in an area e.g admin units
 
 ```{r}
-#| include: false
+#| include: true
 # browseURL("https://www.paulamoraga.com/book-spatial/types-of-spatial-data.html")
-ipk <- function(pkg){
+ipk <- function(pkg) {
   for (i in seq_len(length(pkg))) {
-    if(!require(pkg[i], character.only = TRUE)) install.packages(pkg[i], dependencies = TRUE)
+    if (!require(pkg[i], character.only = TRUE))
+      install.packages(pkg[i], dependencies = TRUE,
+                       repos = "http://cran.rstudio.com")
     
   }
 }
-pks <- c("sf", "sp", "mapview", "terra", "spData", "ggplot2", "malariaAtlas", "sparr", "rnaturalearth")
-ipk(pks)
+pks <- c(
+  "sf",
+  "sp",
+  "mapview",
+  "terra",
+  "spData",
+  "ggplot2",
+  "malariaAtlas",
+  "sparr",
+  "rnaturalearth",
+  "geodata",
+  "tmap",
+  "leaflet",
+  "flowmapblue",
+  "viridis",
+  "plotly",
+  "htmlwidgets",
+  "webshot",
+  "RColorBrewer",
+  "leaflet.extras2",
+  "maps",
+  "raster"
+)
+ddpcr::quiet(ipk(pks))
+# devtools::install_github("FlowmapBlue/flowmapblue.R")
 ```
 
 ```{r}
@@ -35,6 +60,7 @@ mapview(d, zcol = "SID74")
 ```
 
 Using ggplot
+
 ```{r}
 #| label: fig-income
 #| fig-cap: Example of areal data. Household income in $1000 USD in neighborhoods in Columbus, Ohio, in 1980.
@@ -98,10 +124,9 @@ title(xlab = "Easting", ylab = "Northing")
 
 ## Creating sf object
 
-- use `sf_st()` to create an sf object by providing two elements; a df and simple feature geometry list-column **sfc** containing simple feature geometries **sfg**
-- first create simple feauture geometries **sfg** and use the `st_sf()` to put the df and with the attributes and simple feature geometry list-column **sfc** together
-- simple feature geometries **sfg** can be of single point - `st_point()`, multipoint - `st_multipoint()` and polygon - `st_polygon()`
-
+-   use `sf_st()` to create an sf object by providing two elements; a df and simple feature geometry list-column **sfc** containing simple feature geometries **sfg**
+-   first create simple feauture geometries **sfg** and use the `st_sf()` to put the df and with the attributes and simple feature geometry list-column **sfc** together
+-   simple feature geometries **sfg** can be of single point - `st_point()`, multipoint - `st_multipoint()` and polygon - `st_polygon()`
 
 ```{r}
 # single point
@@ -125,5 +150,213 @@ df <- data.frame(V1 = c("A", "B", "C", "D"))
 p_sf <- st_sf(df, geometry = p_sfc)
 # plot
 ggplot(p_sf) + geom_sf(aes(col = V1), size = 3) + theme_bw()
+```
+
+# Making maps with R
+
+```{r}
+nameshp <- system.file("shape/nc.shp", package = "sf")
+d <- st_read(nameshp, quiet = T)
+d$vble <- d$SID74
+d$vble2 <- d$SID79
+```
+
+## **ggplot2**
+
+```{r}
+ggplot(d) + geom_sf(aes(fill = vble)) +
+  scale_fill_viridis() + theme_bw()
+```
+
+-   make it interactive with `{plotly}`
+
+```{r}
+g <- ggplot(d) + geom_sf(aes(fill = vble))
+ggplotly(g)
+```
+
+## **leaflet**
+
+-   the **sf** object that we pass to `leaflet()` needs to have a geographic coordinate reference system (CRS) indicating latitude and longitude (EPSG code 4326)
+-   we use the `st_transform()` function of **sf** to transform the data d which has CRS given by EPSG code 4267 to CRS with EPSG code 4326
+
+```{r}
+# set CRS
+st_crs(d)$epsg # retrieve CRS
+d <- st_transform(d, 4326)
+```
+
+```{r}
+# create a color palette
+pal <- colorNumeric(palette = "YlOrRd", domain = d$vble)
+l <- leaflet(d) |> addTiles() |>
+  addPolygons(color = "white", fillColor = ~ pal(vble), fillOpacity = 0.8) |>
+  addLegend(pal = pal, values = ~vble, opacity = 0.8)
+l
+```
+
+Note that the default background map added with `addTiles()` can be changed by another map with `addProviderTiles()` specifying another tile layer. Examples of tile layers can be seen at the leaflet providers’ [website](https://leaflet-extras.github.io/leaflet-providers/preview/index.html). We can also use the `addMiniMap()` function to add an inset map
+
+```{r}
+l |> addMiniMap()
+```
+
+-   saving leaflet maps is through `saveWidget()` of **htmlwidgets**. You then take a screenshot using **webshot**
+
+```{r}
+# Saves map.html
+# library(htmlwidgets)
+saveWidget(widget = l, file = "map.html")
+
+# Takes a screenshot of the map.html created
+# and saves it as map.png
+# library(webshot)
+# webshot::install_phantomjs()
+webshot(url = "map.html", file = "map.png")
+```
+
+## **mapview**
+
+```{r}
+pal <- colorRampPalette(brewer.pal(9, "YlOrRd"))
+mapview(
+  d,
+  zcol = "vble",
+  map.types = "CartoDB.DarkMatter",
+  col.regions = pal,
+  layer.name = "SDI"
+)
+
+```
+
+An inset map can also be added by using the `addMiniMap()` function of **leaflet**.
+
+```{r}
+map1 <- mapview(d, zcol = "vble")
+leaflet::addMiniMap(map1@map)
+```
+
+## side by side plots with **mapview**
+
+
+```{r}
+# library(leaflet.extras2)
+# library(RColorBrewer)
+pal <- colorRampPalette(brewer.pal(9, "YlOrRd"))
+
+# common legend
+at <- seq(min(c(d$vble, d$vble2)), max(c(d$vble, d$vble2)),
+          length.out = 8)
+
+m1 <- mapview(d, zcol = "vble", map.types = "CartoDB.Positron",
+              col.regions = pal, at = at)
+m2 <- mapview(d, zcol = "vble2", map.types = "CartoDB.Positron",
+              col.regions = pal, at = at)
+
+m1 | m2
+```
+
+
+## Synchronized maps with **leafsync**
+
+```{r}
+library(RColorBrewer)
+pal <- colorRampPalette(brewer.pal(9, "YlOrRd"))
+
+# common legend
+at <- seq(min(c(d$vble, d$vble2)), max(c(d$vble, d$vble2)),
+          length.out = 8)
+
+m1 <- mapview(d, zcol = "vble", map.types = "CartoDB.Positron",
+              col.regions = pal, at = at)
+m2 <- mapview(d, zcol = "vble2", map.types = "CartoDB.Positron",
+              col.regions = pal, at = at)
+m <- leafsync::sync(m1, m2)
+m
+```
+
+
+## **tmap**
+
+```{r}
+library(tmap)
+tmap_mode("plot")
+tm_shape(d) + tm_polygons("vble")
+```
+
+## maps of point data
+
+```{r}
+d <- world.cities
+# select South Africa
+d <- d[which(d$country.etc == "South Africa"),]
+# Transform to sf object
+d <- st_as_sf(d, coords = c("long", "lat"))
+# Assign CRS
+st_crs(d) <- 4326
+
+d$vble <- d$pop
+d$size <- sqrt(d$vble)/100
+```
+
+
+```{r}
+ggplot(d) + geom_sf(aes(col = vble, size = size)) +
+  scale_color_viridis()
+```
+
+A leaflet map can be created using `addCircles()` specifying the radius and color of the point
+
+```{r}
+pal <- colorNumeric(palette = "viridis", domain = d$vble)
+leaflet(d) %>% addTiles() %>%
+  addCircles(lng = st_coordinates(d)[, 1],
+             lat = st_coordinates(d)[, 2],
+             radius = ~sqrt(vble)*10,
+             color = ~pal(vble), popup = ~name) %>%
+  addLegend(pal = pal, values = ~vble, position = "bottomright")
+```
+
+- with **mapview**:
+
+```{r}
+d$size <- sqrt(d$vble)
+mapview(d, zcol = "vble", cex = "size")
+
+tmap_mode("view")
+tm_shape(d) + tm_dots("vble", scale = sqrt(d$vble)/500,
+                      palette = "viridis")
+```
+
+
+## maps of raster data
+
+```{r}
+# library(terra)
+filename <- system.file("ex/elev.tif", package = "terra")
+r <- rast(filename)
+
+# Transform data to sf object
+d <- st_as_sf(as.data.frame(r, xy = TRUE), coords = c("x", "y"))
+# Assign CRS
+st_crs(d) <- 4326
+# Plot
+ggplot(d) + geom_sf() +
+  geom_raster(data = as.data.frame(r, xy = TRUE),
+              aes(x = x, y = y, fill = elevation))
+```
+
+
+To use the **leaflet** and **mapview** packages, we transform the data from class `terra` to `RasterLayer` with the `raster::brick()`
+
+```{r}
+library(raster)
+rb <- raster::brick(r)
+
+pal <- colorNumeric("YlOrRd", values(r),
+                    na.color = "transparent")
+leaflet() %>% addTiles() %>%
+  addRasterImage(rb, colors = pal, opacity = 0.8) %>%
+  addLegend(pal = pal, values = values(r), title = "elevation")
 ```
 
