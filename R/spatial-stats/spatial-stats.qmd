@@ -45,7 +45,8 @@ pks <- c(
   "RColorBrewer",
   "leaflet.extras2",
   "maps",
-  "raster"
+  "raster",
+  "spdep"
 )
 ddpcr::quiet(ipk(pks))
 # devtools::install_github("FlowmapBlue/flowmapblue.R")
@@ -238,7 +239,6 @@ leaflet::addMiniMap(map1@map)
 
 ## side by side plots with **mapview**
 
-
 ```{r}
 # library(leaflet.extras2)
 # library(RColorBrewer)
@@ -255,7 +255,6 @@ m2 <- mapview(d, zcol = "vble2", map.types = "CartoDB.Positron",
 
 m1 | m2
 ```
-
 
 ## Synchronized maps with **leafsync**
 
@@ -274,7 +273,6 @@ m2 <- mapview(d, zcol = "vble2", map.types = "CartoDB.Positron",
 m <- leafsync::sync(m1, m2)
 m
 ```
-
 
 ## **tmap**
 
@@ -299,7 +297,6 @@ d$vble <- d$pop
 d$size <- sqrt(d$vble)/100
 ```
 
-
 ```{r}
 ggplot(d) + geom_sf(aes(col = vble, size = size)) +
   scale_color_viridis()
@@ -317,7 +314,7 @@ leaflet(d) %>% addTiles() %>%
   addLegend(pal = pal, values = ~vble, position = "bottomright")
 ```
 
-- with **mapview**:
+-   with **mapview**:
 
 ```{r}
 d$size <- sqrt(d$vble)
@@ -327,7 +324,6 @@ tmap_mode("view")
 tm_shape(d) + tm_dots("vble", scale = sqrt(d$vble)/500,
                       palette = "viridis")
 ```
-
 
 ## maps of raster data
 
@@ -346,7 +342,6 @@ ggplot(d) + geom_sf() +
               aes(x = x, y = y, fill = elevation))
 ```
 
-
 To use the **leaflet** and **mapview** packages, we transform the data from class `terra` to `RasterLayer` with the `raster::brick()`
 
 ```{r}
@@ -359,4 +354,193 @@ leaflet() %>% addTiles() %>%
   addRasterImage(rb, colors = pal, opacity = 0.8) %>%
   addLegend(pal = pal, values = values(r), title = "elevation")
 ```
+
+# Spatial neighborhood matrices
+
+-   **spdep** package
+
+## Neighbors based on contiguity
+
+`poly2nb()` can be used to construct a list of neighbors based on areas with contiguous boundaries,
+
+```{r}
+map <- st_read(system.file("shapes/columbus.shp", package = "spData"), quiet = TRUE)
+nb <- spdep::poly2nb(map, queen = TRUE)
+head(nb)
+```
+
+```{r}
+plot(st_geometry(map), border = "lightgray")
+plot.nb(nb, st_geometry(map), add = TRUE)
+```
+
+We can plot the neighbors of a given area by adding a new column in map representing the neighbors of the area. For example, Figure below shows the neighbors of area 20
+
+```{r}
+id <- 20
+map$neighbors <- "other"
+map$neighbors[id] <- "area"
+map$neighbors[nb[[id]]] <- "neighbors"
+ggplot(map) + geom_sf(aes(fill = neighbors)) + theme_bw() +
+  scale_fill_manual(values = c("gray30","gray", "white"))
+```
+
+Given a neighbor list, the cardinality function `spdep::card()` counts the number of neighbors of each area. We can also obtain the number of neighbors of each area with `lengths(nb)`. Then, we can use `table(1:nrow(map), card(nb))` to build a table with the areas' ids in rows, and the number of neighbors in columns
+
+## Neighbors based on k nearest neighbors
+
+The function `knearneigh()` of **spdep** allows us to obtain a matrix with the indices of points belonging to the set of the k nearest neighbors of each area
+
+```{r}
+# 3 nearest neighbors
+coo <- st_centroid(map)
+nb <- knn2nb(knearneigh(coo, k = 3))
+plot(st_geometry(map), border = "lightgray")
+plot.nb(nb, st_geometry(map), add = TRUE)
+```
+
+## Neighbors based on distance
+
+The `dnearneigh()` function of **spdep** builds a list of neighbors based on a distance between specific lower and upper bounds.
+
+```{r}
+# neighbors based on distance
+# Neighbors based on distance
+nb <- dnearneigh(x = st_centroid(map), d1 = 0, d2 = 0.4)
+plot(st_geometry(map), border = "lightgray")
+plot.nb(nb, st_geometry(map), add = TRUE)
+```
+
+# Spatial autocorrelation
+
+Using Moran's I index
+
+## Global Moran's I
+
+The function `moran.test()` of the **spdep** package can be used to test spatial autocorrelation using Moran's I
+
+```{r}
+# Neighbors
+map <- st_read(system.file("shapes/boston_tracts.shp",
+                           package = "spData"), quiet = TRUE)
+map$vble <- map$MEDV
+nb <- poly2nb(map, queen = T) # queen shares point or border
+nbw <- nb2listw(nb, style = "W")
+# Global Moran's I
+gmoran <- moran.test(map$vble, nbw, alternative = "greater")
+gmoran
+```
+
+Monte Carlo approach using `moran.mc()`
+
+```{r}
+gmoranMC <- moran.mc(map$vble, nbw, nsim = 999)
+gmoranMC
+```
+
+```{r}
+hist(gmoranMC$res)
+abline(v = gmoranMC$statistic, col = "red")
+```
+
+Moran's I scatterplot
+
+```{r}
+moran.plot(map$vble, nbw)
+```
+
+## Local Moran's I
+
+```{r}
+lmoran <- localmoran(map$vble, nbw, alternative = "greater")
+head(lmoran)
+```
+
+Map of housing prices and local Moran's I
+
+```{r}
+tmap_mode("view")
+map$lmI <- lmoran[, "Ii"] # local Moran's I
+map$lmZ <- lmoran[, "Z.Ii"] # z-scores
+# p-values corresponding to alternative greater
+map$lmp <- lmoran[, "Pr(z > E(Ii))"]
+
+p1 <- tm_shape(map) +
+  tm_polygons(col = "vble", title = "vble", style = "quantile") +
+  tm_layout(legend.outside = TRUE)
+
+p2 <- tm_shape(map) +
+  tm_polygons(col = "lmI", title = "Local Moran's I",
+              style = "quantile") +
+  tm_layout(legend.outside = TRUE)
+
+p3 <- tm_shape(map) +
+  tm_polygons(col = "lmZ", title = "Z-score",
+              breaks = c(-Inf, 1.65, Inf)) +
+  tm_layout(legend.outside = TRUE)
+
+p4 <- tm_shape(map) +
+  tm_polygons(col = "lmp", title = "p-value",
+              breaks = c(-Inf, 0.05, Inf)) +
+  tm_layout(legend.outside = TRUE)
+
+tmap_arrange(p1, p2, p3, p4) 
+```
+
+
+```{r}
+tm_shape(map) + tm_polygons(col = "lmZ",
+title = "Local Moran's I", style = "fixed",
+breaks = c(-Inf, -1.96, 1.96, Inf),
+labels = c("Negative SAC", "No SAC", "Positive SAC"),
+palette =  c("blue", "white", "red")) +
+tm_layout(legend.outside = TRUE)
+```
+
+
+## Clusters
+Local Moran's I allows us to identify clusters of the following types:
+
+- High-High: areas of high values with neighbors of high values,
+- High-Low: areas of high values with neighbors of low values,
+- Low-High: areas of low values with neighbors of high values,
+- Low-Low: areas of low values with neighbors of low values.
+
+```{r}
+lmoran <- localmoran(map$vble, nbw, alternative = "two.sided")
+head(lmoran)
+```
+
+```{r}
+mp <- moran.plot(as.vector(scale(map$vble)), nbw)
+```
+
+
+```{r}
+map$quadrant <- NA
+# high-high
+map[(mp$x >= 0 & mp$wx >= 0) & (map$lmp <= 0.05), "quadrant"]<- 1
+# low-low
+map[(mp$x <= 0 & mp$wx <= 0) & (map$lmp <= 0.05), "quadrant"]<- 2
+# high-low
+map[(mp$x >= 0 & mp$wx <= 0) & (map$lmp <= 0.05), "quadrant"]<- 3
+# low-high
+map[(mp$x <= 0 & mp$wx >= 0) & (map$lmp <= 0.05), "quadrant"]<- 4
+# non-significant
+map[(map$lmp > 0.05), "quadrant"] <- 5
+```
+
+We create the variable quadrant denoting the type of cluster for each of the areas using the quadrant corresponding to its value and its spatially lagged value, and the p-value
+
+```{r}
+tm_shape(map) + tm_fill(col = "quadrant", title = "",
+breaks = c(1, 2, 3, 4, 5, 6),
+palette =  c("red", "blue", "lightpink", "skyblue2", "white"),
+labels = c("High-High", "Low-Low", "High-Low",
+           "Low-High", "Non-significant")) +
+tm_legend(text.size = 1)  + tm_borders(alpha = 0.5) +
+tm_layout(frame = FALSE,  title = "Clusters")  +
+tm_layout(legend.outside = TRUE)
+```
+
 
