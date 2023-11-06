@@ -23,6 +23,7 @@ ipk <- function(pkg) {
                        repos = "http://cran.rstudio.com")
     
   }
+  require(pkg[i], character.only = TRUE)
 }
 pks <- c(
   "sf",
@@ -46,9 +47,11 @@ pks <- c(
   "leaflet.extras2",
   "maps",
   "raster",
-  "spdep"
+  "spdep",
+  "usethis"
 )
-ddpcr::quiet(ipk(pks))
+# ddpcr::quiet(ipk(pks))
+suppressPackageStartupMessages(ipk(pks))
 # devtools::install_github("FlowmapBlue/flowmapblue.R")
 ```
 
@@ -487,7 +490,6 @@ p4 <- tm_shape(map) +
 tmap_arrange(p1, p2, p3, p4) 
 ```
 
-
 ```{r}
 tm_shape(map) + tm_polygons(col = "lmZ",
 title = "Local Moran's I", style = "fixed",
@@ -497,14 +499,14 @@ palette =  c("blue", "white", "red")) +
 tm_layout(legend.outside = TRUE)
 ```
 
-
 ## Clusters
+
 Local Moran's I allows us to identify clusters of the following types:
 
-- High-High: areas of high values with neighbors of high values,
-- High-Low: areas of high values with neighbors of low values,
-- Low-High: areas of low values with neighbors of high values,
-- Low-Low: areas of low values with neighbors of low values.
+-   High-High: areas of high values with neighbors of high values,
+-   High-Low: areas of high values with neighbors of low values,
+-   Low-High: areas of low values with neighbors of high values,
+-   Low-Low: areas of low values with neighbors of low values.
 
 ```{r}
 lmoran <- localmoran(map$vble, nbw, alternative = "two.sided")
@@ -514,7 +516,6 @@ head(lmoran)
 ```{r}
 mp <- moran.plot(as.vector(scale(map$vble)), nbw)
 ```
-
 
 ```{r}
 map$quadrant <- NA
@@ -542,5 +543,3 @@ tm_legend(text.size = 1)  + tm_borders(alpha = 0.5) +
 tm_layout(frame = FALSE,  title = "Clusters")  +
 tm_layout(legend.outside = TRUE)
 ```
-
-
