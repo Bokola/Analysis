@@ -5,6 +5,8 @@ editor: visual
 execute: 
   echo: true
   warning: false
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Types of spatial data:

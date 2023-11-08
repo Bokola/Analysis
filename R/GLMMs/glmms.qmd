@@ -1,0 +1,75 @@
+---
+title: "Generalized Linear Mixed Models (R)"
+format: html
+editor: visual
+execute: 
+  echo: true
+  warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r}
+#| include: true
+# browseURL("http://www.rensenieuwenhuis.nl/r-sessions-16-multilevel-model-specification-lme4/")
+ipk <- function(pkg) {
+  for (i in seq_len(length(pkg))) {
+    if (!require(pkg[i], character.only = TRUE))
+      install.packages(pkg[i], dependencies = TRUE,
+                       repos = "http://cran.rstudio.com")
+    
+  }
+  require(pkg[i], character.only = TRUE)
+}
+pks <- c(
+  "lme4", "mlmRev"
+)
+# ddpcr::quiet(ipk(pks))
+suppressPackageStartupMessages(ipk(pks))
+# remotes::install_github("datalorax/equatiomatic")
+```
+
+# `lmer()` from `{lme4}`
+
+***null-model***
+
+Only the levels are defined.  Terms before `|` in `(|)` specify the random predictors, terms after specify the group-level. `lmer()` uses restricted maximum likelihood (REML) by default. You could also specify `method = "ML"`
+
+```{r}
+lmer(normexam ~ 1 + (1| school), data = Exam)
+```
+
+***random intercept, fixed predictor in individual level (standLRT)***
+
+```{r}
+lmer(normexam ~ standLRT + (1 | school), data = Exam)
+```
+
+***random intercept, random slope***
+
+The `1` that indicates the intercept in the random part of the model specification is replaced by the variable we want to vary between groups. Here we want the individual scores to vary between schools.
+
+
+```{r}
+lmer(normexam ~ standLRT + (standLRT | school), data = Exam)
+```
+
+***random intercept, individual and group level predictor***
+
+`schavg` is a school (group) level variable.
+
+```{r}
+lmer(normexam ~ standLRT + schavg + (1 + standLRT | school), data = Exam) # random slope of standLRT within school with 
+# correlated intercept
+```
+
+***random intercept, cross-level interaction***
+
+```{r}
+lmer(normexam ~ standLRT * schavg + (1 + standLRT | school), data = Exam)
+```
+
+
+
