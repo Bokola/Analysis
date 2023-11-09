@@ -1,0 +1,179 @@
+---
+title: "Advanced Methods for Missing Data (R)"
+format: html
+editor: visual
+execute: 
+  echo: true
+  warning: false
+editor_options: 
+  chunk_output_type: console
+---
+# Handling missing data with R
+
+```{r}
+#| include: true
+# browseURL("https://search.r-project.org/CRAN/refmans/mice/html/mice.html")
+ipk <- function(pkg) {
+  for (i in seq_len(length(pkg))) {
+    if (!require(pkg[i], character.only = TRUE))
+      install.packages(pkg[i], dependencies = TRUE,
+                       repos = "http://cran.rstudio.com")
+    
+  }
+  require(pkg[i], character.only = TRUE)
+}
+pks <- c(
+  "VIM", "mice", "tidyverse"
+)
+# ddpcr::quiet(ipk(pks))
+suppressPackageStartupMessages(ipk(pks))
+par(mar=c(1,1,1,1))
+```
+
+Case study using `VIM::sleep` data set. Sleep variables - total dream sleep (`Dream`), non dream sleep (`NonD`), their sum (`Sleep`) are the dependent variables. Independent variables include body weight - `BodyWgt`, brain weight - `BrainWgt`, life span in years - `Span`, gestation time in days (`Gest`), and ecological variables measured on 5-point rating scale: degree of preying - `Pred`, degree of exposure while sleeping - `Exp` and overall danger faced - `Danger`.
+
+
+```{r}
+data(sleep, package = "VIM")
+# complete cases
+sleep_complete <- sleep[complete.cases(sleep),]
+sleep_incomp <- sleep[!complete.cases(sleep),]
+
+# count NAs
+count_na <- function(x){
+  sum(is.na(x))
+}
+a <- sapply(sleep, count_na) |> dplyr::bind_rows()
+```
+
+## Exploring missing values patterns
+
+### Tabulating missing values
+
+Using `md.pattern()` function from `{mice}`. 0 indicates a missing value. For the table the first row represents the pattern of 'no missing values', the second row describes the pattern "no missing value" except for `Span`, and so on. The first column indicates the number of cases in each missing data pattern. For instance there are 42 cases without missing data. The dataset contains a total of (42 × 0) + (2 × 1) + ... + (1 × 3) = 38 missing values.
+
+```{r}
+md.pattern(sleep, rotate.names = TRUE, plot = FALSE)
+```
+
+### Exploring missing data visually with `{VIM}`
+
+`aggr()` function plots the no. of missing values for each variable alone and for each combination of variables. There are 9 instances where both Dream and NonD are missing.
+
+```{r}
+aggr(sleep, prop = FALSE, numbers = TRUE)
+```
+
+The `matrixplot()` function displays the data for each missing case. It rescales numeric data to the [0, 1] interval represented in gray scale colors (lighter colors represent lower values, darker colors represent higher values). In the plot below, a grey scale is used for available data as we've supplied one color option (red) for missing data. 
+The matrix plot explores if presence of missing values on one of the variables is related to the actual values of other variables .
+
+```{r}
+matrixplot(sleep, col = "red")
+```
+
+The `marginplot()` function outputs a scatter plot of two variables with information on missing values at the margins.
+The `col` argument takes a vector of size 5. The first color used for available data, second for missing data, third for frequency of missing/imputed in both variables. The left margin boxplots show the distribution of `Dream` with (dark gray) and without (red) `Gest`. A similar interpretation can be drawn for the bottom margin (`Gest`). The body of the plot is a scatter for complete cases of the 2 variables.
+
+```{r}
+marginplot(sleep[c("Gest", "Dream")], pch = c(20), col = c("darkgray", "red", "blue"))
+```
+
+
+### Using correlations to explore missing values
+
+Sometimes you can replace missing values with 1 and observed values with 0 creating indicator variables that can be correlated with each other and with the originally observed variable to identify variables that tend to be missing together.
+
+`Dream` and `NonD` tend to be missing together.
+
+
+```{r}
+# indicator 0,1
+x <- as.data.frame(abs(is.na(sleep)))
+# extract vars with some missingness
+
+# sapply(x, sd)
+y <- x[which(sapply(x, sd) > 0)]
+cor(y)
+```
+
+You can also look at the relationship between the presence of missing values in a variable and the observed values on other variables.
+
+The rows in the output are observed variables and the columns are indicator variables of missingness. The first column indicates that nondreaming sleep scores are more likely to be missing for mammals with higher body weight (r = 0.227), gestation period (r = 0.202), and sleeping exposure (r = 0.245). 
+
+None of the correlations in this table are large or striking,  suggesting that the data deviates minimally from MCAR and may be MAR.
+
+```{r}
+cor(sleep, y, use = "pairwise.complete.obs")
+```
+
+## Multiple imputation
+
+Based on repeated simulation using expectation maximization (EM) algorithm. A set of complete datasets (3-10) is generated from existing dataset containing missing values using Monte Carlo methods.
+
+Each of the dataset is analyzed and the results combined to provide estimated results and their CIs.
+
+`{mice}` is an acronym for multivariate imputation by chained equations, and uses Gibbs sampling. Each variable with a missing value is predicted from all other variables in the dataset, iteratively until convergence. The default setting is to use predictive mean matching for continuous variables and logistic/polytomous logistic regression for factors with two levels or polytomous for factors with more than 2 levels.
+
+### `{mice}` under the hood
+
+`mice()` starts with a dataframe containing missing data and returns an object with several complete datasets that are individually passed to a statistical model together using `with()` function. Results from individual analyses are combined using the `pool()` function reflecting the existing uncertainties during imputation. `method = "norm.nob"` implies regression imputation as [here](https://www.gerkovink.com/miceVignettes/Ad_hoc_and_mice/Ad_hoc_methods.html). Detailed vignette on convergence and pooling can be found [here](https://www.gerkovink.com/miceVignettes/Convergence_pooling/Convergence_and_pooling.html).
+
+```{r}
+data(sleep, package = "VIM")
+imp <- mice(nhanes, seed = 1234, m = 10, maxit = 10, method = "norm.nob", printFlag = FALSE)
+fit <- with(imp, lm(age ~ bmi))
+pooled <- pool(fit)
+```
+
+Info on the imputation:
+
+```{r}
+imp
+```
+
+The predictor matrix below shows in the columns the predictor and the rows the imputed variable. A value of `1` indicates the column variable is used to predict the row variable.
+
+```{r}
+(pred <- imp$pred)
+```
+
+Assigning a predictor a value of `0` disqualifies its use in imputation
+
+```{r}
+pred[ ,"hyp"] <- 0
+pred
+```
+
+Attributes of `imp` object:
+
+```{r}
+attributes(imp)
+```
+
+
+Inspect the completed data:
+
+```{r}
+complete(imp)
+```
+
+Inspect the convergence of the algorithm:
+
+```{r}
+plot(imp)
+```
+
+Individaul dataset model summaries:
+
+```{r}
+summary(fit)
+```
+
+
+Pooled Model summaries:
+
+```{r}
+summary(pooled)
+```
+
+
