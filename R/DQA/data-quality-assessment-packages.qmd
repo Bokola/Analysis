@@ -1,0 +1,252 @@
+---
+title: "Data quality assessment (R)"
+format: html
+editor: visual
+execute: 
+  echo: true
+  warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| include: true
+# browseURL("https://search.r-project.org/CRAN/refmans/mice/html/mice.html")
+ipk <- function(pkg) {
+  for (i in seq_len(length(pkg))) {
+    if (!require(pkg[i], character.only = TRUE))
+      install.packages(pkg[i], dependencies = TRUE,
+                       repos = "http://cran.rstudio.com")
+    
+  }
+  require(pkg[i], character.only = TRUE)
+}
+pks <- c(
+  "assertr", "dataquieR", "tidyverse"
+)
+# ddpcr::quiet(ipk(pks))
+suppressPackageStartupMessages(ipk(pks))
+par(mar=c(1,1,1,1))
+```
+
+```{r}
+# custom date checks
+within_dates <- function(start_date, end_date){
+  interval <- lubridate::`%--%`(start_date, end_date)
+  closure <- function(adate){
+    return(lubridate::`%within%`(adate, interval))
+  }
+  return(closure)
+}
+```
+
+
+# `{assert}`
+
+Provides functions to assess status of data. Commonly used is the `verify()` and `assert_*()` verbs.
+
+
+
+```{r}
+sd1 <- readRDS(system.file("extdata", "ship.RDS", package = "dataquieR"))
+
+# custom checks
+check_assertions <- . %>%
+  chain_start(store_success = TRUE) %>%
+  verify(nrow(.) == 2154, error_fun = my_error_fun) %>%
+  # duplicates
+  assert_rows(duplicates_across_cols, in_set(FALSE), id) %>%
+  # data type mismatch
+  verify(has_class("id", class = "integer")) %>%
+  verify(has_class("sex", class = "integer")) %>%
+  verify(has_class("weight", class = "numeric")) %>%
+  # check column names
+  verify(has_all_names("sbp1", "sbp2", "weight")) %>%
+  # missingness
+  assert_rows(num_row_NAs, within_bounds(0,1), everything()) %>%
+  # Numeric values
+  # inadmissible hard limits
+  assert(within_bounds(80, 200), c("sbp1", "sbp2")) %>%
+  # uncertain soft limits
+  assert(within_bounds(90, 180, include.lower = FALSE, include.upper = FALSE), c("sbp1", "sbp2")) %>%
+  # categorical values
+  assert(in_set(seq(0, 4)), "school") %>%
+  # outliers
+  insist(within_n_sds(4), "sbp1") %>%
+  # assert(within_dates(as.Date("1997-10-16", "%Y-%m-%d"), as.Date("1998-10-16", "%Y-%m-%d")), "exdate") %>%
+  chain_end(success_fun = success_df_return)
+  
+```
+
+`assertr` does not tell which rows fail the tests
+
+```{r}
+#| include: false
+# rslt <- sd1 %>% check_assertions()
+```
+
+# `{dataquieR}`
+
+[`dataquieR`](https://cran.r-project.org/web/packages/dataquieR/vignettes/DQ-report-example.html) assesses quality of data in under four domains of integrity, completeness, consistency and accuracy. It uses a supplied meta data to perform the checks
+
+## Integrity
+
+```{r}
+# data
+load(system.file("extdata", "study_data.RData", package = "dataquieR"))
+sd1 <- study_data
+# metadata
+
+load(system.file("extdata", "meta_data.RData", package = "dataquieR"))
+md1 <- meta_data
+```
+
+Requirement is that the number of variables in the data and metadata should coincide.
+
+```{r}
+approx <- pro_applicability_matrix(
+  study_data = sd1,
+  meta_data = md1,
+  label_col = LABEL
+)
+
+approx$ApplicabilityPlot
+```
+
+## Unit missingness
+
+Count individuals with no measurement at all
+
+```{r}
+unit_NAs <- com_unit_missingness(
+  study_data = sd1,
+  meta_data = md1,
+  id_vars = c("CENTER_0", "PSEUDO_ID"),
+  strata_vars = "CENTER_0",
+label_col = LABEL
+)
+unit_NAs$SummaryData
+```
+
+## Item missingness
+
+```{r}
+code_labes <- prep_get_data_frame("meta_data_v2|missing_table")
+
+item_miss <- com_item_missingness(
+  study_data = sd1,
+  meta_data = md1,
+  label_col = "LABEL",
+  show_causes = TRUE,
+  cause_label_df = code_labes,
+  include_sysmiss = TRUE,
+  threshold_value = 80
+)
+out1 <- item_miss$SummaryTable %>% filter(GRADING == 1) 
+knitr::kable(out1)
+```
+
+
+```{r}
+item_miss$SummaryPlot
+```
+
+# Consistency
+
+## Limit deviations
+
+```{r}
+limit_dev <- con_limit_deviations(
+  resp_vars = NULL,
+  label_col = "LABEL",
+  study_data = sd1,
+  meta_data = md1,
+  limits = "HARD_LIMITS"
+)
+```
+
+
+```{r}
+out <- limit_dev$SummaryTable %>% filter(GRADING == 1)
+
+whichdeviate <- as.character(limit_dev$SummaryTable$Variables)[limit_dev$SummaryTable$GRADING == 1]
+
+```
+
+Select variables with deviations:
+
+```{r}
+# select variables with deviations
+whichdeviate <- as.character(limit_dev$SummaryTable$Variables)[limit_dev$SummaryTable$GRADING == 1]
+
+patchwork::wrap_plots(plotlist = limit_dev$SummaryPlotList[whichdeviate], ncol = 2) 
+
+```
+
+## Inadmissible levels
+
+```{r}
+inad_cat <- con_inadmissible_categorical(
+  study_data = sd1,
+  meta_data = md1,
+  label_col = "LABEL"
+)
+inad_cat$SummaryTable %>% filter(GRADING == 1)
+```
+
+```{r}
+wrong_cat_vars <- inad_cat$SummaryTable |> filter(GRADING == 1) |> select(Variables) |> pull()
+```
+
+## Contradictions
+
+```{r}
+checks <- read.csv(system.file("extdata",
+  "contradiction_checks.csv",
+  package = "dataquieR"
+),
+header = TRUE, sep = "#"
+)
+
+contradictions <- con_contradictions(
+  study_data = sd1,
+  meta_data = md1,
+  label_col = "LABEL",
+  check_table = checks,
+  threshold_value = 1
+)
+contradictions$SummaryTable %>% filter(GRADING == 1)
+```
+
+
+# ACCURACY
+
+```{r}
+ruol <- dataquieR:::acc_robust_univariate_outlier(study_data = sd1, meta_data = md1, label_col = LABEL)
+```
+
+```{r}
+c(
+#  head(ruol$SummaryPlotList, 2),
+  tail(ruol$SummaryPlotList, 2)
+)
+```
+
+# DQA report
+
+```{r}
+report <- dq_report2(
+  study_data = sd1,
+  meta_data = md1,
+  label_col = "LABEL",
+  dimensions = c(
+    "Completeness",
+    "Consistency"),
+    # contradiction checks (Consistency)
+    check_table <- read.csv(
+      system.file("extdata", "contradiction_checks.csv", package = "dataquieR"), header = T, sep = "#"
+    )
+  )
+```
+
