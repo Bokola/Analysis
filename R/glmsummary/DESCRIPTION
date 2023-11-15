@@ -1,0 +1,24 @@
+Package: glmsummary
+Type: Package
+Title: Model Summary of GLM and GLMM family of Models
+Version: 0.0.0.9000
+Author@R: person("Basil", "Okola", email = "okolabasilowiti@gmail.com",
+  role = c("aut", "cre"))
+Description: Extraction of model summaries of GLM and GLMM family of models in
+  R. Outputs model summary tables. Uses join functions in dplyr and piping to 
+  facilitate extraction.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Imports:
+  magrittr,
+  dplyr (>= 1.1.3)
+Suggests:
+  VGLM,
+  gee,
+  geepack,
+  gamlss,
+  multgee,
+  nnet
+Depends:
+  R (>= 4.3.1)
