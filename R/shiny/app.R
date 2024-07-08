@@ -1,38 +1,15 @@
 options(shiny.maxRequestSize = 400 * 1024^2)
-ipk = function(pkg){
-  new.pkg = list.of.pkgs[!(list.of.pkgs %in% .packages(all.available = TRUE))]
-  
-  if(length(new.pkg)) install.packages(new.pkg, dependencies = T)
-  if('d3treeR' %in% list.of.pkgs){
-    remotes::install_github("d3treeR/d3treeR")
-  }
-  if(!'patchwork' %in% .packages(all.available = TRUE)){
-    devtools::install_github("thomasp85/patchwork")
-  }
-  if(!'ReporteRsjars' %in% .packages(all.available = TRUE)){
-    devtools::install_github('davidgohel/ReporteRsjars')
-  }
-  if(!'ReporteRs' %in% .packages(all.available = TRUE)){
-    devtools::install_github('davidgohel/ReporteRs')
-  }
-  if(!"thematic" %in% .packages(all.available = TRUE)) {
-    remotes::install_github("rstudio/thematic")
-  }
-  
-  if(!'INLA' %in% .packages(all.available = TRUE)){
-    install.packages("INLA", repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
-  }
-  
-  sapply(pkg, require, character.only = T)
-}
+# install.packages("devtools")
+if(!require(glmsummary)) devtools::install_github("Bokola/glmsummary")
+
 
 list.of.pkgs = c("gapminder", "ggforce", "openintro", "shiny", "shinyFeedback", 
                  "shinythemes", "tidyverse", "vroom", "waiter", "ggplot2", "tidyverse",
-                 "RColorBrewer", "INLA", #"SpatialEpi", "spdep",
+                 "RColorBrewer",# "INLA", #"SpatialEpi", "spdep",
                  "rnaturalearth", "flexdashboard", 
                  "DT", "dygraphs", "wbstats", "shiny", "xts", "magrittr", "cowplot", "Cairo", "cairoDevice", 
                  "thematic", "shinyFeedback")
-ipk(list.of.pkgs)
+install_load_packages(list.of.pkgs)
 
 home = ifelse(Sys.info()["sysname"] == "Linux", Sys.getenv("home"), Sys.getenv("USERPROFILE")) %>%
   gsub("\\\\", "/",.)
