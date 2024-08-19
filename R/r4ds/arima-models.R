@@ -1,6 +1,6 @@
 browseURL("https://jtr13.github.io/cc19/time-series-modeling-with-arima-in-r.html")
 # ARIMA(p,d,q): 
-# Auto-regressive components, AR(p) implies use of past vlaues in the regression
+# Auto-regressive components, AR(p) implies use of past values in the regression
 # Moving average (MA(q)) which accounts for error of the model
 # differencing variable d used to remove trend & convert a
 # non-stationary time series to a stationary one
@@ -82,3 +82,4 @@ futueval <- forecast(fitARIMA, h = 5, level = c(99))
 plot(forecast(futueval))
 
 futueval$mean
+
